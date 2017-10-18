@@ -32,6 +32,10 @@ public:
      *  @param callback : Callback function. bool function(const RawRecord &). It returns false for stop iteration
      */
     void iter(bool(*callback)(const RawRecord&));
+
+    /** Delete a record at given position
+     */
+    void delRecord(int offset);
 };
 
 #endif // DATA_PAGE_H_
