@@ -10,8 +10,6 @@ private:
     std::string val;
 
 public:
-    VarcharType(int length);
-
     TypeID getTypeID() override { return VARCHAR; }
 
     int getFixedLength() override { return 0; }
