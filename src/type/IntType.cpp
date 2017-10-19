@@ -1,3 +1,5 @@
+#include <cerrno>
+#include <cstdlib>
 #include <cassert>
 #include <sstream>
 #include "IntType.h"
@@ -29,7 +31,7 @@ void IntType::fromString(const std::string &s)
 {
     char *end;
     errno = 0;
-    val = std::strtol(s.c_str(), &end, 10);
+    val = strtol(s.c_str(), &end, 10);
     if (errno || s.empty() || *end != '\0')
         throw InvalidLiteralException(s, INT);
 }

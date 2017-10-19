@@ -12,7 +12,7 @@ private:
 public:
     VarcharType(int length);
 
-    TypeID getTypeID() override { return TypeID::VARCHAR; }
+    TypeID getTypeID() override { return VARCHAR; }
 
     int getFixedLength() override { return 0; }
 

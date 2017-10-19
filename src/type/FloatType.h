@@ -12,12 +12,12 @@ private:
     double val;
 
 public:
-    TypeID getTypeID() override { return TypeID::FLOAT; }
+    TypeID getTypeID() override { return FLOAT; }
 
     int getFixedLength() override { return 8; }
 
     double getVal() const { return val; }
-    void setVal(double _val) { val = _ val; }
+    void setVal(double _val) { val = _val; }
 
     std::vector<unsigned char> toBytes() const override;
     void fromBytes(const std::vector<unsigned char> &bytes) override;

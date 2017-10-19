@@ -1,9 +1,9 @@
 #include <cassert>
 #include <sstream>
-#include "IntType.h"
+#include "DateType.h"
 #include "../exception/InvalidLiteralException.h"
 
-std::vector<unsigned char> IntType::toBytes() const
+std::vector<unsigned char> DateType::toBytes() const
 {
     std::vector<unsigned char> ret(2);
     for (int i = 0; i < 2; i++)
@@ -11,7 +11,7 @@ std::vector<unsigned char> IntType::toBytes() const
     return ret;
 }
 
-void IntType::fromBytes(const std::vector<unsigned char> &bytes)
+void DateType::fromBytes(const std::vector<unsigned char> &bytes)
 {
     assert(bytes.size() == 2);
     for (int i = 0; i < 2; i++)

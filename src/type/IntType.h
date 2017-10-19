@@ -11,7 +11,7 @@ private:
     int val;
 
 public:
-    TypeID getTypeID() override { return TypeID::INT; }
+    TypeID getTypeID() override { return INT; }
 
     int getFixedLength() override { return 4; }
 

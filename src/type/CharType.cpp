@@ -12,7 +12,7 @@ std::vector<unsigned char> CharType::toBytes() const
 
 void CharType::fromBytes(const std::vector<unsigned char> &bytes)
 {
-    assert(bytes.size() == length);
+    assert(int(bytes.size()) == length);
     val.clear();
     for (int i = 0; i < length; i++)
     {
@@ -23,7 +23,7 @@ void CharType::fromBytes(const std::vector<unsigned char> &bytes)
 
 void CharType::fromString(const std::string &s)
 {
-    if (s.length() > length)
+    if (int(s.length()) > length)
         throw InvalidLiteralException(s, CHAR);
     val = s;
 }

@@ -1,3 +1,19 @@
 # Vim temporary files
 *~
 *.swp
+
+# YCM vim plugin
+.ycm_extra_conf.py
+.ycm_extra_conf.pyc
+
+# CMake temporary files
+CMakeCache.txt
+CMakeFiles
+*.cmake
+Makefile
+
+# pkg-config files
+*.pc
+
+# Executable
+/bin

@@ -9,11 +9,13 @@ if(NOT CMAKE_BUILD_TYPE)
     SET(CMAKE_BUILD_TYPE Release)
 endif(NOT CMAKE_BUILD_TYPE)
 
-aux_source_directory(src SRCS)
-aux_source_directory(test TESTS)
+file(GLOB_RECURSE SRCS ${CMAKE_BINARY_DIR}/src/*.cpp)
+file(GLOB_RECURSE TESTS ${CMAKE_BINARY_DIR}/tests/*.cpp)
 
 add_executable(db ${SRCS})
-add_executable(db_test ${TESTS})
+add_executable(db_test ${SRCS} ${TESTS})
+
+target_include_directories(db_test PRIVATE ${CMAKE_BINARY_DIR}/src)
 
 set_target_properties(
     db
@@ -23,17 +25,25 @@ set_target_properties(
     CXX_STANDARD_REQUIRED true
 )
 
+set_target_properties(
+    db_test
+    PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+    CXX_STANDARD 11
+    CXX_STANDARD_REQUIRED true
+)
+
 # Download and unpack googletest at configure time
-configure_file(CMakeLists.txt.in googletest-download/CMakeLists.txt)
+configure_file(CMakeLists.txt.in third-party/googletest/download/CMakeLists.txt)
 execute_process(COMMAND ${CMAKE_COMMAND} -G "${CMAKE_GENERATOR}" .
   RESULT_VARIABLE result
-  WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/googletest-download )
+  WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/third-party/googletest/download )
 if(result)
   message(FATAL_ERROR "CMake step for googletest failed: ${result}")
 endif()
 execute_process(COMMAND ${CMAKE_COMMAND} --build .
   RESULT_VARIABLE result
-  WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/googletest-download )
+  WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/third-party/googletest/download )
 if(result)
   message(FATAL_ERROR "Build step for googletest failed: ${result}")
 endif()
