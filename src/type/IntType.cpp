@@ -1,4 +1,5 @@
 #include <cerrno>
+#include <climits>
 #include <cstdlib>
 #include <cassert>
 #include <sstream>
@@ -31,8 +32,9 @@ void IntType::fromString(const std::string &s)
 {
     char *end;
     errno = 0;
-    val = strtol(s.c_str(), &end, 10);
-    if (errno || s.empty() || *end != '\0')
+    long l = strtol(s.c_str(), &end, 10); // long is 64-bit in 64-bit machine
+    if (errno || s.empty() || *end != '\0' || l > INT_MAX || l < INT_MIN)
         throw InvalidLiteralException(s, INT);
+    val = l;
 }
 
