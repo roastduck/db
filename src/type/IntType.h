@@ -4,6 +4,7 @@
 #include "../Type.h"
 
 /** INT type
+ *  NOTE: THIS CLASS IS NOT THREAD-SAFE because it uses errno
  */
 class IntType : public Type
 {
