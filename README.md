@@ -22,7 +22,9 @@ make
 
 Executables will be generated to `bin/`.
 
-Remember to `make clean` before switching to the other mode.
+NOTE1: Remember to `make clean` before switching to the other mode.
+
+NOTE2: You need to re-run CMake if new files are added.
 
 ## Test
 
