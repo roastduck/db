@@ -59,3 +59,13 @@ void DateType::fromString(const std::string &s)
         throw InvalidLiteralException(s, DATE);
 }
 
+bool operator==(const DateType &t1, const DateType &t2)
+{
+    return t1.val == t2.val;
+}
+
+bool operator!=(const DateType &t1, const DateType &t2)
+{
+    return t1.val != t2.val;
+}
+

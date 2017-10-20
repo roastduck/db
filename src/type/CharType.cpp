@@ -28,3 +28,13 @@ void CharType::fromString(const std::string &s)
     val = s;
 }
 
+bool operator==(const CharType &t1, const CharType &t2)
+{
+    return t1.val == t2.val;
+}
+
+bool operator!=(const CharType &t1, const CharType &t2)
+{
+    return t1.val != t2.val;
+}
+

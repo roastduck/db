@@ -19,9 +19,9 @@ private:
     date_t val; /// NOTE: `val` might not be multiple of 86400, because of time zones
 
 public:
-    TypeID getTypeID() override { return DATE; }
+    TypeID getTypeID() const override { return DATE; }
 
-    int getFixedLength() override { return 8; }
+    int getFixedLength() const override { return 8; }
 
     date_t getVal() const { return val; }
     void setVal(date_t _val) { val = _val; }
@@ -34,6 +34,12 @@ public:
 
     std::string toString() const override;
     void fromString(const std::string &s) override;
+
+    friend bool operator==(const DateType&, const DateType&);
+    friend bool operator!=(const DateType&, const DateType&);
 };
+
+bool operator==(const DateType &t1, const DateType &t2);
+bool operator!=(const DateType &t1, const DateType &t2);
 
 #endif // DATE_TYPE_H_

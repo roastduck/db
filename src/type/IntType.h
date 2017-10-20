@@ -12,9 +12,9 @@ private:
     int val;
 
 public:
-    TypeID getTypeID() override { return INT; }
+    TypeID getTypeID() const override { return INT; }
 
-    int getFixedLength() override { return 4; }
+    int getFixedLength() const override { return 4; }
 
     int getVal() const { return val; }
     void setVal(int _val) { val = _val; }
@@ -24,6 +24,12 @@ public:
 
     std::string toString() const override;
     void fromString(const std::string &s) override;
+
+    friend bool operator==(const IntType&, const IntType&);
+    friend bool operator!=(const IntType&, const IntType&);
 };
+
+bool operator==(const IntType &t1, const IntType &t2);
+bool operator!=(const IntType &t1, const IntType &t2);
 
 #endif // INT_TYPE_H_

@@ -4,18 +4,17 @@
 #include <vector>
 #include <memory>
 #include <string>
-
-class Type;
-class Value;
+#include "Type.h"
 
 /** This struct defines a column structure
  */
 struct Column
 {
-    std::unique_ptr<Type> type; // unique_ptr automatically deallocate when destructed
+    Type::TypeID typeID; // unique_ptr automatically deallocate when destructed
+    int length; // Currently only for CHAR
     std::string name;
     bool notNull;
-    std::vector< std::unique_ptr<Value> > allowedDomain; /// Only values in `allowedDomain` is legal
+    std::vector< std::unique_ptr<Type> > allowedDomain; /// Only values in `allowedDomain` is legal
 };
 
 #endif // COLUMN_H_

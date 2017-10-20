@@ -12,9 +12,9 @@ private:
     double val;
 
 public:
-    TypeID getTypeID() override { return FLOAT; }
+    TypeID getTypeID() const override { return FLOAT; }
 
-    int getFixedLength() override { return 8; }
+    int getFixedLength() const override { return 8; }
 
     double getVal() const { return val; }
     void setVal(double _val) { val = _val; }
@@ -24,6 +24,12 @@ public:
 
     std::string toString() const override;
     void fromString(const std::string &s) override;
+
+    friend bool operator==(const FloatType&, const FloatType&);
+    friend bool operator!=(const FloatType&, const FloatType&);
 };
+
+bool operator==(const FloatType &t1, const FloatType &t2);
+bool operator!=(const FloatType &t1, const FloatType &t2);
 
 #endif // FLOAT_H_

@@ -38,3 +38,13 @@ void IntType::fromString(const std::string &s)
     val = l;
 }
 
+bool operator==(const IntType &t1, const IntType &t2)
+{
+    return t1.val == t2.val;
+}
+
+bool operator!=(const IntType &t1, const IntType &t2)
+{
+    return t1.val != t2.val;
+}
+

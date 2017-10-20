@@ -17,9 +17,9 @@ private:
 public:
     CharType(int _length) : length(_length) {}
 
-    TypeID getTypeID() override { return CHAR; }
+    TypeID getTypeID() const override { return CHAR; }
 
-    int getFixedLength() override { return length; }
+    int getFixedLength() const override { return length; }
 
     const std::string &getVal() const { return val; }
     void setVal(const std::string &_val) { assert(int(_val.length()) <= length); val = _val; }
@@ -29,6 +29,12 @@ public:
 
     std::string toString() const override { return val; }
     void fromString(const std::string &s) override;
+
+    friend bool operator==(const CharType&, const CharType&);
+    friend bool operator!=(const CharType&, const CharType&);
 };
+
+bool operator==(const CharType &t1, const CharType &t2);
+bool operator!=(const CharType &t1, const CharType &t2);
 
 #endif // CHAR_TYPE_H_

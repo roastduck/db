@@ -11,9 +11,6 @@ class Value;
  */
 class Type
 {
-private:
-    bool null;
-
 public:
     enum TypeID
     {
@@ -24,15 +21,11 @@ public:
         VARCHAR,
     };
 
-    Type() : null(true) {}
-
-    bool isNull() { return null; }
-
-    virtual TypeID getTypeID() = 0;
+    virtual TypeID getTypeID() const = 0;
 
     /** Return the length (bytes #) if it is a fixed-length type. Otherwise return 0
      */
-    virtual int getFixedLength() = 0;
+    virtual int getFixedLength() const = 0;
 
     /** Save to bytes
      */
@@ -50,6 +43,14 @@ public:
      *  @throw InvalidLiteralException
      */
     virtual void fromString(const std::string &s) = 0;
+
+    /** Construct a null *Type object from TypeID
+     *  This is used to get metadata from TypeID
+     */
+    static std::unique_ptr<Type> newType(TypeID typeID, int length);
 };
+
+bool operator==(const Type &t1, const Type &t2);
+bool operator!=(const Type &t1, const Type &t2);
 
 #endif // TYPE_H_
