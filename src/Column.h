@@ -14,7 +14,7 @@ struct Column
     int length; // Currently only for CHAR
     std::string name;
     bool notNull;
-    std::vector< std::unique_ptr<Type> > allowedDomain; /// Only values in `allowedDomain` is legal
+    std::vector<std::string> allowedDomain; /// Only literals in `allowedDomain` is legal
 };
 
 #endif // COLUMN_H_

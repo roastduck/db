@@ -11,18 +11,32 @@ std::unique_ptr<Type> Type::newType(Type::TypeID typeID, int length)
     switch (typeID)
     {
     case INT:
-        return std::unique_ptr<Type>(new IntType());
+        return std::unique_ptr<Type>(new IntType(length));
     case FLOAT:
-        return std::unique_ptr<Type>(new FloatType());
+        return std::unique_ptr<Type>(new FloatType(length));
     case DATE:
-        return std::unique_ptr<Type>(new DateType());
+        return std::unique_ptr<Type>(new DateType(length));
     case CHAR:
         return std::unique_ptr<Type>(new CharType(length));
     case VARCHAR:
-        return std::unique_ptr<Type>(new VarcharType());
+        return std::unique_ptr<Type>(new VarcharType(length));
     default:
         assert(false);
     }
+}
+
+std::unique_ptr<Type> Type::newFromLiteral(const std::string &literal, TypeID typeID, int length)
+{
+    auto ret = newType(typeID, length);
+    ret->fromString(literal);
+    return ret;
+}
+
+std::unique_ptr<Type> Type::newFromBytes(const std::vector<unsigned char> &bytes, TypeID typeID, int length)
+{
+    auto ret = newType(typeID, length);
+    ret->fromBytes(bytes);
+    return ret;
 }
 
 bool operator==(const Type &t1, const Type &t2)

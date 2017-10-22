@@ -11,11 +11,10 @@
 class CharType : public Type
 {
 private:
-    const int length;
     std::string val;
 
 public:
-    CharType(int _length) : length(_length) {}
+    CharType(int _length) : Type(_length) {}
 
     TypeID getTypeID() const override { return CHAR; }
 

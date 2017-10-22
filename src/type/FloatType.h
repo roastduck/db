@@ -12,6 +12,8 @@ private:
     double val;
 
 public:
+    FloatType(int _length = 0) : Type(_length) {}
+
     TypeID getTypeID() const override { return FLOAT; }
 
     int getFixedLength() const override { return 8; }

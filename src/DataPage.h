@@ -49,16 +49,17 @@ public:
     DataPage(BufPageManager &_bugManager, int _fileID, int _pageID, int _nullColumns, int _fixedLengths, int _varLengths);
 
     /** Add a record into this page
-     *  @return : true for success
+     *  @return : index when successful, -1 otherwise
      */
-    bool addRecord(const RawRecord &record);
+    int addRecord(const RawRecord &record);
 
     /** Iterate through all the record and call the callback function
-     *  @param callback : Callback function. bool function(const RawRecord &). It returns false for stop iteration
+     *  @param callback : Callback function. bool function(int index, const RawRecord &raw).
+     *                    It returns false for stop iteration
      */
-    void iter(bool(*callback)(const RawRecord&));
+    void iter(bool(*callback)(int, const RawRecord&));
 
-    /** Delete a record at given position
+    /** Delete a record at given index (offset)
      */
     void delRecord(int offset);
 };

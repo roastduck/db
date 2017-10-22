@@ -60,11 +60,11 @@ bool DataPage::certainlyFull()
     return lastItemOffset + lastItemLen + (itemCnt + 1) * 4 == PAGE_BYTES;
 }
 
-bool DataPage::addRecord(const RawRecord &record)
+int DataPage::addRecord(const RawRecord &record)
 {
     prepareBuf();
     if (certainlyFull())
-        return false;
+        return -1;
     std::vector<unsigned char> bytes = embed(record);
     int itemCnt = getSize();
     for (int i = 0; i < itemCnt; i++)
@@ -84,16 +84,16 @@ bool DataPage::addRecord(const RawRecord &record)
                 recordOffset(j + 1) = recordOffset(j);
             recordOffset(i) = freeBegin;
         }
-        return true;
+        return i;
     }
-    return false;
+    return -1;
 }
 
-void DataPage::iter(bool(*callback)(const RawRecord&))
+void DataPage::iter(bool(*callback)(int, const RawRecord&))
 {
     for (int i = 0; i < getSize(); i++)
     {
-        bool cont = callback(pack(bufPtr + recordOffset(i)));
+        bool cont = callback(recordOffset(i), pack(bufPtr + recordOffset(i)));
         if (!cont)
             break;
     }

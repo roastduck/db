@@ -19,6 +19,8 @@ private:
     date_t val; /// NOTE: `val` might not be multiple of 86400, because of time zones
 
 public:
+    DateType(int _length = 0) : Type(_length) {}
+
     TypeID getTypeID() const override { return DATE; }
 
     int getFixedLength() const override { return 8; }

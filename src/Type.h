@@ -11,7 +11,12 @@ class Value;
  */
 class Type
 {
+protected:
+    const int length;
+
 public:
+    Type(int _length = 0) : length(_length) {}
+
     enum TypeID
     {
         INT,
@@ -26,6 +31,10 @@ public:
     /** Return the length (bytes #) if it is a fixed-length type. Otherwise return 0
      */
     virtual int getFixedLength() const = 0;
+
+    /** Orignal length set by user
+     */
+    int getLength() const { return length; }
 
     /** Save to bytes
      */
@@ -47,7 +56,15 @@ public:
     /** Construct a null *Type object from TypeID
      *  This is used to get metadata from TypeID
      */
-    static std::unique_ptr<Type> newType(TypeID typeID, int length);
+    static std::unique_ptr<Type> newType(TypeID typeID, int length = 0);
+
+    /** Make a new object from literal
+     */
+    static std::unique_ptr<Type> newFromLiteral(const std::string &literal, TypeID typeID, int length = 0);
+
+    /** Make a new object from bytes representation
+     */
+    static std::unique_ptr<Type> newFromBytes(const std::vector<unsigned char> &bytes, TypeID typeID, int length = 0);
 };
 
 bool operator==(const Type &t1, const Type &t2);

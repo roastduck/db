@@ -19,11 +19,9 @@ class TableStruct
 private:
     struct OffsetColumn
     {
-        const Column &col;
+        Column col;
         int posOffset; // For fixed: bytes offset. For variable: variable column #
         int nullOffset; // Offset in nullable list
-        OffsetColumn(const Column &_col, int _posOffset, int _nullOffset)
-            : col(_col), posOffset(_posOffset), nullOffset(_nullOffset) {}
     };
 
     int fixedBytes, nullCnt, varCnt;
@@ -52,7 +50,7 @@ public:
      *  @param name : Column name
      *  @return : The column value. null_ptr for null.
      */
-    std::unique_ptr<Type> getVariable(const RawRecord &raw, const std::string &name) const;
+    std::unique_ptr<Type> getValue(const RawRecord &raw, const std::string &name) const;
 
     /** Set a column of a raw record
      *  @param raw : Byte representation of a record
@@ -61,7 +59,7 @@ public:
      *  @throw NotNullException
      *  @throw NotInDomainException
      */
-    void setVariable(RawRecord &raw, const std::string &name, const std::unique_ptr<Type> &value) const;
+    void setValue(RawRecord &raw, const std::string &name, const std::unique_ptr<Type> &value) const;
 };
 
 #endif // TABLE_STRUCT_H_

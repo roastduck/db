@@ -12,6 +12,8 @@ private:
     int val;
 
 public:
+    IntType(int _length = 0) : Type(_length) {}
+
     TypeID getTypeID() const override { return INT; }
 
     int getFixedLength() const override { return 4; }
