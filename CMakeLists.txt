@@ -11,7 +11,6 @@ endif(NOT CMAKE_BUILD_TYPE)
 
 file(GLOB_RECURSE SRCS ${CMAKE_BINARY_DIR}/src/*.cpp)
 file(GLOB_RECURSE TESTS ${CMAKE_BINARY_DIR}/test/*.cpp)
-list(REMOVE_ITEM SRCS ${CMAKE_BINARY_DIR}/src/filesystem/testfilesystem.cpp)
 list(REMOVE_ITEM SRCS ${CMAKE_BINARY_DIR}/src/main.cpp)
 
 add_executable(db ${SRCS} ${CMAKE_BINARY_DIR}/src/main.cpp)
