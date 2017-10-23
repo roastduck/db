@@ -29,7 +29,7 @@ private:
         auto resultPair = map.insert(std::make_pair(key, Node()));
         if (resultPair.second) // inserted
         {
-            list.push_frond(key);
+            list.push_front(key);
             resultPair.first->second.listIter = list.begin();
         }
         return resultPair.first;
@@ -64,7 +64,7 @@ public:
      */
     V &operator[](const K &key)
     {
-        return acccess(findOrCreate(key));
+        return access(findOrCreate(key));
     }
 
     /** Access, throw std::out_of_range if not exists
@@ -76,11 +76,15 @@ public:
 
     /** Pop the oldest item
      */
-    void pop()
+    V pop()
     {
         assert(size() > 0);
-        map.erase(list.back());
+        MapIter iter = map.find(list.back());
+        assert(iter != map.end());
+        V ret = iter->second.value;
+        map.erase(iter);
         list.pop_back();
+        return ret;
     }
 };
 

@@ -1,3 +1,4 @@
+/*
 #include "DataPage.h"
 
 DataPage::DataPage(BufPageManager &_bugManager, int _fileID, int _pageID, int _nullColumns, int _fixedLengths, int _varLengths)
@@ -73,7 +74,7 @@ int DataPage::addRecord(const RawRecord &record)
         int freeBegin = recordOffset(i) + itemLength;
         int freeEnd = i < itemCnt - 1 ?
             recordOffset(i + 1) :
-            PAGE_BYTES - (itemCnt + 2) * 4 - 4 /* this another 4 preserved for increasing offset list */;
+            PAGE_BYTES - (itemCnt + 2) * 4 - 4; // this another 4 preserved for increasing offset list
         if (freeEnd - freeBegin < int(bytes.size()))
             continue;
         std::copy(bytes.begin(), bytes.end(), bufPtr + freeBegin);
@@ -103,4 +104,4 @@ void DataPage::delRecord(int offset)
 {
     *((int*)(bufPtr + offset)) = 0;
 }
-
+*/
