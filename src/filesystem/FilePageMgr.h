@@ -3,7 +3,7 @@
 
 #include <cstdio>
 #include <unordered_map>
-#include "PageMrg.h"
+#include "PageMgr.h"
 
 /** Actual page manager that handles file I/O
  */

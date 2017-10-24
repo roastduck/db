@@ -8,7 +8,7 @@
 class PageMgr
 {
 public:
-    const int PAGE_SIZE = 8 * 1024; // bytes
+    static const int PAGE_SIZE = 8 * 1024; // bytes
 
     /** Read from page and write to buf
      */

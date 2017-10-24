@@ -5,10 +5,11 @@
 #include <list>
 #include <stdexcept>
 #include <unordered_map>
+#include "../Optional.h"
 
 /** Access value by key, or pop the oldest value
  */
-template <class K, class V>
+template <class K, class V, class Hash = std::hash<K> >
 class LinkedHashMap
 {
 private:
@@ -18,8 +19,8 @@ private:
         V value;
         ListIter listIter;
     };
-    typedef typename std::unordered_map<K, Node>::iterator MapIter;
-    std::unordered_map<K, Node> map;
+    typedef typename std::unordered_map<K, Node, Hash>::iterator MapIter;
+    std::unordered_map<K, Node, Hash> map;
     std::list<K> list;
 
     /** Insert if not exists, with value uninitialized
@@ -33,17 +34,6 @@ private:
             resultPair.first->second.listIter = list.begin();
         }
         return resultPair.first;
-    }
-
-    /** Find item
-     *  @throws std::out_of_range
-     */
-    MapIter find(const K &key)
-    {
-        MapIter iter = map.find(key);
-        if (iter == map.end())
-            throw std::out_of_range("Key not found in LinkedHashMap");
-        return iter;
     }
 
     /** access a value and update list (pick it to the front)
@@ -67,21 +57,36 @@ public:
         return access(findOrCreate(key));
     }
 
-    /** Access, throw std::out_of_range if not exists
+    /** Access
+     *  @throw std::out_of_range if not exists
      */
     V &at(const K &key)
     {
-        return access(find(key));
+        auto iter = map.find(key);
+        if (iter == map.end())
+            throw std::out_of_range("Key not found in LinkedHashMap");
+        return access(iter);
+    }
+
+    /** Find item
+     *  @return : Optional value
+     */
+    Optional<V> find(const K &key)
+    {
+        auto iter = map.find(key);
+        if (iter == map.end())
+            return None();
+        return access(iter);
     }
 
     /** Pop the oldest item
      */
-    V pop()
+    std::pair<K,V> pop()
     {
         assert(size() > 0);
         MapIter iter = map.find(list.back());
         assert(iter != map.end());
-        V ret = iter->second.value;
+        auto ret = std::make_pair(iter->first, iter->second.value);
         map.erase(iter);
         list.pop_back();
         return ret;

@@ -1,5 +1,5 @@
 #include <cerrno>
-#include "FilePageMrg.h"
+#include "FilePageMgr.h"
 #include "../exception/FileError.h"
 
 FilePageMgr::~FilePageMgr()
