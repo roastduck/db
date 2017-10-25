@@ -3,6 +3,7 @@
 
 #include <cassert>
 #include <array>
+#include <memory>
 #include <string>
 #include <utility>
 #include <iterator>
@@ -15,7 +16,14 @@ class PageCache
 {
 private:
     typedef std::pair<std::string, int> CacheKey;
-    typedef std::pair<std::array<unsigned char, PageMgr::PAGE_SIZE>, bool /*dirty?*/> CacheValue;
+
+    struct CacheValue
+    {
+        std::array<unsigned char, PageMgr::PAGE_SIZE> buf;
+        bool dirty;
+        std::shared_ptr<bool> deleted; // This indicates you must to re-read from file
+    };
+
     LinkedHashMap< CacheKey, CacheValue, PairHash<std::string, int> > map;
 
     PageMgr &pageMgr;
@@ -26,25 +34,26 @@ private:
     void evict()
     {
         auto popped = map.pop();
-        if (popped.second.second) // dirty
-            pageMgr.write(popped.first.first, popped.first.second, popped.second.first.begin());
+        *(popped.second.deleted) = true;
+        if (popped.second.dirty)
+            pageMgr.write(popped.first.first, popped.first.second, popped.second.buf.begin());
     }
 
     template <bool isConst, typename value_t> // See IterT for template parameters
-    value_t *access(const CacheKey &key, int offset)
+    CacheValue &access(const CacheKey &key)
     {
-        assert(offset >= 0 && offset < PageMgr::PAGE_SIZE);
         CacheValue *result = map.find(key);
+        // Still need to check this. Althogh original position is deleted, new one might have been in place
         if (result)
-            return result->first.begin() + offset;
+            return *result;
 
         if (int(map.size()) == maxPages)
             evict();
         CacheValue val;
-        pageMgr.read(key.first, key.second, val.first.begin());
-        val.second = !isConst;
-        CacheValue &ret = map[key] = val;
-        return ret.first.begin() + offset;
+        pageMgr.read(key.first, key.second, val.buf.begin());
+        val.dirty = !isConst;
+        val.deleted = std::shared_ptr<bool>(new bool(false));
+        return map[key] = std::move(val);
     }
 
     template <bool isConst>
@@ -52,18 +61,32 @@ private:
     {
     private:
         using value_t = std::conditional<isConst, const unsigned char, unsigned char>;
+
         PageCache *mgr;
         const CacheKey key;
         int offset;
+        typename value_t::type *buf;
+        std::shared_ptr<bool> deleted;
 
     public:
         friend IterT<!isConst>;
 
-        IterT() : mgr(NULL) {} // Uninitialized, required to meet STD Standard
+        IterT() : mgr(NULL), buf(NULL), deleted(nullptr) {} // Uninitialized, required to meet STD Standard
         IterT(PageCache *_mgr, const CacheKey &_key, int _offset) : mgr(_mgr), key(_key), offset(_offset) {}
 
-        typename value_t::type &operator*() { return *(mgr->access<isConst, typename value_t::type>(key, offset)); }
-        typename value_t::type &operator[](int inc) { return *(mgr->access<isConst, typename value_t::type>(key, offset + inc)); }
+        typename value_t::type &operator*()
+        {
+            assert(offset >= 0 && offset < PageMgr::PAGE_SIZE);
+            if (deleted == nullptr || *deleted)
+            {
+                CacheValue &ret = mgr->access<isConst, typename value_t::type>(key);
+                deleted = ret.deleted;
+                buf = ret.buf.begin();
+            }
+            return *(buf + offset);
+        }
+
+        typename value_t::type &operator[](int inc) { return *(*this + inc); }
 
         // Functions with template parameters can't be simply defined as friends
         // Or it will cause re-definition
