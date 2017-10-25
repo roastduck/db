@@ -4,25 +4,24 @@
 #include <string>
 #include <vector>
 #include "RawRecord.h"
-#include "filesystem/bufmanager/BufPageManager.h"
+#include "filesystem/PageCache.h"
 
 struct RawRecord;
 
 /** Page containing data records
+ *  Header:
+ *   | next page ID (int) | size i.e. record # (int) | list of record positions in byte from high to low (ints) ...
  *  A record:
  *   | length (int) | null table | fixed-length data | column offset list | variable-length data |
- *   length = 0 means deleted
- *  Tailer:
- *   ... Record offset list in order (ints) | length of record offset list (int)
  */
 class DataPage
 {
 private:
-    const int PAGE_BYTES = 8 * 1024;
-
-    BufPageManager bufManager;
-    int fileID, pageID, bufIndex, nullColumns, fixedLengths, varLengths;
-    unsigned char *bufPtr;
+    const int nullColumns, fixedLengths, varLengths;
+    PageCache::MutByteIter mutByte;
+    PageCache::ConstByteIter constByte;
+    PageCache::MutIntIter mutInt;
+    PageCache::ConstIntIter constInt;
 
     /** Convert RawData to actual bytes
      */
@@ -30,23 +29,38 @@ private:
 
     /** Convert bytes to RawData
      */
-    RawRecord pack(const unsigned char *bytes) const;
-
-    void prepareBuf() { bufPtr = (unsigned char*)bufManager.getPage(fileID, pageID, bufIndex); }
-
-    int &recordOffset(int rank) { return *(((int*)bufPtr) + (PAGE_BYTES / 4) - rank - 1); }
-
-    int &getSize() { return *(((int*)bufPtr) + (PAGE_BYTES / 4)); }
+    RawRecord pack(PageCache::ConstByteIter bytes) const;
 
     /** This describe a situation when body part meets tailer part
      */
     bool certainlyFull();
 
+    /** Insert a record into the body and update the header
+     */
+    void insert(const std::vector<unsigned char> &bytes, int pos, int rank);
+
 public:
     /** Construct a new DataPage
      *  You need to pass in the global BufPageManager
      */
-    DataPage(BufPageManager &_bugManager, int _fileID, int _pageID, int _nullColumns, int _fixedLengths, int _varLengths);
+    DataPage(
+        PageCache &_pageCache, const std::string &_filename, int _pageID,
+        int _nullColumns, int _fixedLengths, int _varLengths
+    );
+
+    /** PageID of next page */
+    int getNextPage() { return constInt[0]; }
+    void setNextPage(int v) { mutInt[0] = v; }
+
+    /** Number of record in this page */
+    int getSize() { return constInt[1]; }
+    void setSize(int v) { mutInt[1] = v; }
+
+    /** Position (bytes) of record `rank`
+     *  @param rank : start from 0
+     */
+    int getRecPos(int rank) { return constInt[rank + 2]; }
+    void setRecPos(int rank, int v) { mutInt[rank + 2] = v; }
 
     /** Add a record into this page
      *  @return : index when successful, -1 otherwise

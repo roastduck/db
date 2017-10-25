@@ -1,9 +1,13 @@
-/*
 #include "DataPage.h"
+#include "filesystem/PageMgr.h"
 
-DataPage::DataPage(BufPageManager &_bugManager, int _fileID, int _pageID, int _nullColumns, int _fixedLengths, int _varLengths)
-    : bufManager(_bugManager), fileID(_fileID), pageID(_pageID),
-      nullColumns(_nullColumns), fixedLengths(_fixedLengths), varLengths(_varLengths)
+DataPage::DataPage(
+    PageCache &_pageCache, const std::string &_filename, int _pageID,
+    int _nullColumns, int _fixedLengths, int _varLengths
+)
+    : nullColumns(_nullColumns), fixedLengths(_fixedLengths), varLengths(_varLengths),
+      mutByte(_pageCache.getPage(_filename, _pageID)), constByte(_pageCache.getConstPage(_filename, _pageID)),
+      mutInt(PageCache::MutIntIter(mutByte)), constInt(PageCache::ConstIntIter(constByte))
 {}
 
 std::vector<unsigned char> DataPage::embed(const RawRecord &rawRecord) const
@@ -33,7 +37,7 @@ std::vector<unsigned char> DataPage::embed(const RawRecord &rawRecord) const
     return ret;
 }
 
-RawRecord DataPage::pack(const unsigned char *bytes) const
+RawRecord DataPage::pack(PageCache::ConstByteIter bytes) const
 {
     RawRecord ret;
     int offset = 0;
@@ -55,46 +59,56 @@ RawRecord DataPage::pack(const unsigned char *bytes) const
 
 bool DataPage::certainlyFull()
 {
-    int itemCnt = getSize();
-    int lastItemOffset = recordOffset(itemCnt - 1);
-    int lastItemLen = *((int*)(bufPtr + lastItemOffset));
-    return lastItemOffset + lastItemLen + (itemCnt + 1) * 4 == PAGE_BYTES;
+    int lowestRecordByte = getRecPos(getSize() - 1);
+    int highestHeaderByte = 2 + getSize() - 1;
+    assert(lowestRecordByte > highestHeaderByte);
+    return lowestRecordByte == highestHeaderByte + 1;
+}
+
+void DataPage::insert(const std::vector<unsigned char> &bytes, int pos, int rank)
+{
+    std::copy(bytes.begin(), bytes.end(), mutByte + pos);
+    int size = getSize();
+    for (int i = rank + 1; i <= size; i++)
+        setRecPos(i, getRecPos(i - 1));
+    setRecPos(rank, pos);
+    setSize(size + 1);
 }
 
 int DataPage::addRecord(const RawRecord &record)
 {
-    prepareBuf();
     if (certainlyFull())
         return -1;
     std::vector<unsigned char> bytes = embed(record);
-    int itemCnt = getSize();
-    for (int i = 0; i < itemCnt; i++)
+    int size = getSize();
+
+    int freeEnd = PageMgr::PAGE_SIZE;
+    for (int i = 0; i < size; i++)
     {
-        int itemLength = *((int*)(bufPtr + recordOffset(i)));
-        int freeBegin = recordOffset(i) + itemLength;
-        int freeEnd = i < itemCnt - 1 ?
-            recordOffset(i + 1) :
-            PAGE_BYTES - (itemCnt + 2) * 4 - 4; // this another 4 preserved for increasing offset list
-        if (freeEnd - freeBegin < int(bytes.size()))
-            continue;
-        std::copy(bytes.begin(), bytes.end(), bufPtr + freeBegin);
-        if (itemLength) // itemLength = 0 means original item was deleted
+        int recPos = getRecPos(i);
+        int recLength = *PageCache::ConstIntIter(constByte + recPos);
+        if (freeEnd - (recPos + recLength) >= int(bytes.size()))
         {
-            getSize()++;
-            for (int j = i + 1; j < itemCnt; j++)
-                recordOffset(j + 1) = recordOffset(j);
-            recordOffset(i) = freeBegin;
+            insert(bytes, recPos + recLength, i);
+            return i;
         }
-        return i;
+        freeEnd = recPos;
+    }
+    if (freeEnd - (2 + size) >= int(bytes.size()))
+    {
+        insert(bytes, 2 + size, size + 1);
+        return size + 1;
     }
     return -1;
 }
 
 void DataPage::iter(bool(*callback)(int, const RawRecord&))
 {
-    for (int i = 0; i < getSize(); i++)
+    int size = getSize();
+    for (int i = 0; i < size; i++)
     {
-        bool cont = callback(recordOffset(i), pack(bufPtr + recordOffset(i)));
+        int pos = getRecPos(i);
+        bool cont = callback(pos, pack(constByte + pos));
         if (!cont)
             break;
     }
@@ -102,6 +116,18 @@ void DataPage::iter(bool(*callback)(int, const RawRecord&))
 
 void DataPage::delRecord(int offset)
 {
-    *((int*)(bufPtr + offset)) = 0;
+    *PageCache::MutIntIter(constByte + offset) = 0; // set length to 0 temporarily
+    int size = getSize();
+    setSize(size - 1);
+    for (int i = 0; i < size; i++)
+    {
+        int length = *PageCache::ConstIntIter(constByte + getRecPos(i));
+        if (!length)
+        {
+            for (int j = i + 1; j < size; j++)
+                setRecPos(j - 1, getRecPos(j));
+            break;
+        }
+    }
 }
-*/
+

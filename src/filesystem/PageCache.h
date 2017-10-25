@@ -63,7 +63,7 @@ private:
         using value_t = std::conditional<isConst, const T, T>;
 
         PageCache *mgr;
-        const CacheKey key;
+        CacheKey key;
         int offset;
         typename value_t::type *buf;
         std::shared_ptr<bool> deleted;
