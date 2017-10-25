@@ -43,10 +43,10 @@ TEST_F(PageCacheTest, replacement)
     auto iterR0 = pageCache.getConstPage("a", 0);
     auto iterR1 = pageCache.getConstPage("a", 1);
     auto iterW2 = pageCache.getPage("a", 2);
-    *iterW2;
+    *iterW2 = 'x';
     *iterR1;
     *iterR0;
-    *iterW2;
+    ASSERT_THAT(*iterW2, Eq('x'));
 }
 
 TEST_F(PageCacheTest, relational)
