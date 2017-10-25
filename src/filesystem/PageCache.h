@@ -151,6 +151,8 @@ private:
 public:
     typedef IterT<unsigned char, false> MutByteIter;
     typedef IterT<unsigned char, true> ConstByteIter;
+    typedef IterT<short, false> MutShortIter;
+    typedef IterT<short, true> ConstShortIter;
     typedef IterT<int, false> MutIntIter;
     typedef IterT<int, true> ConstIntIter;
 

@@ -7,12 +7,12 @@ DataPage::DataPage(
 )
     : nullColumns(_nullColumns), fixedLengths(_fixedLengths), varLengths(_varLengths),
       mutByte(_pageCache.getPage(_filename, _pageID)), constByte(_pageCache.getConstPage(_filename, _pageID)),
-      mutInt(PageCache::MutIntIter(mutByte)), constInt(PageCache::ConstIntIter(constByte))
+      mutShort(mutByte), constShort(constByte), mutInt(mutByte), constInt(constByte)
 {}
 
 std::vector<unsigned char> DataPage::embed(const RawRecord &rawRecord) const
 {
-    std::vector<unsigned char> ret(4); // 0~3 = preserved for length
+    std::vector<unsigned char> ret(2); // 0~1 = preserved for length
     for (int i = 0; i < (int)rawRecord.nullColumns.size(); i++)
     {
         if (i % 8 == 0)
@@ -21,27 +21,25 @@ std::vector<unsigned char> DataPage::embed(const RawRecord &rawRecord) const
     }
     for (unsigned char byte : rawRecord.fixedLengths)
         ret.push_back(byte);
-    int offset = ret.size() + rawRecord.varLengths.size() * sizeof(int);
+    int offset = ret.size() + rawRecord.varLengths.size() * sizeof(short);
     for (const auto &var : rawRecord.varLengths)
     {
-        int len = var.size();
+        short len = var.size();
         offset += len;
         ret.push_back(len);
         ret.push_back(len >> 8);
-        ret.push_back(len >> 16);
-        ret.push_back(len >> 24);
     }
     for (const auto &var : rawRecord.varLengths)
         for (unsigned char byte : var)
             ret.push_back(byte);
-    *((int*)(&ret[0])) = ret.size();
+    *((short*)(&ret[0])) = ret.size();
     return ret;
 }
 
 RawRecord DataPage::pack(PageCache::ConstByteIter bytes) const
 {
     RawRecord ret;
-    int offset = 3;
+    int offset = 1;
     for (int i = 0; i < nullColumns; i++)
     {
         if (i % 8 == 0)
@@ -50,12 +48,12 @@ RawRecord DataPage::pack(PageCache::ConstByteIter bytes) const
     }
     for (int i = 0; i < fixedLengths; i++)
         ret.fixedLengths.push_back(bytes[++offset]);
-    int varOffset = offset + varLengths * sizeof(int);
-    offset -= 3;
+    int varOffset = offset + varLengths * sizeof(short);
+    offset -= 1;
     ret.varLengths.resize(varLengths);
     for (int i = 0; i < varLengths; i++)
     {
-        int length = *((int*)(&(bytes[offset += 4])));
+        int length = *((short*)(&(bytes[offset += 2])));
         for (int j = 0; j < length; j++)
             ret.varLengths[i].push_back(bytes[++varOffset]);
     }
@@ -66,7 +64,7 @@ bool DataPage::certainlyFull()
 {
     if (!getSize()) return false;
     int lowestRecordByte = getRecPos(getSize() - 1);
-    int highestHeaderByte = (2 + getSize()) * sizeof(int) - 1;
+    int highestHeaderByte = sizeof(int) + (1 + getSize()) * sizeof(short) - 1;
     assert(lowestRecordByte > highestHeaderByte);
     return lowestRecordByte == highestHeaderByte + 1;
 }
@@ -92,7 +90,7 @@ int DataPage::addRecord(const RawRecord &record)
     for (int i = 0; i < size; i++)
     {
         int recPos = getRecPos(i);
-        int recLength = *PageCache::ConstIntIter(constByte + recPos);
+        int recLength = *PageCache::ConstShortIter(constByte + recPos);
         if (freeEnd - (recPos + recLength) >= int(bytes.size()))
         {
             insert(bytes, recPos + recLength, i);
@@ -100,7 +98,7 @@ int DataPage::addRecord(const RawRecord &record)
         }
         freeEnd = recPos;
     }
-    if (freeEnd - (2 + size) * int(sizeof(int)) >= int(bytes.size()))
+    if (freeEnd - (int(sizeof(int)) + (1 + size) * int(sizeof(int))) >= int(bytes.size()))
     {
         insert(bytes, freeEnd - bytes.size(), size);
         return size;

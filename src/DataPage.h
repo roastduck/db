@@ -11,9 +11,9 @@ struct RawRecord;
 
 /** Page containing data records
  *  Header:
- *   | next page ID (int) | size i.e. record # (int) | list of record positions in byte from high to low (ints) ...
+ *   | next page ID (int) | size i.e. record # (short) | list of record positions in byte from high to low (shorts) ...
  *  A record:
- *   | length (int) | null table | fixed-length data | column length list | variable-length data |
+ *   | length (short) | null table | fixed-length data | column length list (shorts) | variable-length data |
  */
 class DataPage
 {
@@ -21,6 +21,8 @@ private:
     const int nullColumns, fixedLengths, varLengths;
     PageCache::MutByteIter mutByte;
     PageCache::ConstByteIter constByte;
+    PageCache::MutShortIter mutShort;
+    PageCache::ConstShortIter constShort;
     PageCache::MutIntIter mutInt;
     PageCache::ConstIntIter constInt;
 
@@ -54,14 +56,14 @@ public:
     void setNextPage(int v) { mutInt[0] = v; }
 
     /** Number of record in this page */
-    int getSize() { return constInt[1]; }
-    void setSize(int v) { mutInt[1] = v; }
+    short getSize() { return constShort[2]; }
+    void setSize(short v) { mutShort[2] = v; }
 
     /** Position (bytes) of record `rank`
      *  @param rank : start from 0
      */
-    int getRecPos(int rank) { return constInt[rank + 2]; }
-    void setRecPos(int rank, int v) { mutInt[rank + 2] = v; }
+    short getRecPos(int rank) { return constShort[rank + 3]; }
+    void setRecPos(int rank, short v) { mutShort[rank + 3] = v; }
 
     /** Add a record into this page
      *  @return : index when successful, -1 otherwise
