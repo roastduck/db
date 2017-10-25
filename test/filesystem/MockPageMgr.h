@@ -19,7 +19,14 @@ private:
 
     void fakeRead(const std::string &filename, int pageID, unsigned char *buf)
     {
-        const auto &page = map[std::make_pair(filename, pageID)];
+        auto iter = map.find(std::make_pair(filename, pageID));
+        if (iter == map.end())
+        {
+            std::array<unsigned char, PAGE_SIZE> empty;
+            std::fill(empty.begin(), empty.end(), 0);
+            iter = map.insert(std::make_pair(std::make_pair(filename, pageID), empty)).first;
+        }
+        const auto &page = iter->second;
         std::copy(page.begin(), page.end(), buf);
     }
 

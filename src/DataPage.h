@@ -3,6 +3,7 @@
 
 #include <string>
 #include <vector>
+#include <cassert>
 #include "RawRecord.h"
 #include "filesystem/PageCache.h"
 
@@ -12,7 +13,7 @@ struct RawRecord;
  *  Header:
  *   | next page ID (int) | size i.e. record # (int) | list of record positions in byte from high to low (ints) ...
  *  A record:
- *   | length (int) | null table | fixed-length data | column offset list | variable-length data |
+ *   | length (int) | null table | fixed-length data | column length list | variable-length data |
  */
 class DataPage
 {
@@ -66,6 +67,10 @@ public:
      *  @return : index when successful, -1 otherwise
      */
     int addRecord(const RawRecord &record);
+
+    /** Return a record at specific offset
+     */
+    RawRecord readRecord(int offset) { return pack(mutByte + getRecPos(offset)); }
 
     /** Iterate through all the record and call the callback function
      *  @param callback : Callback function. bool function(int index, const RawRecord &raw).
