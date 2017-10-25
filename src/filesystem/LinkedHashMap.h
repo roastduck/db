@@ -5,7 +5,6 @@
 #include <list>
 #include <stdexcept>
 #include <unordered_map>
-#include "../Optional.h"
 
 /** Access value by key, or pop the oldest value
  */
@@ -69,14 +68,14 @@ public:
     }
 
     /** Find item
-     *  @return : Optional value
+     *  @return : Pointer to value, NULL for not found
      */
-    Optional<V> find(const K &key)
+    V *find(const K &key)
     {
         auto iter = map.find(key);
         if (iter == map.end())
-            return None();
-        return access(iter);
+            return NULL;
+        return &access(iter);
     }
 
     /** Pop the oldest item

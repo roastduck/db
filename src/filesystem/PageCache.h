@@ -23,23 +23,26 @@ private:
     static const int DEFAULT_MAX_PAGES = 131072; // Totally 1GB
     const int maxPages;
 
+    void evict()
+    {
+        auto popped = map.pop();
+        if (popped.second.second) // dirty
+            pageMgr.write(popped.first.first, popped.first.second, popped.second.first.begin());
+    }
+
     template <bool isConst, typename value_t> // See IterT for template parameters
     value_t *access(const CacheKey &key, int offset)
     {
         assert(offset >= 0 && offset < PageMgr::PAGE_SIZE);
-        auto result = map.find(key);
-        if (result.isOk())
-            return result.ok().first.begin() + offset;
+        CacheValue *result = map.find(key);
+        if (result)
+            return result->first.begin() + offset;
 
+        if (int(map.size()) == maxPages)
+            evict();
         CacheValue val;
         pageMgr.read(key.first, key.second, val.first.begin());
         val.second = !isConst;
-        if (map.size() == maxPages)
-        {
-            auto popped = map.pop();
-            if (popped.second.second) // dirty
-                pageMgr.write(popped.first.first, popped.first.second, popped.second.first.begin());
-        }
         CacheValue &ret = map[key] = val;
         return ret.first.begin() + offset;
     }
@@ -54,20 +57,61 @@ private:
         int offset;
 
     public:
+        friend IterT<!isConst>;
+
         IterT() : mgr(NULL) {} // Uninitialized, required to meet STD Standard
         IterT(PageCache *_mgr, const CacheKey &_key, int _offset) : mgr(_mgr), key(_key), offset(_offset) {}
-        value_t *operator*() { return mgr->access<isConst, value_t>(key, offset); }
-        value_t &operator[](int inc) { return *(mgr->access<isConst, value_t>(key, offset + inc)); }
-        friend bool operator==(const IterT &lhs, const IterT &rhs) { return lhs.offset == rhs.offset; }
-        friend bool operator!=(const IterT &lhs, const IterT &rhs) { return lhs.offset != rhs.offset; }
-        friend bool operator<(const IterT &lhs, const IterT &rhs) { return lhs.offset < rhs.offset; }
-        friend bool operator>(const IterT &lhs, const IterT &rhs) { return lhs.offset > rhs.offset; }
-        friend bool operator<=(const IterT &lhs, const IterT &rhs) { return lhs.offset <= rhs.offset; }
-        friend bool operator>=(const IterT &lhs, const IterT &rhs) { return lhs.offset >= rhs.offset; }
+
+        typename value_t::type &operator*() { return *(mgr->access<isConst, typename value_t::type>(key, offset)); }
+        typename value_t::type &operator[](int inc) { return *(mgr->access<isConst, typename value_t::type>(key, offset + inc)); }
+
+        // Functions with template parameters can't be simply defined as friends
+        // Or it will cause re-definition
+        template <bool c2>
+        bool operator==(const IterT<c2> &rhs)
+        {
+            assert(this->key == rhs.key);
+            return this->offset == rhs.offset;
+        }
+        template <bool c2>
+        bool operator!=(const IterT<c2> &rhs)
+        {
+            assert(this->key == rhs.key);
+            return this->offset != rhs.offset;
+        }
+        template <bool c2>
+        bool operator<(const IterT<c2> &rhs)
+        {
+            assert(this->key == rhs.key);
+            return this->offset < rhs.offset;
+        }
+        template <bool c2>
+        bool operator>(const IterT<c2> &rhs)
+        {
+            assert(this->key == rhs.key);
+            return this->offset > rhs.offset;
+        }
+        template <bool c2>
+        bool operator<=(const IterT<c2> &rhs)
+        {
+            assert(this->key == rhs.key);
+            return this->offset <= rhs.offset;
+        }
+        template <bool c2>
+        bool operator>=(const IterT<c2> &rhs)
+        {
+            assert(this->key == rhs.key);
+            return this->offset >= rhs.offset;
+        }
         friend IterT operator+(const IterT &iter, int inc) { return IterT(iter.mgr, iter.key, iter.offset + inc); }
         friend IterT operator+(int inc, const IterT &iter) { return IterT(iter.mgr, iter.key, iter.offset + inc); }
         friend IterT operator-(const IterT &iter, int dec) { return IterT(iter.mgr, iter.key, iter.offset - dec); }
-        friend int operator-(const IterT &lhs, const IterT &rhs) { return lhs.offset - rhs.offset; }
+        template <bool c2>
+        int operator-(const IterT<c2> &rhs)
+        {
+            assert(this->key == rhs.key);
+            return this->offset - rhs.offset;
+        }
         IterT &operator+=(int inc) { offset += inc; return *this; }
         IterT &operator-=(int dec) { offset -= dec; return *this; }
         IterT &operator++() { offset++; return *this; }
@@ -81,6 +125,12 @@ public:
 
     PageCache(PageMgr &_pageMgr, int _maxPages = DEFAULT_MAX_PAGES)
         : pageMgr(_pageMgr), maxPages(_maxPages) {}
+
+    ~PageCache()
+    {
+        while (!map.empty())
+            evict();
+    }
 
     /** Get an iterator to a mutable page
      *  NOTE: This page will be marked dirty no matter if you modify it

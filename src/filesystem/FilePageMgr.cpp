@@ -1,4 +1,5 @@
 #include <cerrno>
+#include <cassert>
 #include "FilePageMgr.h"
 #include "../exception/FileError.h"
 
@@ -34,12 +35,14 @@ FILE *FilePageMgr::openWithOffset(const std::string &filename, int offset)
 
 void FilePageMgr::read(const std::string &filename, int pageID, unsigned char *buf)
 {
+    assert(pageID >= 0);
     FILE *f = openWithOffset(filename, pageID * PAGE_SIZE);
     fread(buf, 1, PAGE_SIZE, f);
 }
 
 void FilePageMgr::write(const std::string &filename, int pageID, const unsigned char *buf)
 {
+    assert(pageID >= 0);
     FILE *f = openWithOffset(filename, pageID * PAGE_SIZE);
     fwrite(buf, 1, PAGE_SIZE, f);
 }

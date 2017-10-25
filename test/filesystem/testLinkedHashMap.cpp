@@ -42,12 +42,12 @@ TEST_F(LinkedHashMapTest, testOutOfRange)
 TEST_F(LinkedHashMapTest, testAccessWithFind)
 {
     linkedMap["a"] = 1;
-    ASSERT_THAT(linkedMap.find("a").ok(), Eq(1));
+    ASSERT_THAT(*(linkedMap.find("a")), Eq(1));
 }
 
 TEST_F(LinkedHashMapTest, testNone)
 {
-    ASSERT_TRUE(!linkedMap.find("a").isOk());
+    ASSERT_TRUE(!linkedMap.find("a"));
 }
 
 TEST_F(LinkedHashMapTest, testUpdateOrderWithOp)
