@@ -34,10 +34,6 @@ private:
      */
     RawRecord pack(PageCache::ConstByteIter bytes) const;
 
-    /** This describe a situation when body part meets tailer part
-     */
-    bool certainlyFull();
-
     /** Insert a record into the body and update the header
      */
     void insert(const std::vector<unsigned char> &bytes, int pos, int rank);
@@ -73,12 +69,6 @@ public:
     /** Return a record at specific offset
      */
     RawRecord readRecord(int offset) { return pack(mutByte + getRecPos(offset)); }
-
-    /** Iterate through all the record and call the callback function
-     *  @param callback : Callback function. bool function(int index, const RawRecord &raw).
-     *                    It returns false for stop iteration
-     */
-    void iter(bool(*callback)(int, const RawRecord&));
 
     /** Delete a record at given index (offset)
      */

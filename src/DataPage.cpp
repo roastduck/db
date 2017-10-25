@@ -12,6 +12,9 @@ DataPage::DataPage(
 
 std::vector<unsigned char> DataPage::embed(const RawRecord &rawRecord) const
 {
+    assert((int)rawRecord.nullColumns.size() == nullColumns);
+    assert((int)rawRecord.fixedLengths.size() == fixedLengths);
+    assert((int)rawRecord.varLengths.size() == varLengths);
     std::vector<unsigned char> ret(2); // 0~1 = preserved for length
     for (int i = 0; i < (int)rawRecord.nullColumns.size(); i++)
     {
@@ -60,20 +63,11 @@ RawRecord DataPage::pack(PageCache::ConstByteIter bytes) const
     return ret;
 }
 
-bool DataPage::certainlyFull()
-{
-    if (!getSize()) return false;
-    int lowestRecordByte = getRecPos(getSize() - 1);
-    int highestHeaderByte = sizeof(int) + (1 + getSize()) * sizeof(short) - 1;
-    assert(lowestRecordByte > highestHeaderByte);
-    return lowestRecordByte == highestHeaderByte + 1;
-}
-
 void DataPage::insert(const std::vector<unsigned char> &bytes, int pos, int rank)
 {
     std::copy(bytes.begin(), bytes.end(), mutByte + pos);
     int size = getSize();
-    for (int i = rank + 1; i <= size; i++)
+    for (int i = size; i > rank; i--)
         setRecPos(i, getRecPos(i - 1));
     setRecPos(rank, pos);
     setSize(size + 1);
@@ -81,8 +75,6 @@ void DataPage::insert(const std::vector<unsigned char> &bytes, int pos, int rank
 
 int DataPage::addRecord(const RawRecord &record)
 {
-    if (certainlyFull())
-        return -1;
     std::vector<unsigned char> bytes = embed(record);
     int size = getSize();
 
@@ -98,24 +90,12 @@ int DataPage::addRecord(const RawRecord &record)
         }
         freeEnd = recPos;
     }
-    if (freeEnd - (int(sizeof(int)) + (1 + size) * int(sizeof(int))) >= int(bytes.size()))
+    if (freeEnd - (int(sizeof(int)) + (1 + size + 1/*new item's size*/) * int(sizeof(int))) >= int(bytes.size()))
     {
         insert(bytes, freeEnd - bytes.size(), size);
         return size;
     }
     return -1;
-}
-
-void DataPage::iter(bool(*callback)(int, const RawRecord&))
-{
-    int size = getSize();
-    for (int i = 0; i < size; i++)
-    {
-        int pos = getRecPos(i);
-        bool cont = callback(pos, pack(constByte + pos));
-        if (!cont)
-            break;
-    }
 }
 
 void DataPage::delRecord(int offset)
