@@ -39,7 +39,7 @@ private:
             pageMgr.write(popped.first.first, popped.first.second, popped.second.buf.begin());
     }
 
-    template <bool isConst, typename value_t> // See IterT for template parameters
+    template <bool isConst>
     CacheValue &access(const CacheKey &key)
     {
         CacheValue *result = map.find(key);
@@ -56,11 +56,11 @@ private:
         return map[key] = std::move(val);
     }
 
-    template <bool isConst>
-    class IterT : public std::iterator<std::random_access_iterator_tag, unsigned char>
+    template <typename T, bool isConst>
+    class IterT : public std::iterator<std::random_access_iterator_tag, T>
     {
     private:
-        using value_t = std::conditional<isConst, const unsigned char, unsigned char>;
+        using value_t = std::conditional<isConst, const T, T>;
 
         PageCache *mgr;
         const CacheKey key;
@@ -69,19 +69,25 @@ private:
         std::shared_ptr<bool> deleted;
 
     public:
-        friend IterT<!isConst>;
+        template <typename, bool> friend class IterT;
 
         IterT() : mgr(NULL), buf(NULL), deleted(nullptr) {} // Uninitialized, required to meet STD Standard
         IterT(PageCache *_mgr, const CacheKey &_key, int _offset) : mgr(_mgr), key(_key), offset(_offset) {}
 
+        template <typename T2, bool c2>
+        IterT(const IterT<T2, c2> &other)
+            : mgr(other.mgr), key(other.key), offset(other.offset * sizeof(T2) / sizeof(T)),
+              buf((typename value_t::type*)other.buf), deleted(other.deleted)
+            {}
+
         typename value_t::type &operator*()
         {
-            assert(offset >= 0 && offset < PageMgr::PAGE_SIZE);
+            assert(offset >= 0 && offset * sizeof(T) < PageMgr::PAGE_SIZE);
             if (deleted == nullptr || *deleted)
             {
-                CacheValue &ret = mgr->access<isConst, typename value_t::type>(key);
+                CacheValue &ret = mgr->access<isConst>(key);
                 deleted = ret.deleted;
-                buf = ret.buf.begin();
+                buf = (typename value_t::type*)ret.buf.begin();
             }
             return *(buf + offset);
         }
@@ -91,37 +97,37 @@ private:
         // Functions with template parameters can't be simply defined as friends
         // Or it will cause re-definition
         template <bool c2>
-        bool operator==(const IterT<c2> &rhs)
+        bool operator==(const IterT<T, c2> &rhs)
         {
             assert(this->key == rhs.key);
             return this->offset == rhs.offset;
         }
         template <bool c2>
-        bool operator!=(const IterT<c2> &rhs)
+        bool operator!=(const IterT<T, c2> &rhs)
         {
             assert(this->key == rhs.key);
             return this->offset != rhs.offset;
         }
         template <bool c2>
-        bool operator<(const IterT<c2> &rhs)
+        bool operator<(const IterT<T, c2> &rhs)
         {
             assert(this->key == rhs.key);
             return this->offset < rhs.offset;
         }
         template <bool c2>
-        bool operator>(const IterT<c2> &rhs)
+        bool operator>(const IterT<T, c2> &rhs)
         {
             assert(this->key == rhs.key);
             return this->offset > rhs.offset;
         }
         template <bool c2>
-        bool operator<=(const IterT<c2> &rhs)
+        bool operator<=(const IterT<T, c2> &rhs)
         {
             assert(this->key == rhs.key);
             return this->offset <= rhs.offset;
         }
         template <bool c2>
-        bool operator>=(const IterT<c2> &rhs)
+        bool operator>=(const IterT<T, c2> &rhs)
         {
             assert(this->key == rhs.key);
             return this->offset >= rhs.offset;
@@ -130,7 +136,7 @@ private:
         friend IterT operator+(int inc, const IterT &iter) { return IterT(iter.mgr, iter.key, iter.offset + inc); }
         friend IterT operator-(const IterT &iter, int dec) { return IterT(iter.mgr, iter.key, iter.offset - dec); }
         template <bool c2>
-        int operator-(const IterT<c2> &rhs)
+        int operator-(const IterT<T, c2> &rhs)
         {
             assert(this->key == rhs.key);
             return this->offset - rhs.offset;
@@ -143,8 +149,10 @@ private:
         IterT operator--(int) { IterT ret = *this; offset--; return ret; }
     };
 public:
-    typedef IterT<false> Iter;
-    typedef IterT<true> ConstIter;
+    typedef IterT<unsigned char, false> MutByteIter;
+    typedef IterT<unsigned char, true> ConstByteIter;
+    typedef IterT<int, false> MutIntIter;
+    typedef IterT<int, true> ConstIntIter;
 
     PageCache(PageMgr &_pageMgr, int _maxPages = DEFAULT_MAX_PAGES)
         : pageMgr(_pageMgr), maxPages(_maxPages) {}
@@ -158,17 +166,17 @@ public:
     /** Get an iterator to a mutable page
      *  NOTE: This page will be marked dirty no matter if you modify it
      */
-    Iter getPage(const std::string &filename, int pageID)
+    MutByteIter getPage(const std::string &filename, int pageID)
     {
-        return Iter(this, CacheKey(filename, pageID), 0);
+        return MutByteIter(this, CacheKey(filename, pageID), 0);
     }
 
     /** Get an iterator to a read-only page
      *  This page will not be written back to file
      */
-    ConstIter getConstPage(const std::string &filename, int pageID)
+    ConstByteIter getConstPage(const std::string &filename, int pageID)
     {
-        return ConstIter(this, CacheKey(filename, pageID), 0);
+        return ConstByteIter(this, CacheKey(filename, pageID), 0);
     }
 };
 

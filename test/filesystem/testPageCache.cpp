@@ -72,3 +72,13 @@ TEST_F(PageCacheTest, increment)
     ASSERT_TRUE((iterR1 -= 2) == iterR0);
 }
 
+TEST_F(PageCacheTest, cast)
+{
+    auto iterByte = pageCache.getPage("a", 0);
+    for (int i = 0; i < 8; i++)
+        iterByte[i] = i;
+    ASSERT_THAT(PageCache::ConstIntIter(iterByte)[0], Eq(0x03020100));
+    ASSERT_THAT(PageCache::ConstIntIter(iterByte)[1], Eq(0x07060504));
+    ASSERT_THAT(PageCache::ConstIntIter(iterByte + 4)[0], Eq(0x07060504));
+}
+
