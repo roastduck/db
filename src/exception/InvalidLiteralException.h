@@ -22,8 +22,6 @@ private:
             return "DATE";
         case Type::CHAR:
             return "CHAR";
-        case Type::VARCHAR:
-            return "VARCHAR";
         default:
             assert(false);
         }

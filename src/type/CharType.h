@@ -14,7 +14,7 @@ private:
     std::string val;
 
 public:
-    CharType(int _length) : Type(_length) {}
+    CharType(int _length) : Type(_length) { assert(_length > 0); }
 
     TypeID getTypeID() const override { return CHAR; }
 

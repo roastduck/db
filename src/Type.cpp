@@ -4,7 +4,6 @@
 #include "type/FloatType.h"
 #include "type/DateType.h"
 #include "type/CharType.h"
-#include "type/VarcharType.h"
 
 std::unique_ptr<Type> Type::newType(Type::TypeID typeID, int length)
 {
@@ -18,8 +17,6 @@ std::unique_ptr<Type> Type::newType(Type::TypeID typeID, int length)
         return std::unique_ptr<Type>(new DateType(length));
     case CHAR:
         return std::unique_ptr<Type>(new CharType(length));
-    case VARCHAR:
-        return std::unique_ptr<Type>(new VarcharType(length));
     default:
         assert(false);
     }
@@ -53,8 +50,6 @@ bool operator==(const Type &t1, const Type &t2)
         return (DateType&)t1 == (DateType&)t2;
     case Type::CHAR:
         return (CharType&)t1 == (CharType&)t2;
-    case Type::VARCHAR:
-        return (VarcharType&)t1 == (VarcharType&)t2;
     default:
         assert(false);
     }

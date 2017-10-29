@@ -10,7 +10,7 @@
  */
 struct Column
 {
-    Type::TypeID typeID; // unique_ptr automatically deallocate when destructed
+    Type::TypeID typeID;
     int length; // Currently only for CHAR
     std::string name;
     bool notNull;

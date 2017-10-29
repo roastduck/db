@@ -22,13 +22,13 @@ public:
         INT,
         FLOAT,
         DATE,
-        CHAR,
-        VARCHAR,
+        CHAR
+        // VARCHAR is treated as CHAR
     };
 
     virtual TypeID getTypeID() const = 0;
 
-    /** Return the length (bytes #) if it is a fixed-length type. Otherwise return 0
+    /** Return the length (bytes #)
      */
     virtual int getFixedLength() const = 0;
 
