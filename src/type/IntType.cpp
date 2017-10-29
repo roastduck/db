@@ -38,13 +38,17 @@ void IntType::fromString(const std::string &s)
     val = l;
 }
 
-bool operator==(const IntType &t1, const IntType &t2)
-{
-    return t1.val == t2.val;
-}
+#define GEN_OP(op) \
+    bool operator op (const IntType &t1, const IntType &t2) \
+    { \
+        return t1.val op t2.val; \
+    } \
 
-bool operator!=(const IntType &t1, const IntType &t2)
-{
-    return t1.val != t2.val;
-}
+GEN_OP(==)
+GEN_OP(!=)
+GEN_OP(<)
+GEN_OP(<=)
+GEN_OP(>)
+GEN_OP(>=)
 
+#undef GEN_OP

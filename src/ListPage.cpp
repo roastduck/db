@@ -1,24 +1,23 @@
 #include <cassert>
 #include "ListPage.h"
 #include "exception/NotNullException.h"
-#include "exception/SameNameException.h"
 #include "exception/NotInDomainException.h"
 
-ListPage::ListPage(PageCache &_pageCache, const std::string &_filename, int _pageID, const std::vector<Column> &_cols)
+ListPage::ListPage(PageCache &_pageCache, const std::string &_filename, int _pageID, const std::unordered_map<std::string, Column> &_cols)
     : BasePage(_pageCache, _filename, _pageID)
 {
-    for (const Column &col : _cols)
+    for (const auto &pair : _cols)
     {
+        const std::string name = pair.first;
+        const Column &col = pair.second;
         std::unique_ptr<Type> type = Type::newType(col.typeID, col.length);
         OffsetColumn off;
         off.col = col;
         off.posOffset = fixedBytes, fixedBytes += type->getFixedLength();
         off.nullOffset = col.notNull ? -1 : nullCnt++;
-        bool success = cols.insert(std::make_pair(col.name, std::move(off))).second;
-        if (!success)
-            throw SameNameException(col.name);
+        cols[name] = std::move(off);
     }
-    nullBytes = (nullCnt + 7) / 8;
+    nullBytes = ((nullCnt + 7) >> 3);
     recBytes = fixedBytes + nullBytes;
 }
 
@@ -60,6 +59,7 @@ void ListPage::setValue(int rank, const std::string &name, const std::unique_ptr
 
 void ListPage::copy(int rank1, int rank2)
 {
-    std::copy(accessConst(rank1), accessConst(rank1) + recBytes, accessMut(rank2));
+    if (rank1 != rank2)
+        std::copy(accessConst(rank1), accessConst(rank1) + recBytes, accessMut(rank2));
 }
 

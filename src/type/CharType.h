@@ -31,9 +31,10 @@ public:
 
     friend bool operator==(const CharType&, const CharType&);
     friend bool operator!=(const CharType&, const CharType&);
+    friend bool operator<(const CharType&, const CharType&);
+    friend bool operator<=(const CharType&, const CharType&);
+    friend bool operator>(const CharType&, const CharType&);
+    friend bool operator>=(const CharType&, const CharType&);
 };
-
-bool operator==(const CharType &t1, const CharType &t2);
-bool operator!=(const CharType &t1, const CharType &t2);
 
 #endif // CHAR_TYPE_H_

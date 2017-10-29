@@ -69,5 +69,9 @@ public:
 
 bool operator==(const Type &t1, const Type &t2);
 bool operator!=(const Type &t1, const Type &t2);
+bool operator<(const Type &t1, const Type &t2);
+bool operator<=(const Type &t1, const Type &t2);
+bool operator>(const Type &t1, const Type &t2);
+bool operator>=(const Type &t1, const Type &t2);
 
 #endif // TYPE_H_

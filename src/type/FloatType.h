@@ -29,9 +29,10 @@ public:
 
     friend bool operator==(const FloatType&, const FloatType&);
     friend bool operator!=(const FloatType&, const FloatType&);
+    friend bool operator<(const FloatType&, const FloatType&);
+    friend bool operator<=(const FloatType&, const FloatType&);
+    friend bool operator>(const FloatType&, const FloatType&);
+    friend bool operator>=(const FloatType&, const FloatType&);
 };
-
-bool operator==(const FloatType &t1, const FloatType &t2);
-bool operator!=(const FloatType &t1, const FloatType &t2);
 
 #endif // FLOAT_H_

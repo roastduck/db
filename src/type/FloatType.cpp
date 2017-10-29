@@ -30,13 +30,17 @@ void FloatType::fromString(const std::string &s)
     is >> val;
 }
 
-bool operator==(const FloatType &t1, const FloatType &t2)
-{
-    return t1.val == t2.val;
-}
+#define GEN_OP(op) \
+    bool operator op (const FloatType &t1, const FloatType &t2) \
+    { \
+        return t1.val op t2.val; \
+    } \
 
-bool operator!=(const FloatType &t1, const FloatType &t2)
-{
-    return t1.val != t2.val;
-}
+GEN_OP(==)
+GEN_OP(!=)
+GEN_OP(<)
+GEN_OP(<=)
+GEN_OP(>)
+GEN_OP(>=)
 
+#undef GEN_OP

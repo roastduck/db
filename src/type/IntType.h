@@ -29,9 +29,10 @@ public:
 
     friend bool operator==(const IntType&, const IntType&);
     friend bool operator!=(const IntType&, const IntType&);
+    friend bool operator<(const IntType&, const IntType&);
+    friend bool operator<=(const IntType&, const IntType&);
+    friend bool operator>(const IntType&, const IntType&);
+    friend bool operator>=(const IntType&, const IntType&);
 };
-
-bool operator==(const IntType &t1, const IntType &t2);
-bool operator!=(const IntType &t1, const IntType &t2);
 
 #endif // INT_TYPE_H_

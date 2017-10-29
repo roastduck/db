@@ -14,6 +14,7 @@ using namespace testing;
 class ListPageTest : public Test
 {
 public:
+
     MockPageMgr pageMgr;
     PageCache cache;
     ListPage page;
@@ -21,10 +22,10 @@ public:
     ListPageTest()
         : cache(pageMgr),
           page(cache, "filename", 0, {
-                (Column){ Type::INT, 0, "int", false, {} }, // fixed 4
-                (Column){ Type::CHAR, 10, "varchar1", false, {} },
-                (Column){ Type::CHAR, 2, "xxORyy", true, { "xx", "yy" } }, // fixed 2, not null
-                (Column){ Type::CHAR, 10, "varchar2", false, {} } // now we are treating VARCHAR as CHAR
+                std::make_pair("int", (Column){ Type::INT, 0, false, {} }), // fixed 4
+                std::make_pair("varchar1", (Column){ Type::CHAR, 10, false, {} }),
+                std::make_pair("xxORyy", (Column){ Type::CHAR, 2, true, { "xx", "yy" } }), // fixed 2, not null
+                std::make_pair("varchar2", (Column){ Type::CHAR, 10, false, {} }) // now we are treating VARCHAR as CHAR
           })
         {}
 };

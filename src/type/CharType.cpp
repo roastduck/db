@@ -28,13 +28,17 @@ void CharType::fromString(const std::string &s)
     val = s;
 }
 
-bool operator==(const CharType &t1, const CharType &t2)
-{
-    return t1.val == t2.val;
-}
+#define GEN_OP(op) \
+    bool operator op (const CharType &t1, const CharType &t2) \
+    { \
+        return t1.val op t2.val; \
+    } \
 
-bool operator!=(const CharType &t1, const CharType &t2)
-{
-    return t1.val != t2.val;
-}
+GEN_OP(==)
+GEN_OP(!=)
+GEN_OP(<)
+GEN_OP(<=)
+GEN_OP(>)
+GEN_OP(>=)
 
+#undef GEN_OP

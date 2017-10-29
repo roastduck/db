@@ -12,7 +12,6 @@ struct Column
 {
     Type::TypeID typeID;
     int length; // Currently only for CHAR
-    std::string name;
     bool notNull;
     std::vector<std::string> allowedDomain; /// Only literals in `allowedDomain` is legal
 };

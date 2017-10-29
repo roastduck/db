@@ -36,34 +36,39 @@ private:
      */
     bool getNull(int rank, int i)
     {
-        return (accessConst(rank)[i / 8] >> (i % 8)) & 1;
+        return (accessConst(rank)[i >> 3] >> (i & 7)) & 1;
     }
     void setNull(int rank, int i, bool v)
     {
-        unsigned char &ref = accessMut(rank)[i / 8];
-        ref = ((ref & ~(1 << (i % 8))) | (v << (i % 8)));
+        unsigned char &ref = accessMut(rank)[i >> 3];
+        ref = ((ref & ~(1 << (i & 7))) | (v << (i & 7)));
     }
 
 public:
     /** Construct with column definitions
-     *  @throw SameNameException
      */
-    ListPage(PageCache &_pageCache, const std::string &_filename, int _pageID, const std::vector<Column> &_cols);
+    ListPage(PageCache &_pageCache, const std::string &_filename, int _pageID, const std::unordered_map<std::string, Column> &_cols);
+
+    /** Max record number
+     */
+    int getMaxSize() const { return (PageMgr::PAGE_SIZE - HEADER_SIZE) / recBytes; }
 
     /** How many records stored in this page
      */
     short getSize() { return constShort[1]; }
-    void setSize(short v) { mutShort[1] = v; }
+    void setSize(short v) { assert(v >= 0 && v <= getMaxSize()); mutShort[1] = v; }
 
     /** ID of the previous page
+     *  @return -1 for null
      */
-    int getPrev() { return constInt[1]; }
-    void setPrev(int v) { mutInt[1] = v; }
+    int getPrev() { return constInt[1] - 1; }
+    void setPrev(int v) { mutInt[1] = v + 1; }
 
     /** ID of the next page
+     *  @return -1 for null
      */
-    int getNext() { return constInt[2]; }
-    void setNext(int v) { mutInt[2] = v; }
+    int getNext() { return constInt[2] - 1; }
+    void setNext(int v) { mutInt[2] = v + 1; }
 
     /** Get a column from record #rank
      *  @param rank : Record position

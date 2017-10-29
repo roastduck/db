@@ -39,9 +39,10 @@ public:
 
     friend bool operator==(const DateType&, const DateType&);
     friend bool operator!=(const DateType&, const DateType&);
+    friend bool operator<(const DateType&, const DateType&);
+    friend bool operator<=(const DateType&, const DateType&);
+    friend bool operator>(const DateType&, const DateType&);
+    friend bool operator>=(const DateType&, const DateType&);
 };
-
-bool operator==(const DateType &t1, const DateType &t2);
-bool operator!=(const DateType &t1, const DateType &t2);
 
 #endif // DATE_TYPE_H_
