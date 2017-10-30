@@ -9,24 +9,52 @@ BaseTable::BaseTable(
       dataFile(_tableName + ".data.db"), freeListFile(_tableName + ".freelist.db")
     {}
 
+BaseTable::Cols BaseTable::identToCols(short ident)
+{
+    assert(ident > 0);
+    Cols ret;
+    if (ident == RECORD)
+        ret = cols;
+    else if (ident == PRIMARY)
+        ret = primary.ok(), ret["$child"] = (Column){Type::INT, 0, true, {}};
+    else
+    {
+        int rank = (ident - PRIMARY - 1) / 2;
+        int isLeaf = (ident - PRIMARY - 1) % 2;
+        ret = nonClus.at(rank);
+        if (!isLeaf || !primary.isOk())
+            ret["$child"] = (Column){Type::INT, 0, true, {}};
+        else
+            for (const auto &pair : primary.ok())
+                ret["$" + pair.first] = pair.second;
+    }
+    return ret;
+}
+
 ListPage &BaseTable::getDataPage(int pageID)
 {
     assert(pageID >= 0);
-    while (int(dataPages.size()) <= pageID)
-        dataPages.push_back(ListPage(cache, dataFile, dataPages.size(), cols));
-    // TODO: when adding index, it should be construct according to Ident
+    dataPages.reserve(pageID + 1);
+    for (int i = dataPages.size(); i <= pageID; i++)
+    {
+        ListPage item(ListPage(cache, dataFile, i));
+        if (item.getIdent() != INVALID)
+            item.setCols(identToCols(item.getIdent()));
+        dataPages.push_back(std::move(item));
+    }
     return dataPages[pageID];
 }
 
 BitmapPage &BaseTable::getFreeListPage(int pageID)
 {
     assert(pageID >= 0);
+    freeListPages.reserve(pageID + 1);
     while (int(freeListPages.size()) <= pageID)
         freeListPages.push_back(BitmapPage(cache, freeListFile, freeListPages.size()));
     return freeListPages[pageID];
 }
 
-int BaseTable::newDataPage()
+int BaseTable::nextFreeDataPage()
 {
     for (int i = 0;; i++)
     {
@@ -39,6 +67,42 @@ int BaseTable::newDataPage()
             return i * PageMgr::PAGE_SIZE * 8 + offset;
         }
     }
+}
+
+int BaseTable::newRecordDataPage()
+{
+    int pageID = nextFreeDataPage();
+    ListPage &page = getDataPage(pageID);
+    page.setIdent(RECORD);
+    page.setCols(identToCols(RECORD));
+    return pageID;
+}
+
+int BaseTable::newPrimaryDataPage()
+{
+    int pageID = nextFreeDataPage();
+    ListPage &page = getDataPage(pageID);
+    page.setIdent(PRIMARY);
+    page.setCols(identToCols(RECORD));
+    return pageID;
+}
+
+int BaseTable::newNonClusNodeDataPage(int indexID)
+{
+    int pageID = nextFreeDataPage();
+    ListPage &page = getDataPage(pageID);
+    page.setIdent(PRIMARY + 1 + indexID * 2);
+    page.setCols(identToCols(RECORD));
+    return pageID;
+}
+
+int BaseTable::newNonClusLeafDataPage(int indexID)
+{
+    int pageID = nextFreeDataPage();
+    ListPage &page = getDataPage(pageID);
+    page.setIdent(PRIMARY + 1 + indexID * 2 + 1);
+    page.setCols(identToCols(RECORD));
+    return pageID;
 }
 
 void BaseTable::destroyDataPage(int pageID)
@@ -94,7 +158,7 @@ bool BaseTable::meetCons(ListPage &page, int rank, const BaseTable::ConsVal &con
 void BaseTable::insert(const BaseTable::ColVal &vals)
 {
     if (!getFreeListPage(0).get(0))
-        getFreeListPage(0).set(0);
+        newRecordDataPage();
     int pageID = 0;
     while (true)
     {
@@ -111,7 +175,7 @@ void BaseTable::insert(const BaseTable::ColVal &vals)
         int nextID = page->getNext();
         if (nextID == -1)
         {
-            nextID = newDataPage();
+            nextID = newRecordDataPage();
             // we cannot use *page because dataPages is a vector and is updated
             getDataPage(pageID).setNext(nextID);
             getDataPage(nextID).setPrev(pageID);

@@ -24,11 +24,6 @@ private:
 
     static const int HEADER_SIZE = 12;
 
-    /** This marks different usage of ListPage
-     */
-    short getIdent() { return constShort[0]; }
-    void setIdent(short v) { mutShort[0] = v; }
-
     PageCache::ConstByteIter accessConst(int rank) { return constByte + HEADER_SIZE + rank * recBytes; }
     PageCache::MutByteIter accessMut(int rank) { return mutByte + HEADER_SIZE + rank * recBytes; }
 
@@ -47,7 +42,29 @@ private:
 public:
     /** Construct with column definitions
      */
-    ListPage(PageCache &_pageCache, const std::string &_filename, int _pageID, const std::unordered_map<std::string, Column> &_cols);
+    ListPage(
+        PageCache &_pageCache, const std::string &_filename, int _pageID,
+        const std::unordered_map<std::string, Column> &_cols
+    )
+        : BasePage(_pageCache, _filename, _pageID)
+    {
+        setCols(_cols);
+    }
+
+    /** Construct without column set. But it has to be set using `setCols`
+     */
+    ListPage(PageCache &_pageCache, const std::string &_filename, int _pageID)
+        : BasePage(_pageCache, _filename, _pageID)
+    {}
+
+    /** Set column list for every record
+     */
+    void setCols(const std::unordered_map<std::string, Column> &_cols);
+
+    /** This marks different usage of ListPage
+     */
+    short getIdent() { return constShort[0]; }
+    void setIdent(short v) { mutShort[0] = v; }
 
     /** Max record number
      */

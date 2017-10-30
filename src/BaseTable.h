@@ -40,9 +40,15 @@ protected:
     typedef std::unordered_map< std::string, std::vector<ConValue> > ConsVal;
     typedef std::unordered_map< std::string, std::unique_ptr<Type> > ColVal;
 
-    Cols cols;
+    const Cols cols;
 
 private:
+    // Page Identifiers
+    short INVALID = 0; // Must be 0, because the page is initialized to be 0
+    short RECORD = 1; // Normal data pages
+    short PRIMARY = 2; // Primary tree node
+    // > 2 for non-clustered index
+
     PageCache &cache;
     Optional<Cols> primary; // Primary index
     std::vector<Cols> nonClus; // Non-cluster indexes
@@ -51,7 +57,12 @@ private:
     std::vector<ListPage> dataPages; // Keep these metadata of pages in memory reduces overhead
     std::vector<BitmapPage> freeListPages;
 
+    /** Generate columns list according to page identifier
+     */
+    Cols identToCols(short ident);
+
     /** Fetch data page #pageID and cache its metadata
+     *  NOTE: This page must be already initialized by `newXXXDataPage`
      *  NOTE: The reference may become invalid when call `getDataPage` the next time
      */
     ListPage &getDataPage(int pageID);
@@ -62,7 +73,11 @@ private:
 
     /** Allocate an unused page and return its Page ID
      */
-    int newDataPage();
+    int nextFreeDataPage(); /// This function is used by 4 functions below
+    int newRecordDataPage();
+    int newPrimaryDataPage();
+    int newNonClusNodeDataPage(int indexID);
+    int newNonClusLeafDataPage(int indexID);
     /** Mark a page back to unused. This will not affect page 0 because it's the entrance
      */
     void destroyDataPage(int pageID);
