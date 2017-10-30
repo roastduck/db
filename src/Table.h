@@ -1,92 +1,58 @@
 #ifndef TABLE_H_
 #define TABLE_H_
 
-#include <list>
-#include <memory>
-#include <vector>
-#include <string>
-#include <unordered_map>
-#include "Type.h"
-#include "Column.h"
-#include "page/ListPage.h"
-#include "page/BitmapPage.h"
-#include "filesystem/PageCache.h"
+#include "BaseTable.h"
 
-class Table
+/** Literal interface for Table
+ */
+class Table : public BaseTable
 {
-private:
-    PageCache &cache;
-    std::unordered_map<std::string, Column> cols;
-
-    std::string dataFile, freeListFile;
-    std::vector<ListPage> dataPages; // Keep these metadata of pages in memory reduces overhead
-    std::vector<BitmapPage> freeListPages;
-
 public:
-    enum ConDir // Constraint Direction
-    {
-        EQ, // ==
-        NE, // !=
-        LT, // <
-        LE, // <=
-        GT, // >
-        GE  // >=
-    };
-
     struct ConLiteral
     {
         ConDir dir;
         std::string pivot;
     };
 
-    struct ConValue
-    {
-        ConDir dir;
-        std::unique_ptr<Type> pivot;
-    };
-
-    typedef std::unordered_map< std::string, std::vector<ConValue> > Cons;
     typedef std::unordered_map< std::string, std::vector<ConLiteral> > ConsL;
-    typedef std::unordered_map< std::string, std::unique_ptr<Type> > ColVal;
+    typedef std::unordered_map< std::string, std::string > ColL;
 
 private:
-    Cons genConstraints(const ConsL &literals);
-    ColVal genVals(const std::unordered_map<std::string, std::string> &literals);
+    /** Convert constraint represented by literals to by values
+     */
+    ConsVal genConstraints(const ConsL &literals);
 
-    ListPage &getDataPage(int pageID);
-    BitmapPage &getFreeListPage(int pageID);
-
-    int newDataPage();
-    void destroyDataPage(int pageID);
-
-    bool meetCons(ListPage &page, int rank, const Cons &cons);
-
-    void insert(const ColVal &vals);
-    void remove(const Cons &constraints);
-    std::vector<ColVal> select(const std::vector<std::string> &targets, const Cons &constraints);
+    /** Convert columns (or record) represented by literals to by values
+     */
+    ColVal genVals(const ColL &literals);
 
 public:
-    Table(PageCache &_cache, const std::string &_tableName, const std::unordered_map<std::string, Column> &_cols);
+    Table(
+        PageCache &_cache, const std::string &_tableName, const Cols &_cols,
+        const Optional<Cols> &_primary = None(), const std::vector<Cols> &_nonClus = {}
+    )
+        : BaseTable(_cache, _tableName, _cols, _primary, _nonClus)
+    {}
 
     /** Insert a map of (column name, literal) into the table
      */
-    void insert(const std::unordered_map<std::string, std::string> &literals)
+    void insert(const ColL &literals)
     {
-        insert(genVals(literals));
+        BaseTable::insert(genVals(literals));
     }
 
     /** Delete records that meet the constraint
      */
     void remove(const ConsL &constraints)
     {
-        remove(genConstraints(constraints));
+        BaseTable::remove(genConstraints(constraints));
     }
 
     /** Select records
      */
     std::vector<ColVal> select(const std::vector<std::string> &targets, const ConsL &constraints)
     {
-        return select(targets, genConstraints(constraints));
+        return BaseTable::select(targets, genConstraints(constraints));
     }
 };
 

@@ -11,9 +11,6 @@ using namespace testing;
 class TableTest : public Test
 {
 public:
-    typedef std::unordered_map<std::string, std::string> mapSS;
-    typedef Table::ConsL mapSC;
-
     MockPageMgr pageMgr;
     PageCache cache;
     Table table;
@@ -28,8 +25,8 @@ public:
 
 TEST_F(TableTest, saveAndLoad)
 {
-    table.insert(mapSS({std::make_pair("int", "123"), std::make_pair("char", "123")}));
-    auto result = table.select({"int", "char"}, mapSC({}));
+    table.insert(Table::ColL({std::make_pair("int", "123"), std::make_pair("char", "123")}));
+    auto result = table.select({"int", "char"}, Table::ConsL({}));
     ASSERT_THAT(result.size(), Eq(1));
     ASSERT_TRUE(*result[0]["int"] == *Type::newFromLiteral("123", Type::INT));
     ASSERT_TRUE(*result[0]["char"] == *Type::newFromLiteral("123", Type::CHAR, 500));
@@ -37,10 +34,10 @@ TEST_F(TableTest, saveAndLoad)
 
 TEST_F(TableTest, remove)
 {
-    table.insert(mapSS({std::make_pair("int", "123")}));
-    table.insert(mapSS({std::make_pair("int", "456")}));
-    table.remove(mapSC({std::make_pair("int", std::vector<Table::ConLiteral>({{Table::EQ, "123"}}))}));
-    auto result = table.select({"int"}, mapSC({}));
+    table.insert(Table::ColL({std::make_pair("int", "123")}));
+    table.insert(Table::ColL({std::make_pair("int", "456")}));
+    table.remove(Table::ConsL({std::make_pair("int", std::vector<Table::ConLiteral>({{Table::EQ, "123"}}))}));
+    auto result = table.select({"int"}, Table::ConsL({}));
     ASSERT_THAT(result.size(), Eq(1));
     ASSERT_TRUE(*result[0]["int"] == *Type::newFromLiteral("456", Type::INT));
 }
@@ -48,12 +45,12 @@ TEST_F(TableTest, remove)
 TEST_F(TableTest, largerThan1Page)
 {
     for (int i = 0; i < 100; i++)
-        table.insert(mapSS({std::make_pair("int", std::to_string(i))}));
-    table.remove(mapSC({std::make_pair("int", std::vector<Table::ConLiteral>({
+        table.insert(Table::ColL({std::make_pair("int", std::to_string(i))}));
+    table.remove(Table::ConsL({std::make_pair("int", std::vector<Table::ConLiteral>({
         {Table::GE, "10"},
         {Table::LT, "60"}
     }))}));
-    auto result = table.select({"int"}, mapSC({std::make_pair("int", std::vector<Table::ConLiteral>({
+    auto result = table.select({"int"}, Table::ConsL({std::make_pair("int", std::vector<Table::ConLiteral>({
         {Table::GE, "50"},
         {Table::LT, "80"}
     }))}));
