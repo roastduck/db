@@ -3,8 +3,8 @@
 
 #include <cassert>
 #include <cstring>
-#include "BasePage.h"
-#include "filesystem/PageMgr.h"
+#include "../BasePage.h"
+#include "../filesystem/PageMgr.h"
 
 /** The whole page is used as a bitmap
  */

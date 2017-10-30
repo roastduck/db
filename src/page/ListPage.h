@@ -2,8 +2,8 @@
 #define LIST_PAGE_H_
 
 #include <unordered_map>
-#include "Column.h"
-#include "BasePage.h"
+#include "../Column.h"
+#include "../BasePage.h"
 
 /** Page storing a list of records
  *  Header:

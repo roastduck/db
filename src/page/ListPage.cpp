@@ -1,7 +1,7 @@
 #include <cassert>
 #include "ListPage.h"
-#include "exception/NotNullException.h"
-#include "exception/NotInDomainException.h"
+#include "../exception/NotNullException.h"
+#include "../exception/NotInDomainException.h"
 
 ListPage::ListPage(PageCache &_pageCache, const std::string &_filename, int _pageID, const std::unordered_map<std::string, Column> &_cols)
     : BasePage(_pageCache, _filename, _pageID),

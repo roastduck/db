@@ -8,8 +8,8 @@
 #include <unordered_map>
 #include "Type.h"
 #include "Column.h"
-#include "ListPage.h"
-#include "BitmapPage.h"
+#include "page/ListPage.h"
+#include "page/BitmapPage.h"
 #include "filesystem/PageCache.h"
 
 class Table

@@ -1,11 +1,11 @@
 #include "Type.h"
 #include "Column.h"
-#include "ListPage.h"
+#include "page/ListPage.h"
 #include "type/CharType.h"
 #include "exception/NotNullException.h"
 #include "exception/NotInDomainException.h"
 
-#include "filesystem/MockPageMgr.h"
+#include "../filesystem/MockPageMgr.h"
 
 #include "gmock/gmock.h"
 

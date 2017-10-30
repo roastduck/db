@@ -1,6 +1,6 @@
-#include "BitmapPage.h"
+#include "page/BitmapPage.h"
 
-#include "filesystem/MockPageMgr.h"
+#include "../filesystem/MockPageMgr.h"
 
 #include "gmock/gmock.h"
 
