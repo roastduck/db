@@ -64,7 +64,7 @@ public:
             unsigned int x = constInt[i];
             if (x == 0xffffffff)
                 continue;
-            return ffs(~x) + 32 * i;
+            return ffs(~x) - 1 + 32 * i; // ffs indexes from 1
         }
         assert(false);
     }

@@ -6,17 +6,19 @@ Table::Table(PageCache &_cache, const std::string &_tableName, const std::unorde
       dataFile(_tableName + ".data.db"), freeListFile(_tableName + ".freelist.db")
     {}
 
-Table::Cons Table::genConstraints(const std::unordered_map<std::string, Table::ConLiteral> &literals)
+Table::Cons Table::genConstraints(const Table::ConsL &literals)
 {
     Cons ret;
     for (const auto &pair : literals)
     {
         const std::string &name = pair.first;
-        const ConLiteral &literal = pair.second;
-        ConValue value;
-        value.dir = literal.dir;
-        value.pivot = Type::newFromLiteral(literal.pivot, cols.at(name).typeID, cols.at(name).length);
-        ret[name] = std::move(value);
+        for (const auto &literal : pair.second)
+        {
+            ConValue value;
+            value.dir = literal.dir;
+            value.pivot = Type::newFromLiteral(literal.pivot, cols.at(name).typeID, cols.at(name).length);
+            ret[name].push_back(std::move(value));
+        }
     }
     return ret;
 }
@@ -31,6 +33,7 @@ Table::ColVal Table::genVals(const std::unordered_map<std::string, std::string> 
 
 ListPage &Table::getDataPage(int pageID)
 {
+    assert(pageID >= 0);
     while (int(dataPages.size()) <= pageID)
         dataPages.push_back(ListPage(cache, dataFile, dataPages.size(), cols));
     // TODO: when adding index, it should be construct according to Ident
@@ -39,6 +42,7 @@ ListPage &Table::getDataPage(int pageID)
 
 BitmapPage &Table::getFreeListPage(int pageID)
 {
+    assert(pageID >= 0);
     while (int(freeListPages.size()) <= pageID)
         freeListPages.push_back(BitmapPage(cache, freeListFile, freeListPages.size()));
     return freeListPages[pageID];
@@ -59,28 +63,51 @@ int Table::newDataPage()
     }
 }
 
+void Table::destroyDataPage(int pageID)
+{
+    ListPage &page = getDataPage(pageID);
+    if (!pageID) // Page 0 is the entry, which can't be deleted
+        return;
+    int nextID = page.getNext();
+    int prevID = page.getPrev();
+    if (nextID != -1)
+        getDataPage(nextID).setPrev(prevID);
+    if (prevID != -1)
+        getDataPage(prevID).setNext(nextID);
+    const int NUM_PER_LIST = PageMgr::PAGE_SIZE * 8;
+    getFreeListPage(pageID / NUM_PER_LIST).reset(pageID % NUM_PER_LIST);
+}
+
 bool Table::meetCons(ListPage &page, int rank, const Table::Cons &cons)
 {
     for (const auto &pair : cons)
     {
         const std::string &name = pair.first;
-        const ConValue &rhs = pair.second;
-        std::unique_ptr<Type> lhs = page.getValue(rank, name);
-        switch (rhs.dir)
+        for (const ConValue &rhs : pair.second)
         {
-        case EQ:
-            if (!(lhs == rhs.pivot)) return false;
-        case NE:
-            if (!(lhs != rhs.pivot)) return false;
-        case LT:
-            if (!(lhs < rhs.pivot)) return false;
-        case LE:
-            if (!(lhs <= rhs.pivot)) return false;
-        case GT:
-            if (!(lhs > rhs.pivot)) return false;
-        case GE:
-            if (!(lhs >= rhs.pivot)) return false;
-        default: assert(false);
+            std::unique_ptr<Type> lhs = page.getValue(rank, name);
+            switch (rhs.dir)
+            {
+            case EQ:
+                if (!(*lhs == *rhs.pivot)) return false;
+                break;
+            case NE:
+                if (!(*lhs != *rhs.pivot)) return false;
+                break;
+            case LT:
+                if (!(*lhs < *rhs.pivot)) return false;
+                break;
+            case LE:
+                if (!(*lhs <= *rhs.pivot)) return false;
+                break;
+            case GT:
+                if (!(*lhs > *rhs.pivot)) return false;
+                break;
+            case GE:
+                if (!(*lhs >= *rhs.pivot)) return false;
+                break;
+            default: assert(false);
+            }
         }
     }
     return true;
@@ -88,10 +115,12 @@ bool Table::meetCons(ListPage &page, int rank, const Table::Cons &cons)
 
 void Table::insert(const Table::ColVal &vals)
 {
+    if (!getFreeListPage(0).get(0))
+        getFreeListPage(0).set(0);
     int pageID = 0;
-    ListPage *page = &getDataPage(pageID);
     while (true)
     {
+        ListPage *page = &getDataPage(pageID);
         int oldSize = page->getSize();
         if (oldSize < page->getMaxSize())
         {
@@ -102,25 +131,26 @@ void Table::insert(const Table::ColVal &vals)
         }
 
         int nextID = page->getNext();
-        ListPage *next;
-        if (nextID != -1)
-            next = &getDataPage(nextID);
-        else
+        if (nextID == -1)
         {
             nextID = newDataPage();
-            next = &getDataPage(nextID);
-            page->setNext(nextID);
-            next->setPrev(pageID);
+            // we cannot use *page because dataPages is a vector and is updated
+            getDataPage(pageID).setNext(nextID);
+            getDataPage(nextID).setPrev(pageID);
         }
-        pageID = nextID, page = next;
+        pageID = nextID;
     }
 }
 
 void Table::remove(const Cons &constraints)
 {
-    ListPage *page = &getDataPage(0);
+    // FUTURE: If we keep the removed record in place marked deleted, we can optimize table without primary index
+    if (!getFreeListPage(0).get(0))
+        return;
+    int pageID = 0;
     while (true)
     {
+        ListPage *page = &getDataPage(pageID);
         int oldSize = page->getSize(), size = oldSize;
         for (int i = 0, j = 0; i < oldSize; i++)
             if (meetCons(*page, i, constraints))
@@ -128,18 +158,23 @@ void Table::remove(const Cons &constraints)
             else
                 page->copy(i, j++);
         page->setSize(size);
+        if (!size)
+            destroyDataPage(pageID);
         int nextID = page->getNext();
         if (!~nextID) return;
-        page = &getDataPage(nextID);
+        pageID = nextID;
     }
 }
 
 std::vector<Table::ColVal> Table::select(const std::vector<std::string> &targets, const Cons &constraints)
 {
+    if (!getFreeListPage(0).get(0))
+        return {};
     std::vector<Table::ColVal> ret;
-    ListPage *page = &getDataPage(0);
+    int pageID = 0;
     while (true)
     {
+        ListPage *page = &getDataPage(pageID);
         int size = page->getSize();
         for (int i = 0; i < size; i++)
             if (meetCons(*page, i, constraints))
@@ -151,7 +186,7 @@ std::vector<Table::ColVal> Table::select(const std::vector<std::string> &targets
             }
         int nextID = page->getNext();
         if (!~nextID) return ret;
-        page = &getDataPage(nextID);
+        pageID = nextID;
     }
 }
 

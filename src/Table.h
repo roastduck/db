@@ -1,6 +1,7 @@
 #ifndef TABLE_H_
 #define TABLE_H_
 
+#include <list>
 #include <memory>
 #include <vector>
 #include <string>
@@ -44,17 +45,19 @@ public:
         std::unique_ptr<Type> pivot;
     };
 
-    typedef std::unordered_map< std::string, ConValue > Cons;
+    typedef std::unordered_map< std::string, std::vector<ConValue> > Cons;
+    typedef std::unordered_map< std::string, std::vector<ConLiteral> > ConsL;
     typedef std::unordered_map< std::string, std::unique_ptr<Type> > ColVal;
 
 private:
-    Cons genConstraints(const std::unordered_map<std::string, ConLiteral> &literals);
+    Cons genConstraints(const ConsL &literals);
     ColVal genVals(const std::unordered_map<std::string, std::string> &literals);
 
     ListPage &getDataPage(int pageID);
     BitmapPage &getFreeListPage(int pageID);
 
     int newDataPage();
+    void destroyDataPage(int pageID);
 
     bool meetCons(ListPage &page, int rank, const Cons &cons);
 
@@ -74,17 +77,14 @@ public:
 
     /** Delete records that meet the constraint
      */
-    void remove(const std::unordered_map<std::string, ConLiteral> &constraints)
+    void remove(const ConsL &constraints)
     {
         remove(genConstraints(constraints));
     }
 
     /** Select records
      */
-    std::vector<ColVal> select(
-        const std::vector<std::string> &targets,
-        const std::unordered_map<std::string, ConLiteral> &constraints
-    )
+    std::vector<ColVal> select(const std::vector<std::string> &targets, const ConsL &constraints)
     {
         return select(targets, genConstraints(constraints));
     }

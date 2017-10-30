@@ -68,3 +68,13 @@ TEST_F(ListPageTest, notInDomainException)
     ASSERT_THROW(page.setValue(0, "xxORyy", Type::newFromBytes({'z', 'z'}, Type::CHAR, 2)), NotInDomainException);
 }
 
+TEST_F(ListPageTest, setAndGetMetadata)
+{
+    page.setSize(1);
+    page.setPrev(2);
+    page.setNext(3);
+    ASSERT_THAT(page.getSize(), Eq(1));
+    ASSERT_THAT(page.getPrev(), Eq(2));
+    ASSERT_THAT(page.getNext(), Eq(3));
+}
+

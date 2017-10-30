@@ -89,6 +89,8 @@ public:
     /** Copy a record from rank1 to rank2
      */
     void copy(int rank1, int rank2);
+
+    // We CANNOT copy data across pages if there is no primary index, or nomal indexes would fail
 };
 
 #endif // LIST_PAGE_H_
