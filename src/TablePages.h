@@ -14,19 +14,25 @@ class TablePages
 {
 public:
     typedef std::unordered_map<std::string, Column> Cols;
+    typedef std::vector< std::string > Index;
 
 protected:
     // Page Identifiers
     static const short INVALID = 0; // Must be 0, because the page is initialized to be 0
     static const short RECORD = 1; // Normal data pages
-    static const short PRIMARY = 2; // Primary tree node
-    // > 2 for non-clustered index
+    static const short REF = 2; // Leaf of non-clustered index
+    static const short PRIMARY = 3; // Primary tree node
+    // > 3 for non-clustered index
 
 private:
     PageCache &cache;
 
-    Cols recCols, priCols;
-    std::vector< std::pair<Cols, Cols> > nonClusCols; // (Node, Leaf)
+protected:
+    const Cols recCols;
+
+private:
+    Cols refCols, priCols;
+    std::vector<Cols> nonClusCols; // (Node, Leaf)
 
     std::string dataFile, freeListFile;
     std::vector<ListPage> dataPages; // Keep these metadata of pages in memory reduces overhead
@@ -39,7 +45,7 @@ private:
 protected:
     TablePages(
         PageCache &_cache, const std::string &_tableName, const Cols &_cols,
-        const Optional<Cols> &_primary = None(), const std::vector<Cols> &_nonClus = {}
+        const Optional<Index> &_primary = None(), const std::vector<Index> &_nonClus = {}
     );
 
     /** Fetch free-list page #pageID and cache its metadata
@@ -56,9 +62,9 @@ protected:
     /** Allocate an unused page and return its Page ID
      */
     int newRecordDataPage();
+    int newRefDataPage();
     int newPrimaryDataPage();
-    int newNonClusNodeDataPage(int indexID);
-    int newNonClusLeafDataPage(int indexID);
+    int newNonClusDataPage(int indexID);
 
     /** Mark a page back to unused. This will not affect page 0 because it's the entrance
      */

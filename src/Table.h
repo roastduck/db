@@ -29,7 +29,7 @@ private:
 public:
     Table(
         PageCache &_cache, const std::string &_tableName, const Cols &_cols,
-        const Optional<Cols> &_primary = None(), const std::vector<Cols> &_nonClus = {}
+        const Optional<Index> &_primary = None(), const std::vector<Index> &_nonClus = {}
     )
         : BaseTable(_cache, _tableName, _cols, _primary, _nonClus)
     {}

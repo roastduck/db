@@ -2,49 +2,47 @@
 
 TablePages::TablePages(
     PageCache &_cache, const std::string &_tableName, const TablePages::Cols &_cols,
-    const Optional<TablePages::Cols> &_primary, const std::vector<TablePages::Cols> &_nonClus
+    const Optional<TablePages::Index> &_primary, const std::vector<TablePages::Index> &_nonClus
 )
     : cache(_cache), recCols(_cols),
       dataFile(_tableName + ".data.db"), freeListFile(_tableName + ".freelist.db")
 {
     if (_primary.isOk())
     {
-        priCols = _primary.ok();
+        for (const std::string &name : _primary.ok())
+        {
+            refCols[name] = recCols.at(name);
+            priCols[name] = recCols.at(name);
+        }
         priCols["$child"] = (Column){Type::INT, 0, true, {}};
-    }
+    } else
+        refCols["$page"] = (Column){Type::INT, 0, true, {}};
+
     nonClusCols.reserve(_nonClus.size());
     for (const auto &item : _nonClus)
     {
-        Cols node = item, leaf = item;
+        Cols node;
+        for (const std::string &name : item)
+            node[name] = recCols.at(name);
         node["$child"] = (Column){Type::INT, 0, true, {}};
-        if (!_primary.isOk())
-            leaf["$child"] = (Column){Type::INT, 0, true, {}};
-        else
-            for (const auto &pair : _primary.ok())
-                leaf["$" + pair.first] = pair.second;
-        nonClusCols.push_back(std::make_pair(std::move(node), std::move(leaf)));
+        nonClusCols.push_back(std::move(node));
     }
 }
 
 TablePages::Cols TablePages::identToCols(short ident)
 {
-    int rank, isLeaf;
     switch (ident)
     {
     case INVALID:
         assert(false);
-        break;
     case RECORD:
         return recCols;
+    case REF:
+        return refCols;
     case PRIMARY:
         return priCols;
     default:
-        rank = (ident - PRIMARY - 1) / 2;
-        isLeaf = (ident - PRIMARY - 1) % 2;
-        if (isLeaf)
-            return nonClusCols.at(rank).second;
-        else
-            return nonClusCols.at(rank).first;
+        return nonClusCols.at((ident - PRIMARY - 1) / 2);
     }
 }
 
@@ -96,30 +94,30 @@ int TablePages::newRecordDataPage()
     return pageID;
 }
 
+int TablePages::newRefDataPage()
+{
+    int pageID = nextFreeDataPage();
+    ListPage &page = getDataPage(pageID);
+    page.setIdent(REF);
+    page.setCols(identToCols(REF));
+    return pageID;
+}
+
 int TablePages::newPrimaryDataPage()
 {
     int pageID = nextFreeDataPage();
     ListPage &page = getDataPage(pageID);
     page.setIdent(PRIMARY);
-    page.setCols(identToCols(RECORD));
+    page.setCols(identToCols(PRIMARY));
     return pageID;
 }
 
-int TablePages::newNonClusNodeDataPage(int indexID)
+int TablePages::newNonClusDataPage(int indexID)
 {
     int pageID = nextFreeDataPage();
     ListPage &page = getDataPage(pageID);
-    page.setIdent(PRIMARY + 1 + indexID * 2);
-    page.setCols(identToCols(RECORD));
-    return pageID;
-}
-
-int TablePages::newNonClusLeafDataPage(int indexID)
-{
-    int pageID = nextFreeDataPage();
-    ListPage &page = getDataPage(pageID);
-    page.setIdent(PRIMARY + 1 + indexID * 2 + 1);
-    page.setCols(identToCols(RECORD));
+    page.setIdent(PRIMARY + 1 + indexID);
+    page.setCols(identToCols(PRIMARY + 1 + indexID));
     return pageID;
 }
 

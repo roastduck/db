@@ -33,11 +33,9 @@ protected:
     typedef std::unordered_map< std::string, std::vector<ConValue> > ConsVal;
     typedef std::unordered_map< std::string, std::unique_ptr<Type> > ColVal;
 
-    const Cols cols;
-
 private:
-    Optional<Cols> primary; // Primary index
-    std::vector<Cols> nonClus; // Non-cluster indexes
+    Optional<Index> primary; // Primary index
+    std::vector<Index> nonClus; // Non-cluster indexes
 
     /** Check if a record meets ALL the constraints in `cons`, i.e. items in cons are ANDed together
      */
@@ -47,10 +45,10 @@ protected:
     BaseTable
     (
         PageCache &_cache, const std::string &_tableName, const Cols &_cols,
-        const Optional<Cols> &_primary = None(), const std::vector<Cols> &_nonClus = {}
+        const Optional<Index> &_primary = None(), const std::vector<Index> &_nonClus = {}
     )
         : TablePages(_cache, _tableName, _cols, _primary, _nonClus),
-          cols(_cols), primary(_primary), nonClus(_nonClus)
+          primary(_primary), nonClus(_nonClus)
     {}
 
     void insert(const ColVal &vals);
