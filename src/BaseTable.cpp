@@ -200,6 +200,51 @@ void BaseTable::insertLinear(int pageID, const BaseTable::ColVal &vals)
     }
 }
 
+BaseTable::Pos BaseTable::findFirst(int pageID, const BaseTable::ColVal &vals, const BaseTable::Index &index, bool equal)
+{
+    while (true)
+    {
+        ListPage *page = &getDataPage(pageID);
+        int size = page->getSize();
+        int offset = 0;
+        if (equal)
+            while (offset < size && !less(vals, page->getValues(offset, index), index))
+                offset++;
+        else
+            while (offset < size && less(page->getValues(offset, index), vals, index))
+                offset++;
+        if (page->getIdent() == RECORD)
+            return Pos(pageID, offset);
+        int childID = dynamic_cast<IntType*>(page->getValue(offset, "$child").get())->getVal();
+        page = NULL;
+        if (getDataPage(childID).getIdent() == REF)
+            return Pos(pageID, offset);
+        pageID = childID;
+    }
+}
+
+std::vector<BaseTable::ColVal> BaseTable::selectLinear(
+    const BaseTable::Index &targets, const BaseTable::ConsVal &constraints,
+    const BaseTable::Pos &start, const BaseTable::Pos &stop
+)
+{
+    std::vector<BaseTable::ColVal> ret;
+    int pageID = start.first;
+    while (true)
+    {
+        ListPage &page = getDataPage(pageID);
+        int st = pageID == start.first ? start.second : 0;
+        int en = pageID == stop.first && stop.second != -1 ? stop.second : page.getSize();
+        for (int i = st; i < en; i++)
+            if (meetCons(page, i, constraints))
+                ret.push_back(page.getValues(i, targets));
+        if (pageID == stop.first) return ret;
+        int nextID = page.getNext();
+        if (!~nextID) return ret;
+        pageID = nextID;
+    }
+}
+
 void BaseTable::insert(const BaseTable::ColVal &vals)
 {
     if (primary.isOk())
@@ -254,18 +299,51 @@ void BaseTable::remove(const ConsVal &constraints)
 
 std::vector<BaseTable::ColVal> BaseTable::select(const BaseTable::Index &targets, const ConsVal &constraints)
 {
-    std::vector<BaseTable::ColVal> ret;
-    int pageID = 0;
-    while (true)
+    Pos start(0, 0), stop(-1, -1);
+    if (primary.isOk())
     {
-        ListPage &page = getDataPage(pageID);
-        int size = page.getSize();
-        for (int i = 0; i < size; i++)
-            if (meetCons(page, i, constraints))
-                ret.push_back(page.getValues(i, targets));
-        int nextID = page.getNext();
-        if (!~nextID) return ret;
-        pageID = nextID;
+        ColVal l, r;
+        bool eqL, eqR;
+        for (const std::string &name : primary.ok())
+        {
+            bool done = true;
+            for (const auto &item : constraints.at(name))
+                switch (item.dir)
+                {
+                    // Don't care about redundent or conflictory consitions
+                    // The linear scanning guarentees the correctness
+                case EQ:
+                    l[name] = Type::newFromCopy(item.pivot);
+                    r[name] = Type::newFromCopy(item.pivot);
+                    eqL = eqR = true;
+                    done = false;
+                    break;
+                case LE:
+                    eqR = true; // no break
+                case LT:
+                    r[name] = Type::newFromCopy(item.pivot);
+                    break;
+                case GE:
+                    eqL = true; // no break;
+                case GT:
+                    l[name] = Type::newFromCopy(item.pivot);
+                    break;
+                default:
+                    ; // leave it
+                }
+            if (done)
+                break;
+        }
+        Index indexL, indexR;
+        for (const std::string &name : primary.ok())
+        {
+            if (l.count(name)) indexL.push_back(name);
+            if (r.count(name)) indexR.push_back(name);
+        }
+        start = findFirst(0, l, indexL, eqL);
+        stop = findFirst(0, r, indexR, eqR);
     }
+    return selectLinear(targets, constraints, start, stop);
+    // TODO : non-clustered indexes
 }
 

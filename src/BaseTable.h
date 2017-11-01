@@ -15,6 +15,7 @@ class BaseTable : public TablePages
 public:
     enum ConDir // Constraint Direction
     {
+        // TODO: NULL, NOT_NULL, or treat null as a normal value
         EQ, // ==
         NE, // !=
         LT, // <
@@ -32,6 +33,7 @@ protected:
 
     typedef std::unordered_map< std::string, std::vector<ConValue> > ConsVal;
     typedef std::unordered_map< std::string, std::unique_ptr<Type> > ColVal;
+    typedef std::pair< int, int > Pos; // (pageId, slotID)
 
 private:
     Optional<Index> primary; // Primary index
@@ -62,7 +64,18 @@ private:
      */
     int insertRecur(int pageID, const ColVal &vals, const Index &index);
 
+    /** Insert records into the first empty position found in O(n) manner
+     */
     void insertLinear(int pageID, const ColVal &vals);
+
+    /** Find in `index` the first position to greater (equal) than `vals`
+     */
+    Pos findFirst(int pageID, const ColVal &vals, const Index &index, bool equal);
+
+    /** Select records in O(n) manner
+     *  @param stop can be (-1, -1) or (*, -1)
+     */
+    std::vector<ColVal> selectLinear(const Index &targets, const ConsVal &constraints, const Pos &start, const Pos &stop);
 
 protected:
     BaseTable
