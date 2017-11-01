@@ -23,6 +23,7 @@ void ListPage::setCols(const std::unordered_map<std::string, Column> &_cols)
 
 std::unique_ptr<Type> ListPage::getValue(int rank, const std::string &name)
 {
+    assert(rank >= 0 && rank < getMaxSize());
     const OffsetColumn &off = cols.at(name);
     if (!off.col.notNull && getNull(rank, off.nullOffset))
         return nullptr;
@@ -34,8 +35,18 @@ std::unique_ptr<Type> ListPage::getValue(int rank, const std::string &name)
     return ret;
 }
 
+std::unordered_map< std::string, std::unique_ptr<Type> > ListPage::getValues(int rank, const std::vector<std::string> &names)
+{
+    assert(rank >= 0 && rank < getMaxSize());
+    std::unordered_map< std::string, std::unique_ptr<Type> > ret;
+    for (const std::string &name : names)
+        ret[name] = getValue(rank, name);
+    return ret;
+}
+
 void ListPage::setValue(int rank, const std::string &name, const std::unique_ptr<Type> &value)
 {
+    assert(rank >= 0 && rank < getMaxSize());
     const OffsetColumn &off = cols.at(name);
     if (value == nullptr)
         if (off.col.notNull)
@@ -57,9 +68,21 @@ void ListPage::setValue(int rank, const std::string &name, const std::unique_ptr
     }
 }
 
+void ListPage::setValues(int rank, const std::unordered_map< std::string, std::unique_ptr<Type> > &values)
+{
+    for (const auto &pair : values)
+        setValue(rank, pair.first, pair.second);
+}
+
 void ListPage::copy(int rank1, int rank2)
 {
     if (rank1 != rank2)
         std::copy(accessConst(rank1), accessConst(rank1) + recBytes, accessMut(rank2));
+}
+
+void ListPage::copy(ListPage *page1, int rank1, ListPage *page2, int rank2)
+{
+    assert(page1->recBytes == page2->recBytes);
+    std::copy(page1->accessConst(rank1), page1->accessConst(rank1) + page1->recBytes, page2->accessMut(rank2));
 }
 

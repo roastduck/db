@@ -94,6 +94,8 @@ public:
      */
     std::unique_ptr<Type> getValue(int rank, const std::string &name);
 
+    std::unordered_map< std::string, std::unique_ptr<Type> > getValues(int rank, const std::vector<std::string> &names);
+
     /** Set a column to record #rank
      *  @param rank : Record position
      *  @param name : Column name
@@ -103,11 +105,16 @@ public:
      */
     void setValue(int rank, const std::string &name, const std::unique_ptr<Type> &value);
 
+    void setValues(int rank, const std::unordered_map< std::string, std::unique_ptr<Type> > &values);
+
     /** Copy a record from rank1 to rank2
      */
     void copy(int rank1, int rank2);
 
-    // We CANNOT copy data across pages if there is no primary index, or nomal indexes would fail
+    /** Copy a record across two pages
+     *  We CANNOT copy data across pages if there is no primary index, or non-clustered indexes would fail
+     */
+    static void copy(ListPage *page1, int rank1, ListPage *page2, int rank2);
 };
 
 #endif // LIST_PAGE_H_

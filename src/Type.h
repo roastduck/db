@@ -65,6 +65,10 @@ public:
     /** Make a new object from bytes representation
      */
     static std::unique_ptr<Type> newFromBytes(const std::vector<unsigned char> &bytes, TypeID typeID, int length = 0);
+
+    /** Make a new object identical to an orignal one
+     */
+    static std::unique_ptr<Type> newFromCopy(const std::unique_ptr<Type> &ori);
 };
 
 bool operator==(const Type &t1, const Type &t2);

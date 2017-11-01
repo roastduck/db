@@ -61,6 +61,12 @@ int TablePages::nextFreeDataPage()
     }
 }
 
+bool TablePages::isFree(int pageID)
+{
+    const int NUM_PER_LIST = PageMgr::PAGE_SIZE * 8;
+    return getFreeListPage(pageID / NUM_PER_LIST).get(pageID % NUM_PER_LIST);
+}
+
 ListPage &TablePages::getDataPage(int pageID)
 {
     assert(pageID >= 0);
@@ -85,39 +91,15 @@ BitmapPage &TablePages::getFreeListPage(int pageID)
     return freeListPages[pageID];
 }
 
-int TablePages::newRecordDataPage()
+int TablePages::newDataPage(short ident, int indexID)
 {
+    assert(ident > 0);
     int pageID = nextFreeDataPage();
     ListPage &page = getDataPage(pageID);
-    page.setIdent(RECORD);
-    page.setCols(identToCols(RECORD));
-    return pageID;
-}
-
-int TablePages::newRefDataPage()
-{
-    int pageID = nextFreeDataPage();
-    ListPage &page = getDataPage(pageID);
-    page.setIdent(REF);
-    page.setCols(identToCols(REF));
-    return pageID;
-}
-
-int TablePages::newPrimaryDataPage()
-{
-    int pageID = nextFreeDataPage();
-    ListPage &page = getDataPage(pageID);
-    page.setIdent(PRIMARY);
-    page.setCols(identToCols(PRIMARY));
-    return pageID;
-}
-
-int TablePages::newNonClusDataPage(int indexID)
-{
-    int pageID = nextFreeDataPage();
-    ListPage &page = getDataPage(pageID);
-    page.setIdent(PRIMARY + 1 + indexID);
-    page.setCols(identToCols(PRIMARY + 1 + indexID));
+    if (ident >= NON_CLUSTER)
+        ident = NON_CLUSTER + indexID;
+    page.setIdent(ident);
+    page.setCols(identToCols(ident));
     return pageID;
 }
 

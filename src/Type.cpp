@@ -36,6 +36,25 @@ std::unique_ptr<Type> Type::newFromBytes(const std::vector<unsigned char> &bytes
     return ret;
 }
 
+std::unique_ptr<Type> Type::newFromCopy(const std::unique_ptr<Type> &ori)
+{
+    std::unique_ptr<Type> ret = newType(ori->getTypeID(), ori->getLength());
+    switch (ori->getTypeID())
+    {
+    case INT:
+        dynamic_cast<IntType*>(ret.get())->setVal(dynamic_cast<IntType*>(ori.get())->getVal());
+    case FLOAT:
+        dynamic_cast<FloatType*>(ret.get())->setVal(dynamic_cast<FloatType*>(ori.get())->getVal());
+    case DATE:
+        dynamic_cast<DateType*>(ret.get())->setVal(dynamic_cast<DateType*>(ori.get())->getVal());
+    case CHAR:
+        dynamic_cast<CharType*>(ret.get())->setVal(dynamic_cast<CharType*>(ori.get())->getVal());
+    default:
+        assert(false);
+    }
+    return ret;
+}
+
 #define GEN_OP(op) \
     bool operator op (const Type &t1, const Type &t2) \
     { \
