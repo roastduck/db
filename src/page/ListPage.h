@@ -73,7 +73,7 @@ public:
     /** How many records stored in this page
      */
     short getSize() { return constShort[1]; }
-    void setSize(short v) { assert(v >= 0 && v <= getMaxSize()); mutShort[1] = v; }
+    void setSize(short v) { assert(v >= 0); mutShort[1] = v; }
 
     /** ID of the previous page
      *  @return -1 for null

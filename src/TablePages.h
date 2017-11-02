@@ -35,8 +35,8 @@ private:
     std::vector<Cols> nonClusCols; // (Node, Leaf)
 
     std::string dataFile, freeListFile;
-    std::vector<ListPage> dataPages; // Keep these metadata of pages in memory reduces overhead
-    std::vector<BitmapPage> freeListPages;
+    std::vector< std::unique_ptr<ListPage> > dataPages; // Keep these metadata of pages in memory reduces overhead
+    std::vector< std::unique_ptr<BitmapPage> > freeListPages;
 
     /** Generate column definition from data page identifier
      */

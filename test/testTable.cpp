@@ -86,3 +86,20 @@ TEST_F(TableTest, primaryOrderInOnePage)
     ASSERT_TRUE(*result[2]["char"] == *Type::newFromLiteral("1", Type::CHAR, 2000));
 }
 
+TEST_F(TableTest, primaryOrderInMultiplePages)
+{
+    for (const std::string &item : {"3", "1", "5", "4", "0", "9", "8", "7", "10", "14", "17", "20", "2", "6"})
+        tablePri.insert(Table::ColL({std::make_pair("int", item), std::make_pair("char", "")}));
+    auto result = tablePri.select({"int", "char"}, Table::ConsL({}));
+    ASSERT_THAT(result.size(), Eq(14));
+    int rank = 0;
+    for (const std::string &item : {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "14", "17", "20"})
+    {
+        ASSERT_TRUE(*result[rank]["int"] == *Type::newFromLiteral(item, Type::INT))
+            << " expect = " << item
+            << " actual = " << result[rank]["int"]->toString()
+            << std::endl;
+        rank++;
+    }
+}
+

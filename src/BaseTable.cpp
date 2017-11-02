@@ -93,45 +93,54 @@ bool BaseTable::equal(const BaseTable::ColVal &lhs, const BaseTable::ColVal &rhs
 
 int BaseTable::insertAndSplit(int pageID, const BaseTable::ColVal &vals, int off)
 {
-    int ret = -1;
-    ListPage *pageL = &getDataPage(pageID), *pageIns = pageL;
-    if (pageL->getSize() == pageL->getMaxSize())
+    int ret = -1, insID = pageID;
+    ListPage &pageL = getDataPage(pageID);
+    if (pageL.getSize() == pageL.getMaxSize())
     {
-        ListPage *pageR = &getDataPage(ret = newDataPage(pageL->getIdent()));
-        int mid = pageL->getSize() / 2;
-        for (int i = mid, j = 1; i < pageL->getSize(); i++, j++)
-            ListPage::copy(pageL, i, pageR, j);
-        pageR->setSize(pageL->getSize() - mid);
-        pageL->setSize(mid);
+        ListPage &pageR = getDataPage(ret = newDataPage(pageL.getIdent()));
+        int mid = pageL.getSize() / 2;
+        for (int i = mid, j = 0; i < pageL.getSize(); i++, j++)
+            ListPage::copy(&pageL, i, &pageR, j);
+        pageR.setSize(pageL.getSize() - mid);
+        pageL.setSize(mid);
+
+        int nextID = pageL.getNext();
+        pageL.setNext(ret);
+        pageR.setPrev(pageID);
+        pageR.setNext(nextID);
+        if (nextID != -1)
+            getDataPage(nextID).setPrev(ret);
+
         if (off >= mid)
-            off -= mid, pageIns = pageR;
+            off -= mid, insID = ret;
     }
-    for (int i = off; i < pageIns->getSize(); i++)
-        pageIns->copy(i, i + 1);
-    pageIns->setSize(pageIns->getSize() + 1);
-    pageIns->setValues(off, vals);
+    ListPage &pageIns = getDataPage(insID);
+    for (int i = pageIns.getSize() - 1; i >= off; i--)
+        pageIns.copy(i, i + 1);
+    pageIns.setSize(pageIns.getSize() + 1);
+    pageIns.setValues(off, vals);
     return ret;
 }
 
 int BaseTable::insertRecur(int pageID, const BaseTable::ColVal &vals, const BaseTable::Index &index)
 {
-    ListPage *page;
-    int size;
-    page = &getDataPage(pageID), size = page->getSize();
-    int offset = 0;
-    while (offset < size && less(page->getValues(offset, index), vals, index))
+    ListPage &page = getDataPage(pageID);
+    int size = page.getSize();
+    int offset = -1;
+    while (offset + 1 < size && !less(vals, page.getValues(offset + 1, index), index))
         offset++;
-    // `offset` is the first to >= `vals`
+    // `offset` is the last that <= `vals`
 
-    if (page->getIdent() == RECORD) // leaf node of primary index
+    if (page.getIdent() == RECORD) // leaf node of primary index
     {
-        if (equal(page->getValues(offset, index), vals, index))
+        if (offset >= 0 && equal(page.getValues(offset, index), vals, index))
             throw NotUniqueException(index);
-        return insertAndSplit(pageID, vals, offset);
+        return insertAndSplit(pageID, vals, offset + 1);
     }
-    int childID = dynamic_cast<IntType*>(page->getValue(offset, "$child").get())->getVal();
-    page = NULL;
-    if (getDataPage(childID).getIdent() == REF) // leaf node of non-clustered index
+
+    assert(size > 0);
+    short childIdent = getDataPage(dynamic_cast<IntType*>(page.getValue(0, "$child").get())->getVal()).getIdent();
+    if (childIdent == REF) // leaf node of non-clustered index
     {
         ColVal newRef;
         if (primary.isOk())
@@ -139,9 +148,10 @@ int BaseTable::insertRecur(int pageID, const BaseTable::ColVal &vals, const Base
                 newRef[name] = Type::newFromCopy(vals.at(name));
         else
             newRef["$page"] = Type::newFromCopy(vals.at("$page"));
-        if (equal(page->getValues(offset, index), vals, index))
+        if (offset >= 0 && equal(page.getValues(offset, index), vals, index))
         {
             // insert into the ref page
+            int childID = dynamic_cast<IntType*>(page.getValue(offset, "$child").get())->getVal();
             insertLinear(childID, newRef);
             return -1;
         } else
@@ -154,17 +164,14 @@ int BaseTable::insertRecur(int pageID, const BaseTable::ColVal &vals, const Base
                 newItem[name] = Type::newFromCopy(vals.at(name));
             newItem["$child"] = Type::newType(Type::INT);
             dynamic_cast<IntType*>(newItem["$child"].get())->setVal(childID);
-            return insertAndSplit(pageID, newItem, offset);
+            return insertAndSplit(pageID, newItem, offset + 1);
         }
     }
 
     // recurse
-    if (offset == size)
-    {
-        offset--;
-        assert(offset >= 0);
-        childID = dynamic_cast<IntType*>(page->getValue(offset, "$child").get())->getVal();
-    }
+    if (offset < 0) offset = 0;
+    int childID = dynamic_cast<IntType*>(page.getValue(offset, "$child").get())->getVal();
+    page.setValues(0, getDataPage(childID).getValues(0, index));
     int newChildID = insertRecur(childID, vals, index);
     if (!~newChildID)
         return -1;
@@ -191,10 +198,13 @@ void BaseTable::insertLinear(int pageID, const BaseTable::ColVal &vals)
         int nextID = page.getNext();
         if (nextID == -1)
         {
-            nextID = newDataPage(RECORD);
-            // we cannot use `page` because dataPages is a vector and is updated
-            getDataPage(pageID).setNext(nextID);
-            getDataPage(nextID).setPrev(pageID);
+            ListPage &next = getDataPage(nextID = newDataPage(RECORD));
+            int nextNextID = page.getNext();
+            page.setNext(nextID);
+            next.setPrev(pageID);
+            next.setNext(nextNextID);
+            if (nextNextID != -1)
+                getDataPage(nextNextID).setPrev(nextID);
         }
         pageID = nextID;
     }
@@ -205,22 +215,21 @@ BaseTable::Pos BaseTable::findFirst(int pageID, const BaseTable::ColVal &vals, c
     Pos ret;
     while (true)
     {
-        ListPage *page = &getDataPage(pageID);
-        int size = page->getSize();
+        ListPage &page = getDataPage(pageID);
+        int size = page.getSize();
         int offset = 0;
         if (equal)
-            while (offset + 1 < size && less(page->getValues(offset + 1, index), vals, index))
+            while (offset + 1 < size && less(page.getValues(offset + 1, index), vals, index))
                 offset++;
         else
-            while (offset + 1 < size && !less(vals, page->getValues(offset + 1, index), index))
+            while (offset + 1 < size && !less(vals, page.getValues(offset + 1, index), index))
                 offset++;
-        if (page->getIdent() == RECORD)
+        if (page.getIdent() == RECORD)
         {
             ret = Pos(pageID, offset);
             break;
         }
-        int childID = dynamic_cast<IntType*>(page->getValue(offset, "$child").get())->getVal();
-        page = NULL;
+        int childID = dynamic_cast<IntType*>(page.getValue(offset, "$child").get())->getVal();
         if (getDataPage(childID).getIdent() == REF)
         {
             ret = Pos(pageID, offset);
@@ -267,25 +276,29 @@ void BaseTable::insert(const BaseTable::ColVal &vals)
         int newChildRID = insertRecur(0, vals, primary.ok());
         if (newChildRID != -1) // root should still be page 0
         {
-            int newChildLID = newDataPage(getDataPage(0).getIdent());
-            ListPage *newChildL = &getDataPage(newChildLID); // this should before `newRoot`
-            ListPage *newRoot = &getDataPage(0);
-            for (int i = 0; i < newRoot->getSize(); i++)
-                ListPage::copy(newRoot, i, newChildL, i);
-            newRoot = newChildL = NULL;
+            ListPage &newRoot = getDataPage(0);
+            int newChildLID = newDataPage(newRoot.getIdent());
+            ListPage &newChildL = getDataPage(newChildLID);
+            ListPage &newChildR = getDataPage(newChildRID);
+            newChildL.setSize(newRoot.getSize());
+            for (int i = 0; i < newRoot.getSize(); i++)
+                ListPage::copy(&newRoot, i, &newChildL, i);
             destroyDataPage(0), newDataPage(PRIMARY); // change Ident of 0 to PRIMARY
 
-            ColVal newItemL = getDataPage(newChildLID).getValues(0, primary.ok());
+            ColVal newItemL = newChildL.getValues(0, primary.ok());
             newItemL["$child"] = Type::newType(Type::INT);
             dynamic_cast<IntType*>(newItemL["$child"].get())->setVal(newChildLID);
-            getDataPage(0).setValues(0, newItemL);
+            newRoot.setValues(0, newItemL);
 
-            ColVal newItemR = getDataPage(newChildRID).getValues(0, primary.ok());
+            ColVal newItemR = newChildR.getValues(0, primary.ok());
             newItemR["$child"] = Type::newType(Type::INT);
             dynamic_cast<IntType*>(newItemR["$child"].get())->setVal(newChildRID);
-            getDataPage(0).setValues(1, newItemR);
+            newRoot.setValues(1, newItemR);
 
-            getDataPage(0).setSize(2);
+            newChildL.setPrev(-1), newChildL.setNext(newChildRID);
+            newChildR.setNext(-1), newChildR.setPrev(newChildLID);
+
+            newRoot.setSize(2);
         }
     } else
         insertLinear(0, vals);

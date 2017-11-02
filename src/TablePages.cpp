@@ -73,13 +73,13 @@ ListPage &TablePages::getDataPage(int pageID)
     dataPages.reserve(pageID + 1);
     for (int i = dataPages.size(); i <= pageID; i++)
     {
-        ListPage item(ListPage(cache, dataFile, i));
-        short ident = item.getIdent();
+        std::unique_ptr<ListPage> item(new ListPage(cache, dataFile, i));
+        short ident = item->getIdent();
         if (ident != INVALID)
-            item.setCols(identToCols(ident));
+            item->setCols(identToCols(ident));
         dataPages.push_back(std::move(item));
     }
-    return dataPages[pageID];
+    return *dataPages[pageID];
 }
 
 BitmapPage &TablePages::getFreeListPage(int pageID)
@@ -87,8 +87,8 @@ BitmapPage &TablePages::getFreeListPage(int pageID)
     assert(pageID >= 0);
     freeListPages.reserve(pageID + 1);
     while (int(freeListPages.size()) <= pageID)
-        freeListPages.push_back(BitmapPage(cache, freeListFile, freeListPages.size()));
-    return freeListPages[pageID];
+        freeListPages.push_back(std::unique_ptr<BitmapPage>(new BitmapPage(cache, freeListFile, freeListPages.size())));
+    return *freeListPages[pageID];
 }
 
 int TablePages::newDataPage(short ident, int indexID)
@@ -98,6 +98,9 @@ int TablePages::newDataPage(short ident, int indexID)
     ListPage &page = getDataPage(pageID);
     if (ident >= NON_CLUSTER)
         ident = NON_CLUSTER + indexID;
+    page.setSize(0);
+    page.setNext(-1);
+    page.setPrev(-1);
     page.setIdent(ident);
     page.setCols(identToCols(ident));
     return pageID;
