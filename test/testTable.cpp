@@ -13,7 +13,7 @@ class TableTest : public Test
 public:
     MockPageMgr pageMgr;
     PageCache cache;
-    Table table, tablePri;
+    Table table, tablePri, tableNon;
 
     TableTest()
         : cache(pageMgr),
@@ -24,7 +24,11 @@ public:
           tablePri(cache, "tablePri", {
                 std::make_pair("int", (Column){ Type::INT, 0, false, {} }),
                 std::make_pair("char", (Column){ Type::CHAR, 2000, false, {} })
-          }, std::vector<std::string>({"int", "char"}))
+          }, std::vector<std::string>({"int", "char"})),
+          tableNon(cache, "tableNon", {
+                std::make_pair("int", (Column){ Type::INT, 0, false, {} }),
+                std::make_pair("char", (Column){ Type::CHAR, 2000, false, {} })
+          }, None(), {Table::Index({"int"}), Table::Index({"char"})})
         {}
 };
 
@@ -163,5 +167,16 @@ TEST_F(TableTest, primaryRemoveMultiplePages)
             << " expect = " << 16 + i
             << " actual = " << result[5 + i]["int"]->toString();
     ASSERT_THAT(result.size(), Eq(9));
+}
+
+TEST_F(TableTest, nonClusterSelectOnePage)
+{
+    for (int i = 0; i < 20; i++)
+        tableNon.insert(Table::ColL({std::make_pair("int", std::to_string(i)), std::make_pair("char", "")}));
+    auto result = tableNon.select({"int"}, Table::ConsL({std::make_pair("int", std::vector<Table::ConLiteral>({
+        {Table::GE, "3"},
+        {Table::LT, "16"}
+    }))}));
+    ASSERT_THAT(result.size(), Eq(13));
 }
 

@@ -16,7 +16,7 @@ BaseTable::BaseTable
     for (int i = 0; i <= int(nonClus.size()); i++)
         if (!isFree(i))
         {
-            int pageID = newDataPage(!i ? RECORD : NON_CLUSTER); // RECORD is the leaf node of PRIMARY
+            int pageID = newDataPage(!i ? RECORD : NON_CLUSTER + i - 1); // RECORD is the leaf node of PRIMARY
             assert(pageID == i);
         }
 }
@@ -146,9 +146,10 @@ int BaseTable::insertRecur(int pageID, const BaseTable::ColVal &vals, const Base
         return insertAndSplit(pageID, vals, offset + 1);
     }
 
-    assert(size > 0);
-    short childIdent = getDataPage(dynamic_cast<IntType*>(page.getValue(0, "$child").get())->getVal()).getIdent();
-    if (childIdent == REF) // leaf node of non-clustered index
+    if ( // leaf node of non-clustered index
+        size == 0 || // newly created NON_CLUSTER node
+        getDataPage(dynamic_cast<IntType*>(page.getValue(0, "$child").get())->getVal()).getIdent() == REF
+    )
     {
         ColVal newRef;
         if (primary.isOk())
@@ -367,6 +368,11 @@ BaseTable::Pos BaseTable::findFirst(int pageID, const BaseTable::ColVal &vals, c
             ret = Pos(pageID, offset);
             break;
         }
+        if (!size) // newly created NON_CLUSTER node
+        {
+            ret = Pos(pageID, 0);
+            break;
+        }
         int childID = dynamic_cast<IntType*>(page.getValue(offset, "$child").get())->getVal();
         if (getDataPage(childID).getIdent() == REF)
         {
@@ -474,7 +480,7 @@ void BaseTable::selectRefLinear(
     }
 }
 
-void BaseTable::rotateRoot(int rootID, int newChildRID)
+void BaseTable::rotateRoot(int rootID, int newChildRID, const Index &index, short ident)
 {
     ListPage &root = getDataPage(rootID);
     int newChildLID = newDataPage(root.getIdent());
@@ -484,16 +490,16 @@ void BaseTable::rotateRoot(int rootID, int newChildRID)
     for (int i = 0; i < root.getSize(); i++)
         ListPage::copy(&root, i, &newChildL, i);
     destroyDataPage(rootID);
-    int newID = newDataPage(PRIMARY); // change Ident of 0 to PRIMARY
+    int newID = newDataPage(ident); // if this is primary 0, need to change Ident from RECORD to PRIMARY
     assert(newID == rootID);
 
-    ColVal newItemL = newChildL.getValues(0, primary.ok());
+    ColVal newItemL = newChildL.getValues(0, index);
     newItemL["$child"] = Type::newType(Type::INT);
     dynamic_cast<IntType*>(newItemL["$child"].get())->setVal(newChildLID);
     root.setValues(0, newItemL);
     // destroyPage won't destory the page object, so no need to reload `root`
 
-    ColVal newItemR = newChildR.getValues(0, primary.ok());
+    ColVal newItemR = newChildR.getValues(0, index);
     newItemR["$child"] = Type::newType(Type::INT);
     dynamic_cast<IntType*>(newItemR["$child"].get())->setVal(newChildRID);
     root.setValues(1, newItemR);
@@ -557,7 +563,7 @@ void BaseTable::insert(const BaseTable::ColVal &vals)
     {
         int newChildRID = insertRecur(0, vals, primary.ok());
         if (newChildRID != -1) // root should still be page 0
-            rotateRoot(0, newChildRID);
+            rotateRoot(0, newChildRID, primary.ok(), PRIMARY);
     } else
     {
         int pageID = insertLinear(0, vals);
@@ -569,7 +575,7 @@ void BaseTable::insert(const BaseTable::ColVal &vals)
     {
         int newChildRID = insertRecur(i + 1, valWithPos, nonClus[i]);
         if (newChildRID != -1)
-            rotateRoot(i + 1, newChildRID);
+            rotateRoot(i + 1, newChildRID, nonClus[i], getDataPage(i + 1).getIdent());
     }
 }
 

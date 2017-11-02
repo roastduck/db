@@ -42,7 +42,7 @@ TablePages::Cols TablePages::identToCols(short ident)
     case PRIMARY:
         return priCols;
     default:
-        return nonClusCols.at((ident - PRIMARY - 1) / 2);
+        return nonClusCols.at(ident - NON_CLUSTER);
     }
 }
 
@@ -96,7 +96,7 @@ int TablePages::newDataPage(short ident, int indexID)
     assert(ident > 0);
     int pageID = nextFreeDataPage();
     ListPage &page = getDataPage(pageID);
-    if (ident >= NON_CLUSTER)
+    if (ident >= NON_CLUSTER && indexID != -1)
         ident = NON_CLUSTER + indexID;
     page.setSize(0);
     page.setNext(-1);

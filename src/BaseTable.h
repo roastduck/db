@@ -116,7 +116,7 @@ private:
     /** When root node has a new neighbour, we have to add a new root for them, but the root (entrance) ID
      *  must be unique. So we have to rotate after that
      */
-    void rotateRoot(int rootID, int newChildRID);
+    void rotateRoot(int rootID, int newChildRID, const Index &index, short ident);
 
     Bound getBound(const ConsVal &constraints, const Index &index);
 

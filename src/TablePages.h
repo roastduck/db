@@ -70,7 +70,7 @@ protected:
     /** Allocate an unused page and return its Page ID
      *  If `ident` >= NON_CLUSTER, it will be determined by `indexID`
      */
-    int newDataPage(short ident, int indexID = 0);
+    int newDataPage(short ident, int indexID = -1);
 
     /** Mark a page back to unused
      */
