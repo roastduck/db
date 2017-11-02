@@ -1,4 +1,5 @@
 #include <cassert>
+#include <set>
 #include "BaseTable.h"
 #include "type/IntType.h"
 #include "exception/NotUniqueException.h"
@@ -384,16 +385,17 @@ BaseTable::Pos BaseTable::findFirst(int pageID, const BaseTable::ColVal &vals, c
     return ret;
 }
 
-std::vector<BaseTable::ColVal> BaseTable::selectLinear(
+void BaseTable::selectLinear(
+    std::vector<ColVal> &ret,
     const BaseTable::Index &targets, const BaseTable::ConsVal &constraints, const BaseTable::Pos &start,
     const BaseTable::ColVal &stopV, const BaseTable::Index &stopIdx, bool stopEq
 )
 {
-    std::vector<BaseTable::ColVal> ret;
     int pageID = start.first;
     while (true)
     {
         ListPage &page = getDataPage(pageID);
+        assert(page.getIdent() == RECORD);
         int st = pageID == start.first ? start.second : 0;
         int en = page.getSize();
         for (int i = st; i < en; i++)
@@ -409,12 +411,65 @@ std::vector<BaseTable::ColVal> BaseTable::selectLinear(
                 }
             }
             if (stopEq && less(stopV, page.getValues(i, stopIdx), stopIdx))
-                return ret;
+                return;
             if (!stopEq && !less(page.getValues(i, stopIdx), stopV, stopIdx))
-                return ret;
+                return;
         }
         int nextID = page.getNext();
-        if (!~nextID) return ret;
+        if (!~nextID) return;
+        pageID = nextID;
+    }
+}
+
+void BaseTable::selectRefLinear(
+    std::vector<ColVal> &ret,
+    const BaseTable::Index &targets, const BaseTable::ConsVal &constraints, const BaseTable::Pos &start,
+    const BaseTable::ColVal &stopV, const BaseTable::Index &stopIdx, bool stopEq
+)
+{
+    int pageID = start.first;
+    std::set<int> visitedPages;
+    while (true)
+    {
+        ListPage &page = getDataPage(pageID);
+        assert(page.getIdent() >= NON_CLUSTER);
+        int st = pageID == start.first ? start.second : 0;
+        int en = page.getSize();
+        for (int i = st; i < en; i++)
+        {
+            int childID = dynamic_cast<IntType*>(page.getValue(i, "$child").get())->getVal();
+            while (childID != -1)
+            {
+                ListPage &refPage = getDataPage(childID);
+                assert(refPage.getIdent() == REF);
+                for (int j = 0; j < refPage.getSize(); j++)
+                    if (primary.isOk())
+                    {
+                        auto key = refPage.getValues(j, primary.ok());
+                        Pos item = findFirst(0, key, primary.ok(), true);
+                        ret.push_back(getDataPage(item.first).getValues(item.second, targets));
+                    } else
+                    {
+                        int key = dynamic_cast<IntType*>(refPage.getValue(j, "$page").get())->getVal();
+                        if (!visitedPages.count(key))
+                        {
+                            visitedPages.insert(key);
+                            ListPage &recPage = getDataPage(key);
+                            assert(recPage.getIdent() == RECORD);
+                            for (int k = 0; k < recPage.getSize(); k++)
+                                if (meetCons(recPage, k, constraints))
+                                    ret.push_back(recPage.getValues(k, targets));
+                        }
+                    }
+                childID = refPage.getNext();
+            }
+            if (stopEq && less(stopV, page.getValues(i, stopIdx), stopIdx))
+                return;
+            if (!stopEq && !less(page.getValues(i, stopIdx), stopV, stopIdx))
+                return;
+        }
+        int nextID = page.getNext();
+        if (!~nextID) return;
         pageID = nextID;
     }
 }
@@ -447,6 +502,50 @@ void BaseTable::rotateRoot(int rootID, int newChildRID)
     newChildR.setNext(-1), newChildR.setPrev(newChildLID);
 
     root.setSize(2);
+}
+
+BaseTable::Bound BaseTable::getBound(const BaseTable::ConsVal &constraints, const BaseTable::Index &index)
+{
+    ColVal l, r;
+    bool openL = false, openR = false; // open interval
+    for (const std::string &name : index)
+    {
+        bool done = true;
+        if (constraints.count(name))
+            for (const auto &item : constraints.at(name))
+                switch (item.dir)
+                {
+                    // Don't care about redundent or conflictory consitions
+                    // The linear scanning guarentees the correctness
+                case EQ:
+                    l[name] = Type::newFromCopy(item.pivot);
+                    r[name] = Type::newFromCopy(item.pivot);
+                    openL = openR = false;
+                    done = false;
+                    break;
+                case LE:
+                    openR = false;
+                    r[name] = Type::newFromCopy(item.pivot);
+                    break;
+                case LT:
+                    openR = true;
+                    r[name] = Type::newFromCopy(item.pivot);
+                    break;
+                case GE:
+                    openL = false;
+                    l[name] = Type::newFromCopy(item.pivot);
+                    break;
+                case GT:
+                    openL = true;
+                    l[name] = Type::newFromCopy(item.pivot);
+                    break;
+                default:
+                    ; // leave it
+                }
+        if (done)
+            break;
+    }
+    return std::make_pair(std::make_pair(std::move(l), openL), std::make_pair(std::move(r), openR));
 }
 
 void BaseTable::insert(const BaseTable::ColVal &vals)
@@ -493,61 +592,50 @@ void BaseTable::remove(const ConsVal &constraints)
         }
     else
         removeLinear(0, constraints, false);
+    // TODO : remove from non-clustered indexes
 }
 
 std::vector<BaseTable::ColVal> BaseTable::select(const BaseTable::Index &targets, const ConsVal &constraints)
 {
+    std::vector<BaseTable::ColVal> ret;
+
+    int best = -1; // best index ID. -1 for primary (or none, if there is no primary)
+    ColVal l, r;
+    bool openL = false, openR = false;
     if (primary.isOk())
     {
-        ColVal l, r;
-        bool openL = false, openR = false; // open interval
-        for (const std::string &name : primary.ok())
-        {
-            bool done = true;
-            if (constraints.count(name))
-                for (const auto &item : constraints.at(name))
-                    switch (item.dir)
-                    {
-                        // Don't care about redundent or conflictory consitions
-                        // The linear scanning guarentees the correctness
-                    case EQ:
-                        l[name] = Type::newFromCopy(item.pivot);
-                        r[name] = Type::newFromCopy(item.pivot);
-                        openL = openR = false;
-                        done = false;
-                        break;
-                    case LE:
-                        openR = false;
-                        r[name] = Type::newFromCopy(item.pivot);
-                        break;
-                    case LT:
-                        openR = true;
-                        r[name] = Type::newFromCopy(item.pivot);
-                        break;
-                    case GE:
-                        openL = false;
-                        l[name] = Type::newFromCopy(item.pivot);
-                        break;
-                    case GT:
-                        openL = true;
-                        l[name] = Type::newFromCopy(item.pivot);
-                        break;
-                    default:
-                        ; // leave it
-                    }
-            if (done)
-                break;
-        }
+        auto bound = getBound(constraints, primary.ok());
+        l = std::move(bound.first.first), r = std::move(bound.second.first);
+        openL = bound.first.second, openR = bound.second.second;
+    }
+    for (int i = 0; i < int(nonClus.size()); i++)
+    {
+        auto bound = getBound(constraints, nonClus[i]);
+        assert(bound.first.first.size() == bound.second.first.size());
+        if (bound.first.first.size() <= l.size())
+            continue;
+        l = std::move(bound.first.first), r = std::move(bound.second.first);
+        openL = bound.first.second, openR = bound.second.second;
+        best = i;
+    }
+    if (!~best && !primary.isOk())
+        selectLinear(ret, targets, constraints);
+    else
+    {
+        // NOTE: l.size() can still be 0 here
+        const Index &index = best >= 0 ? nonClus[best] : primary.ok();
         Index indexL, indexR;
-        for (const std::string &name : primary.ok())
+        for (const std::string &name : index)
         {
             if (l.count(name)) indexL.push_back(name);
             if (r.count(name)) indexR.push_back(name);
         }
-        Pos start = findFirst(0, l, indexL, !openL); // ( : first >, [ : first >=
-        return selectLinear(targets, constraints, start, r, indexR, !openR);
+        Pos start = findFirst(best + 1, l, indexL, !openL); // ( : first >, [ : first >=
+        if (!~best)
+            selectLinear(ret, targets, constraints, start, r, indexR, !openR);
+        else
+            selectRefLinear(ret, targets, constraints, start, r, indexR, !openR);
     }
-    return selectLinear(targets, constraints);
-    // TODO : non-clustered indexes
+    return ret;
 }
 

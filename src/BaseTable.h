@@ -34,6 +34,7 @@ protected:
     typedef std::unordered_map< std::string, std::vector<ConValue> > ConsVal;
     typedef std::unordered_map< std::string, std::unique_ptr<Type> > ColVal;
     typedef std::pair< int, int > Pos; // (pageId, slotID)
+    typedef std::pair< std::pair<ColVal, bool>, std::pair<ColVal, bool> > Bound;
 
 private:
     Optional<Index> primary; // Primary index
@@ -98,16 +99,26 @@ private:
     /** Select records in O(n) manner
      *  It starts scanning at the `start` position, stops when current value > (or >=) `stopV`,
      *  according to `stopIdx` and `stopEq`
+     *  @param `ret` is output parameter, answer will be APPENDED to this
      */
-    std::vector<ColVal> selectLinear(
+    void selectLinear(
+        std::vector<ColVal> &ret,
         const Index &targets, const ConsVal &constraints, const Pos &start = Pos(0, 0),
         const ColVal &stopV = {}, const Index &stopIdx = {}, bool stopEq = true
+    );
+
+    void selectRefLinear(
+        std::vector<ColVal> &ret,
+        const Index &targets, const ConsVal &constraints, const Pos &start,
+        const ColVal &stopV, const Index &stopIdx, bool stopEq
     );
 
     /** When root node has a new neighbour, we have to add a new root for them, but the root (entrance) ID
      *  must be unique. So we have to rotate after that
      */
     void rotateRoot(int rootID, int newChildRID);
+
+    Bound getBound(const ConsVal &constraints, const Index &index);
 
 protected:
     BaseTable
