@@ -103,3 +103,31 @@ TEST_F(TableTest, primaryOrderInMultiplePages)
     }
 }
 
+TEST_F(TableTest, primarySelect)
+{
+    for (int i = 0; i < 20; i++)
+        tablePri.insert(Table::ColL({std::make_pair("int", std::to_string(i)), std::make_pair("char", "")}));
+    auto result = tablePri.select({"int"}, Table::ConsL({std::make_pair("int", std::vector<Table::ConLiteral>({
+        {Table::GE, "3"},
+        {Table::LT, "16"}
+    }))}));
+    ASSERT_THAT(result.size(), Eq(13));
+}
+
+TEST_F(TableTest, primarySelectCombinational)
+{
+    for (int i = 0; i < 3; i++)
+        for (int j = 0; j < 10; j++)
+            tablePri.insert(Table::ColL({std::make_pair("int", std::to_string(i)), std::make_pair("char", std::to_string(j))}));
+    auto result = tablePri.select({"int"}, Table::ConsL({
+        std::make_pair("int", std::vector<Table::ConLiteral>({
+            {Table::EQ, "1"}
+        })),
+        std::make_pair("char", std::vector<Table::ConLiteral>({
+            {Table::GT, "1"},
+            {Table::LE, "7"}
+        }))
+    }));
+    ASSERT_THAT(result.size(), Eq(6));
+}
+

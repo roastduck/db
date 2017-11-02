@@ -43,12 +43,16 @@ std::unique_ptr<Type> Type::newFromCopy(const std::unique_ptr<Type> &ori)
     {
     case INT:
         dynamic_cast<IntType*>(ret.get())->setVal(dynamic_cast<IntType*>(ori.get())->getVal());
+        break;
     case FLOAT:
         dynamic_cast<FloatType*>(ret.get())->setVal(dynamic_cast<FloatType*>(ori.get())->getVal());
+        break;
     case DATE:
         dynamic_cast<DateType*>(ret.get())->setVal(dynamic_cast<DateType*>(ori.get())->getVal());
+        break;
     case CHAR:
         dynamic_cast<CharType*>(ret.get())->setVal(dynamic_cast<CharType*>(ori.get())->getVal());
+        break;
     default:
         assert(false);
     }
