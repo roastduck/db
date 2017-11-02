@@ -65,17 +65,27 @@ private:
     int insertRecur(int pageID, const ColVal &vals, const Index &index);
 
     /** Insert records into the first empty position found in O(n) manner
+     *  @return : Page ID inserted in. This Page ID will not change
      */
-    void insertLinear(int pageID, const ColVal &vals);
+    int insertLinear(int pageID, const ColVal &vals);
 
     /** Find in `index` the first position to greater (equal) than `vals`
      */
     Pos findFirst(int pageID, const ColVal &vals, const Index &index, bool equal);
 
     /** Select records in O(n) manner
-     *  @param stop can be (-1, -1) or (*, -1)
+     *  It starts scanning at the `start` position, stops when current value > (or >=) `stopV`,
+     *  according to `stopIdx` and `stopEq`
      */
-    std::vector<ColVal> selectLinear(const Index &targets, const ConsVal &constraints, const Pos &start, const Pos &stop);
+    std::vector<ColVal> selectLinear(
+        const Index &targets, const ConsVal &constraints, const Pos &start = Pos(0, 0),
+        const ColVal &stopV = {}, const Index &stopIdx = {}, bool stopEq = true
+    );
+
+    /** When root node has a new neighbour, we have to add a new root for them, but the root (entrance) ID
+     *  must be unique. So we have to rotate after that
+     */
+    void rotateRoot(int rootID, int newChildRID);
 
 protected:
     BaseTable
