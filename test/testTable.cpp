@@ -131,3 +131,37 @@ TEST_F(TableTest, primarySelectCombinational)
     ASSERT_THAT(result.size(), Eq(6));
 }
 
+TEST_F(TableTest, primaryRemoveOnePage)
+{
+    tablePri.insert(Table::ColL({std::make_pair("int", "0"), std::make_pair("char", "")}));
+    tablePri.insert(Table::ColL({std::make_pair("int", "1"), std::make_pair("char", "")}));
+    tablePri.insert(Table::ColL({std::make_pair("int", "2"), std::make_pair("char", "")}));
+    tablePri.remove(Table::ConsL({std::make_pair("int", std::vector<Table::ConLiteral>({
+        {Table::EQ, "1"}
+    }))}));
+    auto result = tablePri.select({"int"}, Table::ConsL({}));
+    ASSERT_THAT(result.size(), Eq(2));
+    ASSERT_TRUE(*result[0]["int"] == *Type::newFromLiteral("0", Type::INT));
+    ASSERT_TRUE(*result[1]["int"] == *Type::newFromLiteral("2", Type::INT));
+}
+
+TEST_F(TableTest, primaryRemoveMultiplePages)
+{
+    for (int i = 0; i < 20; i++)
+        tablePri.insert(Table::ColL({std::make_pair("int", std::to_string(i)), std::make_pair("char", "")}));
+    tablePri.remove(Table::ConsL({std::make_pair("int", std::vector<Table::ConLiteral>({
+        {Table::GE, "5"},
+        {Table::LT, "16"}
+    }))}));
+    auto result = tablePri.select({"int"}, Table::ConsL({}));
+    for (int i = 0; i < 5; i++)
+        ASSERT_TRUE(*result[i]["int"] == *Type::newFromLiteral(std::to_string(i), Type::INT))
+            << " expect = " << i
+            << " actual = " << result[i]["int"]->toString();
+    for (int i = 0; i < 4; i++)
+        ASSERT_TRUE(*result[5 + i]["int"] == *Type::newFromLiteral(std::to_string(16 + i), Type::INT))
+            << " expect = " << 16 + i
+            << " actual = " << result[5 + i]["int"]->toString();
+    ASSERT_THAT(result.size(), Eq(9));
+}
+

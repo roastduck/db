@@ -91,6 +91,13 @@ bool BaseTable::equal(const BaseTable::ColVal &lhs, const BaseTable::ColVal &rhs
     return true;
 }
 
+void BaseTable::updNode(int pageID, int offset, const BaseTable::Index &index)
+{
+    ListPage &page = getDataPage(pageID);
+    int childID = dynamic_cast<IntType*>(page.getValue(offset, "$child").get())->getVal();
+    page.setValues(offset, getDataPage(childID).getValues(0, index));
+}
+
 int BaseTable::insertAndSplit(int pageID, const BaseTable::ColVal &vals, int off)
 {
     int ret = -1, insID = pageID;
@@ -171,7 +178,8 @@ int BaseTable::insertRecur(int pageID, const BaseTable::ColVal &vals, const Base
     // recurse
     if (offset < 0) offset = 0;
     int childID = dynamic_cast<IntType*>(page.getValue(offset, "$child").get())->getVal();
-    page.setValues(0, getDataPage(childID).getValues(0, index));
+    if (!offset)
+        page.setValues(0, getDataPage(childID).getValues(0, index));
     int newChildID = insertRecur(childID, vals, index);
     if (!~newChildID)
         return -1;
@@ -205,6 +213,136 @@ int BaseTable::insertLinear(int pageID, const BaseTable::ColVal &vals)
             if (nextNextID != -1)
                 getDataPage(nextNextID).setPrev(nextID);
         }
+        pageID = nextID;
+    }
+}
+
+Optional<int> BaseTable::removeAndMerge(int pageID, int off)
+{
+    ListPage &page = getDataPage(pageID);
+    page.setSize(page.getSize() - 1);
+    for (int i = off; i < page.getSize(); i++)
+        page.copy(i + 1, i);
+    const int thres = page.getMaxSize() / 2 + bool(page.getMaxSize() % 2);
+    if (page.getSize() >= thres) return None();
+
+    ListPage *prev = !~page.getPrev() ? NULL : &getDataPage(page.getPrev());
+    ListPage *next = !~page.getNext() ? NULL : &getDataPage(page.getNext());
+    if (prev && prev->getSize() > thres)
+    {
+        page.setSize(page.getSize() + 1);
+        prev->setSize(prev->getSize() - 1);
+        for (int i = page.getSize() - 1; i > 0; i--)
+            page.copy(i - 1, i);
+        ListPage::copy(prev, prev->getSize(), &page, 0);
+        return None();
+    }
+    if (next && next->getSize() > thres)
+    {
+        page.setSize(page.getSize() + 1);
+        next->setSize(next->getSize() - 1);
+        ListPage::copy(next, 0, &page, page.getSize() - 1);
+        for (int i = 0; i < next->getSize(); i++)
+            next->copy(i + 1, i);
+        return None();
+    }
+    if (prev)
+    {
+        for (int i = 0, j = prev->getSize(); i < page.getSize(); i++, j++)
+            ListPage::copy(&page, i, prev, j);
+        prev->setSize(prev->getSize() + page.getSize());
+        destroyDataPage(pageID);
+        return 0;
+    }
+    if (next)
+    {
+        for (int i = 0, j = page.getSize(); i < next->getSize(); i++, j++)
+            ListPage::copy(next, i, &page, j);
+        page.setSize(page.getSize() + next->getSize());
+        destroyDataPage(page.getNext());
+        return 1;
+    }
+    // This must be root
+    return None();
+}
+
+Optional<int> BaseTable::removeRecur(int pageID, const BaseTable::ColVal &vals, const BaseTable::Index &index)
+{
+    ListPage &page = getDataPage(pageID);
+    int size = page.getSize();
+    int offset = -1;
+    while (offset + 1 < size && !less(vals, page.getValues(offset + 1, index), index))
+        offset++;
+    // `offset` is the last that <= `vals`
+    if (!~offset) return None();
+
+    if (page.getIdent() == RECORD)
+    {
+        if (equal(page.getValues(offset, index), vals, index))
+            return removeAndMerge(pageID, offset);
+        return None();
+    }
+    int childID = dynamic_cast<IntType*>(page.getValue(offset, "$child").get())->getVal();
+    ListPage &child = getDataPage(childID);
+    if (child.getIdent() == REF)
+    {
+        if (equal(page.getValues(offset, index), vals, index))
+        {
+            std::vector<ConValue> v;
+            v.push_back({(ConValue){EQ, Type::newFromCopy(vals.at("$page"))}});
+            ConsVal c;
+            c["$page"] = std::move(v); // move sementic is not supported in initializer_list
+            if (removeLinear(childID, std::move(c), true))
+                return removeAndMerge(pageID, offset);
+        }
+        return None();
+    }
+
+    // recurse
+    auto needRemove = removeRecur(childID, vals, index);
+    if (needRemove.isOk())
+        return removeAndMerge(pageID, offset + needRemove.ok());
+    updNode(pageID, offset, index); // Rotation will destory original data
+    if (offset + 1 < page.getSize())
+        updNode(pageID, offset + 1, index);
+    return None();
+}
+
+bool BaseTable::removeLinear(int pageID, const ConsVal &constraints, bool onlyOne)
+{
+    const int startID = pageID;
+    bool removedOne = false, empty = false;
+    while (true)
+    {
+        ListPage &page = getDataPage(pageID);
+        int oldSize = page.getSize(), size = oldSize;
+        for (int i = 0, j = 0; i < oldSize; i++)
+            if (meetCons(page, i, constraints) && (!removedOne || !onlyOne))
+                size--, removedOne = true;
+            else
+                page.copy(i, j++);
+        page.setSize(size);
+        int nextID = page.getNext();
+        if (!size)
+        {
+            if (pageID == startID)
+            {
+                if (!~nextID)
+                    empty = true;
+                else
+                {
+                    ListPage &next = getDataPage(nextID);
+                    page.setSize(next.getSize());
+                    page.setNext(next.getNext());
+                    page.setPrev(-1);
+                    for (int i = 0; i < page.getSize(); i++)
+                        ListPage::copy(&next, i, &page, i);
+                    std::swap(pageID, nextID);
+                }
+            }
+            destroyDataPage(pageID);
+        }
+        if (!~nextID) return empty;
         pageID = nextID;
     }
 }
@@ -261,7 +399,15 @@ std::vector<BaseTable::ColVal> BaseTable::selectLinear(
         for (int i = st; i < en; i++)
         {
             if (meetCons(page, i, constraints))
+            {
                 ret.push_back(page.getValues(i, targets));
+                if (!primary.isOk()) // Useful for non-clustered indexes
+                {
+                    auto aux = Type::newType(Type::INT);
+                    dynamic_cast<IntType*>(aux.get())->setVal(pageID);
+                    ret.back()["$page"] = std::move(aux);
+                }
+            }
             if (stopEq && less(stopV, page.getValues(i, stopIdx), stopIdx))
                 return ret;
             if (!stopEq && !less(page.getValues(i, stopIdx), stopV, stopIdx))
@@ -330,24 +476,23 @@ void BaseTable::insert(const BaseTable::ColVal &vals)
 
 void BaseTable::remove(const ConsVal &constraints)
 {
-    // FUTURE: If we keep the removed record in place marked deleted, we can optimize table without primary index
-    int pageID = 0;
-    while (true)
-    {
-        ListPage &page = getDataPage(pageID);
-        int oldSize = page.getSize(), size = oldSize;
-        for (int i = 0, j = 0; i < oldSize; i++)
-            if (meetCons(page, i, constraints))
-                size--;
-            else
-                page.copy(i, j++);
-        page.setSize(size);
-        if (!size && pageID) // TODO: not only 0 is entrance in the future
-            destroyDataPage(pageID);
-        int nextID = page.getNext();
-        if (!~nextID) return;
-        pageID = nextID;
-    }
+    ListPage &root = getDataPage(0);
+    if (primary.isOk())
+        for (const auto &record : select(primary.ok(), constraints))
+        {
+            removeRecur(0, record, primary.ok());
+            if (root.getIdent() == PRIMARY && root.getSize() == 1)
+            {
+                int childID = dynamic_cast<IntType*>(root.getValue(0, "$child").get())->getVal();
+                ListPage &child = getDataPage(childID);
+                root.setSize(child.getSize());
+                for (int i = 0; i < root.getSize(); i++)
+                    ListPage::copy(&child, i, &root, i);
+                destroyDataPage(childID);
+            }
+        }
+    else
+        removeLinear(0, constraints, false);
 }
 
 std::vector<BaseTable::ColVal> BaseTable::select(const BaseTable::Index &targets, const ConsVal &constraints)

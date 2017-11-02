@@ -53,6 +53,10 @@ private:
      */
     static bool equal(const ColVal &lhs, const ColVal &rhs, const Index &order);
 
+    /** Update node from its children
+     */
+    void updNode(int pageID, int offset, const Index &index);
+
     /** Insert a record into a tree node at offset `off`
      *  @return : If not -1, it means a new child ID should be inserted into the upper layer
      */
@@ -68,6 +72,24 @@ private:
      *  @return : Page ID inserted in. This Page ID will not change
      */
     int insertLinear(int pageID, const ColVal &vals);
+
+    /**
+     *  @return : If returns x, parent[parentOffset + x] should be remvoed, too
+     */
+    Optional<int> removeAndMerge(int pageID, int off);
+
+    /** Recursively delete a record from an index tree
+     *  NOTE: If there are more than one record in a non-clustered index match the constraint,
+     *        only one will be deleted
+     *  @return : Same as `removeAndMerge`
+     */
+    Optional<int> removeRecur(int pageID, const ColVal &vals, const Index &index);
+
+    /** Remove record(s) in a O(n) manner
+     *  @param onlyOne : return after removing any record
+     *  @return true if there is no records left
+     */
+    bool removeLinear(int pageID, const ConsVal &constraints, bool onlyOne);
 
     /** Find in `index` the first position to greater (equal) than `vals`
      */
