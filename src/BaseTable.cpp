@@ -202,25 +202,40 @@ void BaseTable::insertLinear(int pageID, const BaseTable::ColVal &vals)
 
 BaseTable::Pos BaseTable::findFirst(int pageID, const BaseTable::ColVal &vals, const BaseTable::Index &index, bool equal)
 {
+    Pos ret;
     while (true)
     {
         ListPage *page = &getDataPage(pageID);
         int size = page->getSize();
         int offset = 0;
         if (equal)
-            while (offset < size && !less(vals, page->getValues(offset, index), index))
+            while (offset + 1 < size && less(page->getValues(offset + 1, index), vals, index))
                 offset++;
         else
-            while (offset < size && less(page->getValues(offset, index), vals, index))
+            while (offset + 1 < size && !less(vals, page->getValues(offset + 1, index), index))
                 offset++;
         if (page->getIdent() == RECORD)
-            return Pos(pageID, offset);
+        {
+            ret = Pos(pageID, offset);
+            break;
+        }
         int childID = dynamic_cast<IntType*>(page->getValue(offset, "$child").get())->getVal();
         page = NULL;
         if (getDataPage(childID).getIdent() == REF)
-            return Pos(pageID, offset);
+        {
+            ret = Pos(pageID, offset);
+            break;
+        }
         pageID = childID;
     }
+    if (equal)
+    {
+        if (less(getDataPage(ret.first).getValues(ret.second, index), vals, index))
+            ret.second++;
+    } else
+        if (!less(vals, getDataPage(ret.first).getValues(ret.second, index), index))
+            ret.second++;
+    return ret;
 }
 
 std::vector<BaseTable::ColVal> BaseTable::selectLinear(
@@ -250,26 +265,28 @@ void BaseTable::insert(const BaseTable::ColVal &vals)
     if (primary.isOk())
     {
         int newChildRID = insertRecur(0, vals, primary.ok());
+        if (newChildRID != -1) // root should still be page 0
+        {
+            int newChildLID = newDataPage(getDataPage(0).getIdent());
+            ListPage *newChildL = &getDataPage(newChildLID); // this should before `newRoot`
+            ListPage *newRoot = &getDataPage(0);
+            for (int i = 0; i < newRoot->getSize(); i++)
+                ListPage::copy(newRoot, i, newChildL, i);
+            newRoot = newChildL = NULL;
+            destroyDataPage(0), newDataPage(PRIMARY); // change Ident of 0 to PRIMARY
 
-        // root should still be page 0
-        int newChildLID = newDataPage(PRIMARY);
-        ListPage *newChildL = &getDataPage(newChildLID); // this should before `newRoot`
-        ListPage *newRoot = &getDataPage(0);
-        for (int i = 0; i < newRoot->getSize(); i++)
-            ListPage::copy(newRoot, i, newChildL, i);
-        newRoot = newChildL = NULL;
+            ColVal newItemL = getDataPage(newChildLID).getValues(0, primary.ok());
+            newItemL["$child"] = Type::newType(Type::INT);
+            dynamic_cast<IntType*>(newItemL["$child"].get())->setVal(newChildLID);
+            getDataPage(0).setValues(0, newItemL);
 
-        ColVal newItemL = getDataPage(newChildLID).getValues(0, primary.ok());
-        newItemL["$child"] = Type::newType(Type::INT);
-        dynamic_cast<IntType*>(newItemL["$child"].get())->setVal(newChildLID);
-        getDataPage(0).setValues(0, newItemL);
+            ColVal newItemR = getDataPage(newChildRID).getValues(0, primary.ok());
+            newItemR["$child"] = Type::newType(Type::INT);
+            dynamic_cast<IntType*>(newItemR["$child"].get())->setVal(newChildRID);
+            getDataPage(0).setValues(1, newItemR);
 
-        ColVal newItemR = getDataPage(newChildRID).getValues(0, primary.ok());
-        newItemR["$child"] = Type::newType(Type::INT);
-        dynamic_cast<IntType*>(newItemR["$child"].get())->setVal(newChildRID);
-        getDataPage(0).setValues(1, newItemR);
-
-        getDataPage(0).setSize(2);
+            getDataPage(0).setSize(2);
+        }
     } else
         insertLinear(0, vals);
     // TODO : insert into non-clustered indexes
@@ -289,7 +306,7 @@ void BaseTable::remove(const ConsVal &constraints)
             else
                 page.copy(i, j++);
         page.setSize(size);
-        if (!size)
+        if (!size && pageID) // TODO: not only 0 is entrance in the future
             destroyDataPage(pageID);
         int nextID = page.getNext();
         if (!~nextID) return;
@@ -303,34 +320,41 @@ std::vector<BaseTable::ColVal> BaseTable::select(const BaseTable::Index &targets
     if (primary.isOk())
     {
         ColVal l, r;
-        bool eqL, eqR;
+        bool openL = false, openR = false; // open interval
         for (const std::string &name : primary.ok())
         {
             bool done = true;
-            for (const auto &item : constraints.at(name))
-                switch (item.dir)
-                {
-                    // Don't care about redundent or conflictory consitions
-                    // The linear scanning guarentees the correctness
-                case EQ:
-                    l[name] = Type::newFromCopy(item.pivot);
-                    r[name] = Type::newFromCopy(item.pivot);
-                    eqL = eqR = true;
-                    done = false;
-                    break;
-                case LE:
-                    eqR = true; // no break
-                case LT:
-                    r[name] = Type::newFromCopy(item.pivot);
-                    break;
-                case GE:
-                    eqL = true; // no break;
-                case GT:
-                    l[name] = Type::newFromCopy(item.pivot);
-                    break;
-                default:
-                    ; // leave it
-                }
+            if (constraints.count(name))
+                for (const auto &item : constraints.at(name))
+                    switch (item.dir)
+                    {
+                        // Don't care about redundent or conflictory consitions
+                        // The linear scanning guarentees the correctness
+                    case EQ:
+                        l[name] = Type::newFromCopy(item.pivot);
+                        r[name] = Type::newFromCopy(item.pivot);
+                        openL = openR = false;
+                        done = false;
+                        break;
+                    case LE:
+                        openR = false;
+                        r[name] = Type::newFromCopy(item.pivot);
+                        break;
+                    case LT:
+                        openR = true;
+                        r[name] = Type::newFromCopy(item.pivot);
+                        break;
+                    case GE:
+                        openL = false;
+                        l[name] = Type::newFromCopy(item.pivot);
+                        break;
+                    case GT:
+                        openL = true;
+                        l[name] = Type::newFromCopy(item.pivot);
+                        break;
+                    default:
+                        ; // leave it
+                    }
             if (done)
                 break;
         }
@@ -340,8 +364,8 @@ std::vector<BaseTable::ColVal> BaseTable::select(const BaseTable::Index &targets
             if (l.count(name)) indexL.push_back(name);
             if (r.count(name)) indexR.push_back(name);
         }
-        start = findFirst(0, l, indexL, eqL);
-        stop = findFirst(0, r, indexR, eqR);
+        start = findFirst(0, l, indexL, !openL); // ( : first >, [ : first >=
+        stop = findFirst(0, r, indexR, openR); // ) : fist >= -1, ] : first > -1
     }
     return selectLinear(targets, constraints, start, stop);
     // TODO : non-clustered indexes

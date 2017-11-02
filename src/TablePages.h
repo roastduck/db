@@ -72,7 +72,7 @@ protected:
      */
     int newDataPage(short ident, int indexID = 0);
 
-    /** Mark a page back to unused. This will not affect page 0 because it's the entrance
+    /** Mark a page back to unused
      */
     void destroyDataPage(int pageID);
 };

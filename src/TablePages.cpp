@@ -106,8 +106,6 @@ int TablePages::newDataPage(short ident, int indexID)
 void TablePages::destroyDataPage(int pageID)
 {
     ListPage &page = getDataPage(pageID);
-    if (!pageID) // Page 0 is the entrance, which can't be deleted
-        return;
     int nextID = page.getNext();
     int prevID = page.getPrev();
     if (nextID != -1)
