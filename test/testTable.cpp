@@ -13,7 +13,7 @@ class TableTest : public Test
 public:
     MockPageMgr pageMgr;
     PageCache cache;
-    Table table, tablePri, tableNon, tableBoth;
+    Table table, tablePri, tableNon, tableBoth, tableBothWithLargePri;
 
     TableTest()
         : cache(pageMgr),
@@ -31,7 +31,12 @@ public:
           }, None(), {Table::Index({"int"}), Table::Index({"char"})}),
           tableBoth(cache, "tableBoth", {
                 std::make_pair("int1", (Column){ Type::INT, 0, false, {} }),
-                std::make_pair("int2", (Column){ Type::INT, 0, false, {} })
+                std::make_pair("int2", (Column){ Type::INT, 0, false, {} }),
+          }, Table::Index({"int1"}), {Table::Index({"int2"})}),
+          tableBothWithLargePri(cache, "tableBothWithLargePri", {
+                std::make_pair("int1", (Column){ Type::CHAR, 2000, false, {} }),
+                std::make_pair("int2", (Column){ Type::INT, 0, false, {} }),
+                std::make_pair("payload", (Column){ Type::INT, 0, false, {} })
           }, Table::Index({"int1"}), {Table::Index({"int2"})})
         {}
 };
@@ -246,5 +251,78 @@ TEST_F(TableTest, bothIndexSelect)
             << " expect = " << 30 - j
             << " actual = " << result[i]["int1"]->toString();
     }
+}
+
+TEST_F(TableTest, bothIndexRemove)
+{
+    tableBoth.insert(Table::ColL({std::make_pair("int1", "-1"), std::make_pair("int2", "0")}));
+    tableBoth.insert(Table::ColL({std::make_pair("int1", "0"), std::make_pair("int2", "1")}));
+    tableBoth.insert(Table::ColL({std::make_pair("int1", "1"), std::make_pair("int2", "1")}));
+    tableBoth.insert(Table::ColL({std::make_pair("int1", "2"), std::make_pair("int2", "1")}));
+    tableBoth.insert(Table::ColL({std::make_pair("int1", "3"), std::make_pair("int2", "1")}));
+    tableBoth.insert(Table::ColL({std::make_pair("int1", "4"), std::make_pair("int2", "1")}));
+    tableBoth.insert(Table::ColL({std::make_pair("int1", "5"), std::make_pair("int2", "1")}));
+    tableBoth.insert(Table::ColL({std::make_pair("int1", "6"), std::make_pair("int2", "1")}));
+
+    tableBoth.remove(Table::ConsL({std::make_pair("int2", std::vector<Table::ConLiteral>({
+            {Table::EQ, "1"},
+        })),
+        std::make_pair("int1", std::vector<Table::ConLiteral>({
+            {Table::LE, "5"},
+        }))
+    }));
+
+    auto result = tableBoth.select({"int1"}, Table::ConsL({}));
+    ASSERT_THAT(result.size(), Eq(2));
+
+    result = tableBoth.select({"int1"}, Table::ConsL({std::make_pair("int2", std::vector<Table::ConLiteral>({
+        {Table::EQ, "1"},
+    }))}));
+    ASSERT_THAT(result.size(), Eq(1));
+    ASSERT_TRUE(*result[0]["int1"] == *Type::newFromLiteral("6", Type::INT));
+}
+
+TEST_F(TableTest, bothIndexManyInRefPage)
+{
+    for (int i = 0; i < 70; i++)
+        tableBothWithLargePri.insert(Table::ColL({
+            std::make_pair("int1", std::to_string(i)),
+            std::make_pair("int2", "0"),
+            std::make_pair("payload", std::to_string(i)),
+        }));
+    tableBothWithLargePri.remove(Table::ConsL({std::make_pair("int2", std::vector<Table::ConLiteral>({
+            {Table::EQ, "0"},
+        })),
+        std::make_pair("payload", std::vector<Table::ConLiteral>({
+            {Table::GE, "10"},
+            {Table::LT, "55"}
+        }))
+    }));
+    auto result = tableBothWithLargePri.select({"int1"}, Table::ConsL({std::make_pair("int2", std::vector<Table::ConLiteral>({
+        {Table::EQ, "0"},
+    }))}));
+    ASSERT_THAT(result.size(), Eq(25));
+}
+
+TEST_F(TableTest, bothIndexManyInRefPageRemovingHead)
+{
+    for (int i = 0; i < 70; i++)
+        tableBothWithLargePri.insert(Table::ColL({
+            std::make_pair("int1", std::to_string(i)),
+            std::make_pair("int2", "0"),
+            std::make_pair("payload", std::to_string(i)),
+        }));
+    tableBothWithLargePri.remove(Table::ConsL({std::make_pair("int2", std::vector<Table::ConLiteral>({
+            {Table::EQ, "0"},
+        })),
+        std::make_pair("payload", std::vector<Table::ConLiteral>({
+            {Table::GE, "0"}, // 0 is the head
+            {Table::LT, "55"}
+        }))
+    }));
+    auto result = tableBothWithLargePri.select({"int1"}, Table::ConsL({std::make_pair("int2", std::vector<Table::ConLiteral>({
+        {Table::EQ, "0"},
+    }))}));
+    ASSERT_THAT(result.size(), Eq(15));
 }
 

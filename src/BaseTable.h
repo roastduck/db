@@ -73,7 +73,7 @@ private:
     /** Insert records into the first empty position found in O(n) manner
      *  @return : Page ID inserted in. This Page ID will not change
      */
-    int insertLinear(int pageID, const ColVal &vals);
+    int insertLinear(int pageID, const ColVal &vals, short ident);
 
     /**
      *  @return : If returns x, parent[parentOffset + x] should be remvoed, too
@@ -94,6 +94,7 @@ private:
     bool removeLinear(int pageID, const ConsVal &constraints, bool onlyOne);
 
     /** Find in `index` the first position to greater (equal) than `vals`
+     *  @return might be (-1, 0)
      */
     Pos findFirst(int pageID, const ColVal &vals, const Index &index, bool equal);
 

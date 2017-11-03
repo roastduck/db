@@ -165,13 +165,13 @@ int BaseTable::insertRecur(int pageID, const BaseTable::ColVal &vals, const Base
         {
             // insert into the ref page
             int childID = dynamic_cast<IntType*>(page.getValue(offset, "$child").get())->getVal();
-            insertLinear(childID, newRef);
+            insertLinear(childID, newRef, REF);
             return -1;
         } else
         {
             // generate a new ref page and insert as a child
             int childID = newDataPage(REF);
-            insertLinear(childID, newRef);
+            insertLinear(childID, newRef, REF);
             ColVal newItem;
             for (const std::string &name : index)
                 newItem[name] = Type::newFromCopy(vals.at(name));
@@ -195,7 +195,7 @@ int BaseTable::insertRecur(int pageID, const BaseTable::ColVal &vals, const Base
     return insertAndSplit(pageID, newItem, offset + 1);
 }
 
-int BaseTable::insertLinear(int pageID, const BaseTable::ColVal &vals)
+int BaseTable::insertLinear(int pageID, const BaseTable::ColVal &vals, short ident)
 {
     while (true)
     {
@@ -211,7 +211,7 @@ int BaseTable::insertLinear(int pageID, const BaseTable::ColVal &vals)
         int nextID = page.getNext();
         if (nextID == -1)
         {
-            ListPage &next = getDataPage(nextID = newDataPage(RECORD));
+            ListPage &next = getDataPage(nextID = newDataPage(ident));
             int nextNextID = page.getNext();
             page.setNext(nextID);
             next.setPrev(pageID);
@@ -284,26 +284,23 @@ Optional<int> BaseTable::removeRecur(int pageID, const BaseTable::ColVal &vals, 
 
     if (page.getIdent() == RECORD)
     {
-        if (equal(page.getValues(offset, index), vals, index))
-            return removeAndMerge(pageID, offset);
-        return None();
+        assert(equal(page.getValues(offset, index), vals, index)); // becase we are removing selected items
+        return removeAndMerge(pageID, offset);
     }
     int childID = dynamic_cast<IntType*>(page.getValue(offset, "$child").get())->getVal();
     ListPage &child = getDataPage(childID);
     if (child.getIdent() == REF)
     {
-        if (equal(page.getValues(offset, index), vals, index))
+        assert(equal(page.getValues(offset, index), vals, index)); // becase we are removing selected items
+        ConsVal c;
+        for (const std::string &name : primary.isOk() ? primary.ok() : Index({"$page"}))
         {
-            ConsVal c;
-            for (const std::string &name : primary.isOk() ? primary.ok() : Index({"$page"}))
-            {
-                std::vector<ConValue> v;
-                v.push_back({(ConValue){EQ, Type::newFromCopy(vals.at(name))}});
-                c[name] = std::move(v); // move sementic is not supported in initializer_list
-            }
-            if (removeLinear(childID, std::move(c), true))
-                return removeAndMerge(pageID, offset);
+            std::vector<ConValue> v;
+            v.push_back({(ConValue){EQ, Type::newFromCopy(vals.at(name))}});
+            c[name] = std::move(v); // move sementic is not supported in initializer_list
         }
+        if (removeLinear(childID, std::move(c), true))
+            return removeAndMerge(pageID, offset);
         return None();
     }
 
@@ -395,6 +392,10 @@ BaseTable::Pos BaseTable::findFirst(int pageID, const BaseTable::ColVal &vals, c
     } else
         if (!less(vals, getDataPage(ret.first).getValues(ret.second, index), index))
             ret.second++;
+    ListPage &recPage = getDataPage(ret.first);
+    assert(ret.second <= recPage.getSize());
+    if (ret.second == recPage.getSize())
+        ret = Pos(recPage.getNext(), 0);
     return ret;
 }
 
@@ -421,8 +422,8 @@ void BaseTable::selectLinear(
     const BaseTable::ColVal &stopV, const BaseTable::Index &stopIdx, bool stopEq
 )
 {
-    int pageID = start.first;
-    while (true)
+    int pageID = start.first; // NOTE: page ID might be -1 return by findFirst
+    while (pageID != -1)
     {
         ListPage &page = getDataPage(pageID);
         assert(page.getIdent() == RECORD);
@@ -436,9 +437,7 @@ void BaseTable::selectLinear(
             if (!stopEq && !less(page.getValues(i, stopIdx), stopV, stopIdx))
                 return;
         }
-        int nextID = page.getNext();
-        if (!~nextID) return;
-        pageID = nextID;
+        pageID = page.getNext();
     }
 }
 
@@ -448,9 +447,9 @@ void BaseTable::selectRefLinear(
     const BaseTable::ColVal &stopV, const BaseTable::Index &stopIdx, bool stopEq
 )
 {
-    int pageID = start.first;
+    int pageID = start.first; // NOTE: page ID might be -1 return by findFirst
     std::set<int> visitedPages;
-    while (true)
+    while (pageID != -1)
     {
         ListPage &page = getDataPage(pageID);
         assert(page.getIdent() >= NON_CLUSTER);
@@ -468,6 +467,7 @@ void BaseTable::selectRefLinear(
                     {
                         auto key = refPage.getValues(j, primary.ok());
                         Pos item = findFirst(0, key, primary.ok(), true);
+                        assert(item.first >= 0); // This item must exist
                         ListPage &recPage = getDataPage(item.first);
                         if (meetCons(recPage, item.second, constraints))
                             ret.push_back(recPage.getValues(item.second, targets));
@@ -490,9 +490,7 @@ void BaseTable::selectRefLinear(
             if (!stopEq && !less(page.getValues(i, stopIdx), stopV, stopIdx))
                 return;
         }
-        int nextID = page.getNext();
-        if (!~nextID) return;
-        pageID = nextID;
+        pageID = page.getNext();
     }
 }
 
@@ -593,7 +591,7 @@ void BaseTable::insert(const BaseTable::ColVal &vals)
             rotateRoot(0, newChildRID, primary.ok(), PRIMARY);
     } else
     {
-        int pageID = insertLinear(0, vals);
+        int pageID = insertLinear(0, vals, RECORD);
         auto pageIDCol = Type::newType(Type::INT);
         dynamic_cast<IntType*>(pageIDCol.get())->setVal(pageID);
         valWithPos["$page"] = std::move(pageIDCol);
