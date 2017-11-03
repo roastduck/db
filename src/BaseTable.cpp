@@ -453,7 +453,9 @@ void BaseTable::selectRefLinear(
                     {
                         auto key = refPage.getValues(j, primary.ok());
                         Pos item = findFirst(0, key, primary.ok(), true);
-                        ret.push_back(getDataPage(item.first).getValues(item.second, targets));
+                        ListPage &recPage = getDataPage(item.first);
+                        if (meetCons(recPage, item.second, constraints))
+                            ret.push_back(recPage.getValues(item.second, targets));
                     } else
                     {
                         int key = dynamic_cast<IntType*>(refPage.getValue(j, "$page").get())->getVal();

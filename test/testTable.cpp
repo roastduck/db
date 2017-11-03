@@ -13,7 +13,7 @@ class TableTest : public Test
 public:
     MockPageMgr pageMgr;
     PageCache cache;
-    Table table, tablePri, tableNon;
+    Table table, tablePri, tableNon, tableBoth;
 
     TableTest()
         : cache(pageMgr),
@@ -24,11 +24,15 @@ public:
           tablePri(cache, "tablePri", {
                 std::make_pair("int", (Column){ Type::INT, 0, false, {} }),
                 std::make_pair("char", (Column){ Type::CHAR, 2000, false, {} })
-          }, std::vector<std::string>({"int", "char"})),
+          }, Table::Index({"int", "char"})),
           tableNon(cache, "tableNon", {
                 std::make_pair("int", (Column){ Type::INT, 0, false, {} }),
                 std::make_pair("char", (Column){ Type::CHAR, 2000, false, {} })
-          }, None(), {Table::Index({"int"}), Table::Index({"char"})})
+          }, None(), {Table::Index({"int"}), Table::Index({"char"})}),
+          tableBoth(cache, "tableBoth", {
+                std::make_pair("int1", (Column){ Type::INT, 0, false, {} }),
+                std::make_pair("int2", (Column){ Type::INT, 0, false, {} })
+          }, Table::Index({"int1"}), {Table::Index({"int2"})})
         {}
 };
 
@@ -178,5 +182,40 @@ TEST_F(TableTest, nonClusterSelectOnePage)
         {Table::LT, "16"}
     }))}));
     ASSERT_THAT(result.size(), Eq(13));
+}
+
+TEST_F(TableTest, nonClusterSelectMultipleIdxPages)
+{
+    for (int i = 10; i < 30; i++) // NOTE: "3" > "10"
+        tableNon.insert(Table::ColL({std::make_pair("int", "0"), std::make_pair("char", std::to_string(i))}));
+    auto result = tableNon.select({"char"}, Table::ConsL({std::make_pair("char", std::vector<Table::ConLiteral>({
+        {Table::GE, "13"},
+        {Table::LT, "26"}
+    }))}));
+    ASSERT_THAT(result.size(), Eq(13));
+}
+
+TEST_F(TableTest, bothIndexSelect)
+{
+    for (int i = 0; i < 30; i++)
+        tableBoth.insert(Table::ColL({
+            std::make_pair("int1", std::to_string(30 - i)), std::make_pair("int2", std::to_string(i))
+        }));
+    auto result = tableBoth.select({"int1", "int2"}, Table::ConsL({std::make_pair("int2", std::vector<Table::ConLiteral>({
+        {Table::GE, "7"},
+        {Table::LT, "24"}
+    }))}));
+    ASSERT_THAT(result.size(), Eq(17));
+    for (int i = 0, j = 7; i < 17; i++, j++)
+    {
+        ASSERT_TRUE(*result[i]["int2"] == *Type::newFromLiteral(std::to_string(j), Type::INT))
+            << " int2: "
+            << " expect = " << j
+            << " actual = " << result[i]["int2"]->toString();
+        ASSERT_TRUE(*result[i]["int1"] == *Type::newFromLiteral(std::to_string(30 - j), Type::INT))
+            << " int1: "
+            << " expect = " << 30 - j
+            << " actual = " << result[i]["int1"]->toString();
+    }
 }
 
