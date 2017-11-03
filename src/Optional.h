@@ -2,6 +2,7 @@
 #define OPTIONAL_H_
 
 #include <cassert>
+#include <utility>
 
 class None {};
 
@@ -16,7 +17,7 @@ public:
     Optional() : valid(false) {}
     Optional(None) : valid(false) {}
     Optional(const T &_content) : valid(true), content(_content) {}
-    Optional(T &&_content) : valid(true), content(_content) {}
+    Optional(T &&_content) : valid(true), content(std::forward<T>(_content)) {}
 
     bool isOk() const { return valid; }
     T &ok() { assert(valid); return content; }

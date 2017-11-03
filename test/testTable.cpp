@@ -195,6 +195,35 @@ TEST_F(TableTest, nonClusterSelectMultipleIdxPages)
     ASSERT_THAT(result.size(), Eq(13));
 }
 
+TEST_F(TableTest, nonClusterRemove)
+{
+    tableNon.insert(Table::ColL({std::make_pair("int", "0"), std::make_pair("char", "0")}));
+    tableNon.insert(Table::ColL({std::make_pair("int", "1"), std::make_pair("char", "0")}));
+    tableNon.insert(Table::ColL({std::make_pair("int", "1"), std::make_pair("char", "1")}));
+    tableNon.insert(Table::ColL({std::make_pair("int", "1"), std::make_pair("char", "2")}));
+    tableNon.insert(Table::ColL({std::make_pair("int", "1"), std::make_pair("char", "3")}));
+    tableNon.insert(Table::ColL({std::make_pair("int", "1"), std::make_pair("char", "4")}));
+    tableNon.insert(Table::ColL({std::make_pair("int", "1"), std::make_pair("char", "5")}));
+    tableNon.insert(Table::ColL({std::make_pair("int", "1"), std::make_pair("char", "6")}));
+
+    tableNon.remove(Table::ConsL({std::make_pair("int", std::vector<Table::ConLiteral>({
+            {Table::EQ, "1"},
+        })),
+        std::make_pair("char", std::vector<Table::ConLiteral>({
+            {Table::LE, "5"},
+        }))
+    }));
+
+    auto result = tableNon.select({"char"}, Table::ConsL({}));
+    ASSERT_THAT(result.size(), Eq(2));
+
+    result = tableNon.select({"char"}, Table::ConsL({std::make_pair("int", std::vector<Table::ConLiteral>({
+        {Table::EQ, "1"},
+    }))}));
+    ASSERT_THAT(result.size(), Eq(1));
+    ASSERT_TRUE(*result[0]["char"] == *Type::newFromLiteral("6", Type::CHAR, 2000));
+}
+
 TEST_F(TableTest, bothIndexSelect)
 {
     for (int i = 0; i < 30; i++)

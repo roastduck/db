@@ -37,6 +37,7 @@ protected:
     typedef std::pair< std::pair<ColVal, bool>, std::pair<ColVal, bool> > Bound;
 
 private:
+    Index allColumns;
     Optional<Index> primary; // Primary index
     std::vector<Index> nonClus; // Non-cluster indexes
 
@@ -96,6 +97,8 @@ private:
      */
     Pos findFirst(int pageID, const ColVal &vals, const Index &index, bool equal);
 
+    void addToSelection(std::vector<ColVal> &ret, int pageID, int off, const Index &targets, const ConsVal &constraints);
+
     /** Select records in O(n) manner
      *  It starts scanning at the `start` position, stops when current value > (or >=) `stopV`,
      *  according to `stopIdx` and `stopEq`
@@ -117,6 +120,11 @@ private:
      *  must be unique. So we have to rotate after that
      */
     void rotateRoot(int rootID, int newChildRID, const Index &index, short ident);
+
+    /** Same as above, when removing a root, we are actually moving its content to its only child and remove
+     *  the child
+     */
+    void removeRoot(int rootID);
 
     Bound getBound(const ConsVal &constraints, const Index &index);
 

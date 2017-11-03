@@ -12,6 +12,10 @@ BaseTable::BaseTable
     : TablePages(_cache, _tableName, _cols, _primary, _nonClus),
       primary(_primary), nonClus(_nonClus)
 {
+    allColumns.reserve(_cols.size());
+    for (const auto &pair : _cols)
+        allColumns.push_back(pair.first);
+
     // reserve 0 for primary entrance, 1 ~ nonClus.size() for non-clustered index entrance
     for (int i = 0; i <= int(nonClus.size()); i++)
         if (!isFree(i))
@@ -290,10 +294,13 @@ Optional<int> BaseTable::removeRecur(int pageID, const BaseTable::ColVal &vals, 
     {
         if (equal(page.getValues(offset, index), vals, index))
         {
-            std::vector<ConValue> v;
-            v.push_back({(ConValue){EQ, Type::newFromCopy(vals.at("$page"))}});
             ConsVal c;
-            c["$page"] = std::move(v); // move sementic is not supported in initializer_list
+            for (const std::string &name : primary.isOk() ? primary.ok() : Index({"$page"}))
+            {
+                std::vector<ConValue> v;
+                v.push_back({(ConValue){EQ, Type::newFromCopy(vals.at(name))}});
+                c[name] = std::move(v); // move sementic is not supported in initializer_list
+            }
             if (removeLinear(childID, std::move(c), true))
                 return removeAndMerge(pageID, offset);
         }
@@ -391,6 +398,23 @@ BaseTable::Pos BaseTable::findFirst(int pageID, const BaseTable::ColVal &vals, c
     return ret;
 }
 
+void BaseTable::addToSelection(
+    std::vector<BaseTable::ColVal> &ret, int pageID, int off, const Index &targets, const BaseTable::ConsVal &constraints
+)
+{
+    ListPage &page = getDataPage(pageID);
+    if (meetCons(page, off, constraints))
+    {
+        ret.push_back(page.getValues(off, targets));
+        if (!primary.isOk()) // Useful for non-clustered indexes removal
+        {
+            auto aux = Type::newType(Type::INT);
+            dynamic_cast<IntType*>(aux.get())->setVal(pageID);
+            ret.back()["$page"] = std::move(aux);
+        }
+    }
+}
+
 void BaseTable::selectLinear(
     std::vector<ColVal> &ret,
     const BaseTable::Index &targets, const BaseTable::ConsVal &constraints, const BaseTable::Pos &start,
@@ -406,16 +430,7 @@ void BaseTable::selectLinear(
         int en = page.getSize();
         for (int i = st; i < en; i++)
         {
-            if (meetCons(page, i, constraints))
-            {
-                ret.push_back(page.getValues(i, targets));
-                if (!primary.isOk()) // Useful for non-clustered indexes
-                {
-                    auto aux = Type::newType(Type::INT);
-                    dynamic_cast<IntType*>(aux.get())->setVal(pageID);
-                    ret.back()["$page"] = std::move(aux);
-                }
-            }
+            addToSelection(ret, pageID, i, targets, constraints);
             if (stopEq && less(stopV, page.getValues(i, stopIdx), stopIdx))
                 return;
             if (!stopEq && !less(page.getValues(i, stopIdx), stopV, stopIdx))
@@ -465,8 +480,7 @@ void BaseTable::selectRefLinear(
                             ListPage &recPage = getDataPage(key);
                             assert(recPage.getIdent() == RECORD);
                             for (int k = 0; k < recPage.getSize(); k++)
-                                if (meetCons(recPage, k, constraints))
-                                    ret.push_back(recPage.getValues(k, targets));
+                                addToSelection(ret, key, k, targets, constraints);
                         }
                     }
                 childID = refPage.getNext();
@@ -510,6 +524,17 @@ void BaseTable::rotateRoot(int rootID, int newChildRID, const Index &index, shor
     newChildR.setNext(-1), newChildR.setPrev(newChildLID);
 
     root.setSize(2);
+}
+
+void BaseTable::removeRoot(int rootID)
+{
+    ListPage &root = getDataPage(rootID);
+    int childID = dynamic_cast<IntType*>(root.getValue(0, "$child").get())->getVal();
+    ListPage &child = getDataPage(childID);
+    root.setSize(child.getSize());
+    for (int i = 0; i < root.getSize(); i++)
+        ListPage::copy(&child, i, &root, i);
+    destroyDataPage(childID);
 }
 
 BaseTable::Bound BaseTable::getBound(const BaseTable::ConsVal &constraints, const BaseTable::Index &index)
@@ -583,24 +608,35 @@ void BaseTable::insert(const BaseTable::ColVal &vals)
 
 void BaseTable::remove(const ConsVal &constraints)
 {
-    ListPage &root = getDataPage(0);
+    Optional< std::vector<ColVal> > toDel;
+    if (primary.isOk() || !nonClus.empty())
+        toDel = select(allColumns, constraints);
     if (primary.isOk())
-        for (const auto &record : select(primary.ok(), constraints))
+    {
+        ListPage &root = getDataPage(0);
+        for (const auto &record : toDel.ok())
         {
             removeRecur(0, record, primary.ok());
             if (root.getIdent() == PRIMARY && root.getSize() == 1)
-            {
-                int childID = dynamic_cast<IntType*>(root.getValue(0, "$child").get())->getVal();
-                ListPage &child = getDataPage(childID);
-                root.setSize(child.getSize());
-                for (int i = 0; i < root.getSize(); i++)
-                    ListPage::copy(&child, i, &root, i);
-                destroyDataPage(childID);
-            }
+                removeRoot(0);
         }
+    }
     else
         removeLinear(0, constraints, false);
-    // TODO : remove from non-clustered indexes
+
+    for (int i = 0; i < int(nonClus.size()); i++)
+    {
+        ListPage &root = getDataPage(i + 1);
+        for (const auto &record : toDel.ok())
+        {
+            removeRecur(i + 1, record, nonClus[i]);
+            if (
+                root.getSize() == 1 &&
+                getDataPage(dynamic_cast<IntType*>(root.getValue(0, "$child").get())->getVal()).getIdent() != REF
+            )
+                removeRoot(i + 1);
+        }
+    }
 }
 
 std::vector<BaseTable::ColVal> BaseTable::select(const BaseTable::Index &targets, const ConsVal &constraints)
@@ -619,8 +655,7 @@ std::vector<BaseTable::ColVal> BaseTable::select(const BaseTable::Index &targets
     for (int i = 0; i < int(nonClus.size()); i++)
     {
         auto bound = getBound(constraints, nonClus[i]);
-        assert(bound.first.first.size() == bound.second.first.size());
-        if (bound.first.first.size() <= l.size())
+        if (std::min(bound.first.first.size(), bound.second.first.size()) <= std::min(l.size(), r.size()))
             continue;
         l = std::move(bound.first.first), r = std::move(bound.second.first);
         openL = bound.first.second, openR = bound.second.second;
