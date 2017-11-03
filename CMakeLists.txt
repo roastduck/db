@@ -2,8 +2,15 @@ cmake_minimum_required(VERSION 2.8.12)
 
 project(DB)
 
+OPTION(ENABLE_GCOV "Enable gcov (debug, Linux builds only)" OFF)
+
 set(CMAKE_CXX_FLAGS_DEBUG "-Wall -Wextra -ggdb")
 set(CMAKE_CXX_FLAGS_RELEASE "$-Wall -DNDEBUG -O3")
+
+IF (ENABLE_GCOV AND NOT WIN32 AND NOT APPLE)
+	SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fprofile-arcs -ftest-coverage")
+	SET(CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG} -fprofile-arcs -ftest-coverage -lgcov")
+ENDIF()
 
 if(NOT CMAKE_BUILD_TYPE)
     SET(CMAKE_BUILD_TYPE Release)
