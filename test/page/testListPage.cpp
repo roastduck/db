@@ -3,7 +3,6 @@
 #include "page/ListPage.h"
 #include "type/CharType.h"
 #include "exception/NotNullException.h"
-#include "exception/NotInDomainException.h"
 
 #include "../filesystem/MockPageMgr.h"
 
@@ -22,10 +21,10 @@ public:
     ListPageTest()
         : cache(pageMgr),
           page(cache, "filename", 0, {
-                std::make_pair("int", (Column){ Type::INT, 0, false, {} }), // fixed 4
-                std::make_pair("varchar1", (Column){ Type::CHAR, 10, false, {} }),
-                std::make_pair("xxORyy", (Column){ Type::CHAR, 2, true, { "xx", "yy" } }), // fixed 2, not null
-                std::make_pair("varchar2", (Column){ Type::CHAR, 10, false, {} }) // now we are treating VARCHAR as CHAR
+                std::make_pair("int", (Column){ Type::INT, 0, false }), // fixed 4
+                std::make_pair("varchar1", (Column){ Type::CHAR, 10, false }),
+                std::make_pair("xxORyy", (Column){ Type::CHAR, 2, true }), // fixed 2, not null
+                std::make_pair("varchar2", (Column){ Type::CHAR, 10, false }) // now we are treating VARCHAR as CHAR
           })
         {}
 };
@@ -61,11 +60,6 @@ TEST_F(ListPageTest, move)
 TEST_F(ListPageTest, notNullException)
 {
     ASSERT_THROW(page.setValue(0, "xxORyy", nullptr), NotNullException);
-}
-
-TEST_F(ListPageTest, notInDomainException)
-{
-    ASSERT_THROW(page.setValue(0, "xxORyy", Type::newFromBytes({'z', 'z'}, Type::CHAR, 2)), NotInDomainException);
 }
 
 TEST_F(ListPageTest, setAndGetMetadata)

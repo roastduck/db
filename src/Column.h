@@ -13,7 +13,6 @@ struct Column
     Type::TypeID typeID;
     int length; // Currently only for CHAR
     bool notNull;
-    std::vector<std::string> allowedDomain; /// Only literals in `allowedDomain` is legal
 };
 
 #endif // COLUMN_H_

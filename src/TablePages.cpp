@@ -14,9 +14,9 @@ TablePages::TablePages(
             refCols[name] = recCols.at(name);
             priCols[name] = recCols.at(name);
         }
-        priCols["$child"] = (Column){Type::INT, 0, true, {}};
+        priCols["$child"] = (Column){Type::INT, 0, true};
     } else
-        refCols["$page"] = (Column){Type::INT, 0, true, {}};
+        refCols["$page"] = (Column){Type::INT, 0, true};
 
     nonClusCols.reserve(_nonClus.size());
     for (const auto &item : _nonClus)
@@ -24,7 +24,7 @@ TablePages::TablePages(
         Cols node;
         for (const std::string &name : item)
             node[name] = recCols.at(name);
-        node["$child"] = (Column){Type::INT, 0, true, {}};
+        node["$child"] = (Column){Type::INT, 0, true};
         nonClusCols.push_back(std::move(node));
     }
 }

@@ -1,7 +1,6 @@
 #include <cassert>
 #include "ListPage.h"
 #include "../exception/NotNullException.h"
-#include "../exception/NotInDomainException.h"
 
 void ListPage::setCols(const std::unordered_map<std::string, Column> &_cols)
 {
@@ -58,11 +57,6 @@ void ListPage::setValue(int rank, const std::string &name, const std::unique_ptr
         assert(value->getTypeID() == off.col.typeID);
         if (!off.col.notNull)
             setNull(rank, off.nullOffset, false);
-        bool inDomain = off.col.allowedDomain.empty();
-        for (auto i = off.col.allowedDomain.begin(); !inDomain && i != off.col.allowedDomain.end(); i++)
-            inDomain = (*Type::newFromLiteral(*i, value->getTypeID(), value->getLength()) == *value);
-        if (!inDomain)
-            throw NotInDomainException(value, name);
         auto bytes = value->toBytes();
         std::copy(bytes.begin(), bytes.end(), accessMut(rank) + nullBytes + off.posOffset);
     }

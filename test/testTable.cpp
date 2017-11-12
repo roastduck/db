@@ -18,25 +18,25 @@ public:
     TableTest()
         : cache(pageMgr),
           table(cache, "table", {
-                std::make_pair("int", (Column){ Type::INT, 0, false, {} }),
-                std::make_pair("char", (Column){ Type::CHAR, 500, false, {} })
+                std::make_pair("int", (Column){ Type::INT, 0, false }),
+                std::make_pair("char", (Column){ Type::CHAR, 500, false })
           }),
           tablePri(cache, "tablePri", {
-                std::make_pair("int", (Column){ Type::INT, 0, false, {} }),
-                std::make_pair("char", (Column){ Type::CHAR, 2000, false, {} })
+                std::make_pair("int", (Column){ Type::INT, 0, false }),
+                std::make_pair("char", (Column){ Type::CHAR, 2000, false })
           }, Table::Index({"int", "char"})),
           tableNon(cache, "tableNon", {
-                std::make_pair("int", (Column){ Type::INT, 0, false, {} }),
-                std::make_pair("char", (Column){ Type::CHAR, 2000, false, {} })
+                std::make_pair("int", (Column){ Type::INT, 0, false }),
+                std::make_pair("char", (Column){ Type::CHAR, 2000, false })
           }, None(), {Table::Index({"int"}), Table::Index({"char"})}),
           tableBoth(cache, "tableBoth", {
-                std::make_pair("int1", (Column){ Type::INT, 0, false, {} }),
-                std::make_pair("int2", (Column){ Type::INT, 0, false, {} }),
+                std::make_pair("int1", (Column){ Type::INT, 0, false }),
+                std::make_pair("int2", (Column){ Type::INT, 0, false }),
           }, Table::Index({"int1"}), {Table::Index({"int2"})}),
           tableBothWithLargePri(cache, "tableBothWithLargePri", {
-                std::make_pair("int1", (Column){ Type::CHAR, 2000, false, {} }),
-                std::make_pair("int2", (Column){ Type::INT, 0, false, {} }),
-                std::make_pair("payload", (Column){ Type::INT, 0, false, {} })
+                std::make_pair("int1", (Column){ Type::CHAR, 2000, false }),
+                std::make_pair("int2", (Column){ Type::INT, 0, false }),
+                std::make_pair("payload", (Column){ Type::INT, 0, false })
           }, Table::Index({"int1"}), {Table::Index({"int2"})})
         {}
 };

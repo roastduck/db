@@ -101,7 +101,6 @@ public:
      *  @param name : Column name
      *  @param value : Column value to be set. null_ptr for null.
      *  @throw NotNullException
-     *  @throw NotInDomainException
      */
     void setValue(int rank, const std::string &name, const std::unique_ptr<Type> &value);
 
