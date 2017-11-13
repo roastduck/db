@@ -20,6 +20,10 @@ public:
     {}
 };
 
+/************************************/
+/* DB Managements                   */
+/************************************/
+
 TEST_F(TableMgrTest, manageDbs)
 {
     mgr.createDb("db1");
@@ -43,6 +47,10 @@ TEST_F(TableMgrTest, useNonExistingDb)
     ASSERT_THROW(mgr.use("db"), NoSuchThingException);
 }
 
+/************************************/
+/* Table Managements                */
+/************************************/
+
 TEST_F(TableMgrTest, manageTables)
 {
     mgr.createDb("db");
@@ -60,5 +68,28 @@ TEST_F(TableMgrTest, manageTables)
 TEST_F(TableMgrTest, noDbInUse)
 {
     ASSERT_THROW(mgr.createTable("table1", {}), NoDBInUseException);
+}
+
+/************************************/
+/* Queries                          */
+/************************************/
+
+TEST_F(TableMgrTest, foreignKeyViolationDuringInsertion)
+{
+    mgr.createDb("db");
+    mgr.use("db");
+    mgr.createTable(
+        "master",
+        { std::make_pair("int", (Column){ Type::INT, 0, true }) },
+        { Table::Index({"int"})
+    });
+    mgr.createTable(
+        "slave",
+        { std::make_pair("int", (Column){ Type::INT, 0, true }) },
+        None(),
+        {},
+        { (TableMgr::ForeignKey){ "master", Table::Index({"int"}), Table::Index({"int"}) } }
+    );
+    ASSERT_THROW(mgr.insert("slave", { Table::ColL({std::make_pair("int", "1")}) }), ForeignKeyViolatedException);
 }
 

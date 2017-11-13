@@ -6,10 +6,12 @@
 #include <unordered_map>
 #include "Table.h"
 #include "Optional.h"
+#include "exception/NotNullException.h"
 #include "exception/NoDBInUseException.h"
 #include "exception/NoSuchThingException.h"
 #include "exception/IDAlreadyUsedException.h"
 #include "exception/RefereeNotPrimaryException.h"
+#include "exception/ForeignKeyViolatedException.h"
 
 class TableMgr
 {
@@ -20,11 +22,13 @@ private:
     PageCache &cache;
     Table sysDbs, sysTables, sysCols, sysPriIdxes, sysNonClusIdxes, sysForeigns;
 
-    Optional<std::string> curDb;
+    Optional<std::string> curDb; /// Current DB in "use"
+    std::unordered_map< std::string, std::unique_ptr<Table> > tables; /// All tables in `curDb`
 
     bool nameExists(Table &table, const std::vector<std::string> &col, const std::vector<std::string> &name);
 
     static std::string commaJoin(const std::vector<std::string> &strs);
+    static std::vector<std::string> commaSep(const std::string &str);
 
 public:
     TableMgr(PageCache &_cache);
@@ -84,6 +88,15 @@ public:
      *  @throw : NoDBInUseException
      */
     std::vector<Table::ColVal> showTables();
+
+    /************************************/
+    /* Queries                          */
+    /************************************/
+
+    /** INSERT INTO <tbName> VALUES <valueLists>
+     *  @throw NotNullException
+     */
+    void insert(const std::string &tbName, std::vector<Table::ColL> valueLists);
 };
 
 #endif // TABLE_MGR_H_
