@@ -16,6 +16,7 @@ public:
 
     typedef std::unordered_map< std::string, std::vector<ConLiteral> > ConsL;
     typedef std::unordered_map< std::string, std::string > ColL;
+    using BaseTable::ColVal;
 
 private:
     /** Convert constraint represented by literals to by values
