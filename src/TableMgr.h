@@ -6,8 +6,10 @@
 #include <unordered_map>
 #include "Table.h"
 #include "Optional.h"
+#include "exception/NoDBInUseException.h"
 #include "exception/NoSuchThingException.h"
 #include "exception/IDAlreadyUsedException.h"
+#include "exception/RefereeNotPrimaryException.h"
 
 class TableMgr
 {
@@ -16,20 +18,28 @@ private:
     const int MAX_COLUMN_NUM = 32;
 
     PageCache &cache;
-    Table sysDbs, sysTables, sysCols, sysPriIdxes, sysNonClusIdxes;
+    Table sysDbs, sysTables, sysCols, sysPriIdxes, sysNonClusIdxes, sysForeigns;
 
-    Optional<std::string> db; /// Current selected db
+    Optional<std::string> curDb;
 
-    bool nameExists(Table &table, const std::string &col, const std::string &name);
+    bool nameExists(Table &table, const std::vector<std::string> &col, const std::vector<std::string> &name);
+
+    static std::string commaJoin(const std::vector<std::string> &strs);
 
 public:
     TableMgr(PageCache &_cache);
+
+    struct ForeignKey
+    {
+        std::string referee;
+        Table::Index referrerCols, refereeCols;
+    };
 
     /************************************/
     /* DB Managements                   */
     /************************************/
 
-    /** Create database
+    /** Create a database
      *  @throw : IDAlreadyUsedException
      */
     void createDb(const std::string &name);
@@ -47,6 +57,33 @@ public:
     /** Show all databases
      */
     std::vector<Table::ColVal> showDbs();
+
+    /************************************/
+    /* Table Managements                */
+    /************************************/
+
+    /** Create a table
+     *  @throw : NoDBInUseException
+     *  @throw : IDAlreadyUsedException
+     *  @throw : RefereeNotPrimaryException
+     */
+    void createTable(
+        const std::string &name,
+        const Table::Cols &cols,
+        const Optional<Table::Index> &primary = None(),
+        const std::vector<Table::Index> &nonClus = {},
+        const std::vector<ForeignKey> foreigns = {}
+    );
+
+    /** Drop a table
+     *  @throw : NoDBInUseException
+     */
+    void dropTable(const std::string &name);
+
+    /** Show all tables in a database
+     *  @throw : NoDBInUseException
+     */
+    std::vector<Table::ColVal> showTables();
 };
 
 #endif // TABLE_MGR_H_

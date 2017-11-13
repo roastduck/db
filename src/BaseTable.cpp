@@ -385,14 +385,17 @@ BaseTable::Pos BaseTable::findFirst(int pageID, const BaseTable::ColVal &vals, c
         }
         pageID = childID;
     }
-    if (equal)
-    {
-        if (less(getDataPage(ret.first).getValues(ret.second, index), vals, index))
-            ret.second++;
-    } else
-        if (!less(vals, getDataPage(ret.first).getValues(ret.second, index), index))
-            ret.second++;
     ListPage &recPage = getDataPage(ret.first);
+    if (ret.second < recPage.getSize())
+    {
+        if (equal)
+        {
+            if (less(getDataPage(ret.first).getValues(ret.second, index), vals, index))
+                ret.second++;
+        } else
+            if (!less(vals, getDataPage(ret.first).getValues(ret.second, index), index))
+                ret.second++;
+    }
     assert(ret.second <= recPage.getSize());
     if (ret.second == recPage.getSize())
         ret = Pos(recPage.getNext(), 0);

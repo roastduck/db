@@ -139,6 +139,9 @@ protected:
     void insert(const ColVal &vals);
     void remove(const ConsVal &constraints);
     std::vector<ColVal> select(const Index &targets, const ConsVal &constraints);
+
+public:
+    const Optional<Index> &getPrimary() const { return primary; }
 };
 
 #endif // BASE_TABLE_H_
