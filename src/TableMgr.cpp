@@ -254,13 +254,11 @@ void TableMgr::insert(const std::string &tbName, std::vector<Table::ColL> valueL
             std::vector<std::string> keys;
             const std::string &referrerCols = dynamic_cast<CharType*>(foreign.at("referrerCols").get())->getVal();
             for (const auto &col : commaSep(referrerCols))
-                try
-                {
-                    keys.push_back(valueList.at(col));
-                } catch (const std::out_of_range &e)
-                {
+            {
+                if (!valueList.count(col) || !valueList.at(col).isOk())
                     throw NotNullException(col);
-                }
+                keys.push_back(valueList.at(col).ok());
+            }
             const std::string &referee = dynamic_cast<CharType*>(foreign.at("referee").get())->getVal();
             const Table::Index &refereeCols = tables.at(referee)->getPrimary().ok();
             if (!nameExists(*tables.at(referee), refereeCols, keys))

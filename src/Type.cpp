@@ -38,6 +38,8 @@ std::unique_ptr<Type> Type::newFromBytes(const std::vector<unsigned char> &bytes
 
 std::unique_ptr<Type> Type::newFromCopy(const std::unique_ptr<Type> &ori)
 {
+    if (ori == nullptr)
+        return nullptr;
     std::unique_ptr<Type> ret = newType(ori->getTypeID(), ori->getLength());
     switch (ori->getTypeID())
     {

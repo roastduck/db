@@ -25,7 +25,7 @@ BaseTable::BaseTable
         }
 }
 
-bool BaseTable::meetCons(ListPage &page, int rank, const BaseTable::ConsVal &cons)
+bool BaseTable::meetCons(ListPage &page, int rank, const BaseTable::ConsVal &cons) const
 {
     for (const auto &pair : cons)
     {
@@ -35,6 +35,14 @@ bool BaseTable::meetCons(ListPage &page, int rank, const BaseTable::ConsVal &con
             std::unique_ptr<Type> lhs = page.getValue(rank, name);
             switch (rhs.dir)
             {
+            case IS_NULL:
+                assert(rhs.pivot == nullptr);
+                if (lhs != nullptr) return false;
+                break;
+            case IS_NOT_NULL:
+                assert(rhs.pivot == nullptr);
+                if (lhs == nullptr) return false;
+                break;
             case EQ:
                 if (lhs == nullptr || !(*lhs == *rhs.pivot)) return false;
                 break;
@@ -551,6 +559,16 @@ BaseTable::Bound BaseTable::getBound(const BaseTable::ConsVal &constraints, cons
                 {
                     // Don't care about redundent or conflictory consitions
                     // The linear scanning guarentees the correctness
+                case IS_NULL:
+                    l[name] = nullptr;
+                    r[name] = nullptr;
+                    openL = openR = false;
+                    done = false;
+                    break;
+                case IS_NOT_NULL:
+                    l[name] = nullptr;
+                    openL = true;
+                    break;
                 case EQ:
                     l[name] = Type::newFromCopy(item.pivot);
                     r[name] = Type::newFromCopy(item.pivot);
@@ -558,20 +576,24 @@ BaseTable::Bound BaseTable::getBound(const BaseTable::ConsVal &constraints, cons
                     done = false;
                     break;
                 case LE:
-                    openR = false;
                     r[name] = Type::newFromCopy(item.pivot);
+                    openR = false;
+                    if (!l.count(name))
+                        l[name] = nullptr, openL = true;
                     break;
                 case LT:
-                    openR = true;
                     r[name] = Type::newFromCopy(item.pivot);
+                    openR = true;
+                    if (!l.count(name))
+                        l[name] = nullptr, openL = true;
                     break;
                 case GE:
-                    openL = false;
                     l[name] = Type::newFromCopy(item.pivot);
+                    openL = false;
                     break;
                 case GT:
-                    openL = true;
                     l[name] = Type::newFromCopy(item.pivot);
+                    openL = true;
                     break;
                 default:
                     ; // leave it

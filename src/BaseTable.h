@@ -15,7 +15,8 @@ class BaseTable : public TablePages
 public:
     enum ConDir // Constraint Direction
     {
-        // TODO: NULL, NOT_NULL, or treat null as a normal value
+        IS_NULL,
+        IS_NOT_NULL,
         EQ, // ==
         NE, // !=
         LT, // <
@@ -34,7 +35,7 @@ protected:
     typedef std::unordered_map< std::string, std::vector<ConValue> > ConsVal;
     typedef std::unordered_map< std::string, std::unique_ptr<Type> > ColVal;
     typedef std::pair< int, int > Pos; // (pageId, slotID)
-    typedef std::pair< std::pair<ColVal, bool>, std::pair<ColVal, bool> > Bound;
+    typedef std::pair< std::pair<ColVal, bool /* open interval */>, std::pair<ColVal, bool> > Bound;
 
 private:
     Index allColumns;
@@ -43,14 +44,16 @@ private:
 
     /** Check if a record meets ALL the constraints in `cons`, i.e. items in cons are ANDed together
      */
-    bool meetCons(ListPage &page, int rank, const ConsVal &cons);
+    bool meetCons(ListPage &page, int rank, const ConsVal &cons) const;
 
     /** Compare two batches of columns in lexicological order specified in `order`
+     *  This function treats null as negative infinity
      *  @return true for `lhs` < `rhs`
      */
     static bool less(const ColVal &lhs, const ColVal &rhs, const Index &order);
 
     /** Compare two batches of columns in lexicological order specified in `order`
+     *  This function treats null as negative infinity
      *  @return true for `lhs` == `rhs`
      */
     static bool equal(const ColVal &lhs, const ColVal &rhs, const Index &order);

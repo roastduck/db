@@ -10,7 +10,8 @@ Table::ConsVal Table::genConstraints(const Table::ConsL &literals)
         {
             ConValue value;
             value.dir = literal.dir;
-            value.pivot = Type::newFromLiteral(literal.pivot, recCols.at(name).typeID, recCols.at(name).length);
+            if (literal.dir != IS_NULL && literal.dir != IS_NOT_NULL)
+                value.pivot = Type::newFromLiteral(literal.pivot, recCols.at(name).typeID, recCols.at(name).length);
             ret[name].push_back(std::move(value));
         }
     }
@@ -21,7 +22,12 @@ Table::ColVal Table::genVals(const Table::ColL &literals)
 {
     ColVal ret;
     for (const auto &pair : literals)
-        ret[pair.first] = Type::newFromLiteral(pair.second, recCols.at(pair.first).typeID, recCols.at(pair.first).length);
+        if (pair.second.isOk())
+            ret[pair.first] = Type::newFromLiteral(
+                pair.second.ok(), recCols.at(pair.first).typeID, recCols.at(pair.first).length
+            );
+        else
+            ret[pair.first] = nullptr;
     return ret;
 }
 

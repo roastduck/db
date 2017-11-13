@@ -43,7 +43,10 @@ public:
 
 TEST_F(TableTest, saveAndLoad)
 {
-    table.insert(Table::ColL({std::make_pair("int", "123"), std::make_pair("char", "123")}));
+    table.insert({
+        std::make_pair("int", Optional<std::string>("123")),
+        std::make_pair("char", Optional<std::string>("123"))
+    });
     auto result = table.select({"int", "char"}, Table::ConsL({}));
     ASSERT_THAT(result.size(), Eq(1));
     ASSERT_TRUE(*result[0]["int"] == *Type::newFromLiteral("123", Type::INT));
@@ -52,8 +55,8 @@ TEST_F(TableTest, saveAndLoad)
 
 TEST_F(TableTest, remove)
 {
-    table.insert(Table::ColL({std::make_pair("int", "123")}));
-    table.insert(Table::ColL({std::make_pair("int", "456")}));
+    table.insert({std::make_pair("int", Optional<std::string>("123"))});
+    table.insert({std::make_pair("int", Optional<std::string>("456"))});
     table.remove(Table::ConsL({std::make_pair("int", std::vector<Table::ConLiteral>({{Table::EQ, "123"}}))}));
     auto result = table.select({"int"}, Table::ConsL({}));
     ASSERT_THAT(result.size(), Eq(1));
@@ -63,7 +66,7 @@ TEST_F(TableTest, remove)
 TEST_F(TableTest, largerThan1Page)
 {
     for (int i = 0; i < 100; i++)
-        table.insert(Table::ColL({std::make_pair("int", std::to_string(i))}));
+        table.insert({std::make_pair("int", Optional<std::string>(std::to_string(i)))});
     table.remove(Table::ConsL({std::make_pair("int", std::vector<Table::ConLiteral>({
         {Table::GE, "10"},
         {Table::LT, "60"}
@@ -77,7 +80,10 @@ TEST_F(TableTest, largerThan1Page)
 
 TEST_F(TableTest, primarySimpleSaveLoad)
 {
-    tablePri.insert(Table::ColL({std::make_pair("int", "123"), std::make_pair("char", "123")}));
+    tablePri.insert({
+        std::make_pair("int", Optional<std::string>("123")),
+        std::make_pair("char", Optional<std::string>("123"))
+    });
     auto result = tablePri.select({"int", "char"}, Table::ConsL({}));
     ASSERT_THAT(result.size(), Eq(1));
     ASSERT_TRUE(*result[0]["int"] == *Type::newFromLiteral("123", Type::INT));
@@ -86,9 +92,18 @@ TEST_F(TableTest, primarySimpleSaveLoad)
 
 TEST_F(TableTest, primaryOrderInOnePage)
 {
-    tablePri.insert(Table::ColL({std::make_pair("int", "1"), std::make_pair("char", "1")}));
-    tablePri.insert(Table::ColL({std::make_pair("int", "0"), std::make_pair("char", "0")}));
-    tablePri.insert(Table::ColL({std::make_pair("int", "1"), std::make_pair("char", "0")}));
+    tablePri.insert({
+        std::make_pair("int", Optional<std::string>("1")),
+        std::make_pair("char", Optional<std::string>("1"))
+    });
+    tablePri.insert({
+        std::make_pair("int", Optional<std::string>("0")),
+        std::make_pair("char", Optional<std::string>("0"))
+    });
+    tablePri.insert({
+        std::make_pair("int", Optional<std::string>("1")),
+        std::make_pair("char", Optional<std::string>("0"))
+    });
     auto result = tablePri.select({"int", "char"}, Table::ConsL({}));
     ASSERT_THAT(result.size(), Eq(3));
     ASSERT_TRUE(*result[0]["int"] == *Type::newFromLiteral("0", Type::INT));
@@ -102,7 +117,10 @@ TEST_F(TableTest, primaryOrderInOnePage)
 TEST_F(TableTest, primaryOrderInMultiplePages)
 {
     for (const std::string &item : {"3", "1", "5", "4", "0", "9", "8", "7", "10", "14", "17", "20", "2", "6"})
-        tablePri.insert(Table::ColL({std::make_pair("int", item), std::make_pair("char", "")}));
+        tablePri.insert({
+            std::make_pair("int", Optional<std::string>(item)),
+            std::make_pair("char", Optional<std::string>(""))
+        });
     auto result = tablePri.select({"int", "char"}, Table::ConsL({}));
     ASSERT_THAT(result.size(), Eq(14));
     int rank = 0;
@@ -119,7 +137,10 @@ TEST_F(TableTest, primaryOrderInMultiplePages)
 TEST_F(TableTest, primarySelect)
 {
     for (int i = 0; i < 20; i++)
-        tablePri.insert(Table::ColL({std::make_pair("int", std::to_string(i)), std::make_pair("char", "")}));
+        tablePri.insert({
+            std::make_pair("int", Optional<std::string>(std::to_string(i))),
+            std::make_pair("char", Optional<std::string>(""))
+        });
     auto result = tablePri.select({"int"}, Table::ConsL({std::make_pair("int", std::vector<Table::ConLiteral>({
         {Table::GE, "3"},
         {Table::LT, "16"}
@@ -131,7 +152,10 @@ TEST_F(TableTest, primarySelectCombinational)
 {
     for (int i = 0; i < 3; i++)
         for (int j = 0; j < 10; j++)
-            tablePri.insert(Table::ColL({std::make_pair("int", std::to_string(i)), std::make_pair("char", std::to_string(j))}));
+            tablePri.insert({
+                std::make_pair("int", Optional<std::string>(std::to_string(i))),
+                std::make_pair("char", Optional<std::string>(std::to_string(j)))
+            });
     auto result = tablePri.select({"int"}, Table::ConsL({
         std::make_pair("int", std::vector<Table::ConLiteral>({
             {Table::EQ, "1"}
@@ -146,9 +170,18 @@ TEST_F(TableTest, primarySelectCombinational)
 
 TEST_F(TableTest, primaryRemoveOnePage)
 {
-    tablePri.insert(Table::ColL({std::make_pair("int", "0"), std::make_pair("char", "")}));
-    tablePri.insert(Table::ColL({std::make_pair("int", "1"), std::make_pair("char", "")}));
-    tablePri.insert(Table::ColL({std::make_pair("int", "2"), std::make_pair("char", "")}));
+    tablePri.insert({
+        std::make_pair("int", Optional<std::string>("0")),
+        std::make_pair("char", Optional<std::string>(""))
+    });
+    tablePri.insert({
+        std::make_pair("int", Optional<std::string>("1")),
+        std::make_pair("char", Optional<std::string>(""))
+    });
+    tablePri.insert({
+        std::make_pair("int", Optional<std::string>("2")),
+        std::make_pair("char", Optional<std::string>(""))
+    });
     tablePri.remove(Table::ConsL({std::make_pair("int", std::vector<Table::ConLiteral>({
         {Table::EQ, "1"}
     }))}));
@@ -161,7 +194,10 @@ TEST_F(TableTest, primaryRemoveOnePage)
 TEST_F(TableTest, primaryRemoveMultiplePages)
 {
     for (int i = 0; i < 20; i++)
-        tablePri.insert(Table::ColL({std::make_pair("int", std::to_string(i)), std::make_pair("char", "")}));
+        tablePri.insert({
+            std::make_pair("int", Optional<std::string>(std::to_string(i))),
+            std::make_pair("char", Optional<std::string>(""))
+        });
     tablePri.remove(Table::ConsL({std::make_pair("int", std::vector<Table::ConLiteral>({
         {Table::GE, "5"},
         {Table::LT, "16"}
@@ -181,7 +217,10 @@ TEST_F(TableTest, primaryRemoveMultiplePages)
 TEST_F(TableTest, nonClusterSelectOnePage)
 {
     for (int i = 0; i < 20; i++)
-        tableNon.insert(Table::ColL({std::make_pair("int", std::to_string(i)), std::make_pair("char", "")}));
+        tableNon.insert({
+            std::make_pair("int", Optional<std::string>(std::to_string(i))),
+            std::make_pair("char", Optional<std::string>(""))
+        });
     auto result = tableNon.select({"int"}, Table::ConsL({std::make_pair("int", std::vector<Table::ConLiteral>({
         {Table::GE, "3"},
         {Table::LT, "16"}
@@ -192,7 +231,10 @@ TEST_F(TableTest, nonClusterSelectOnePage)
 TEST_F(TableTest, nonClusterSelectMultipleIdxPages)
 {
     for (int i = 10; i < 30; i++) // NOTE: "3" > "10"
-        tableNon.insert(Table::ColL({std::make_pair("int", "0"), std::make_pair("char", std::to_string(i))}));
+        tableNon.insert({
+            std::make_pair("int", Optional<std::string>("0")),
+            std::make_pair("char", Optional<std::string>(std::to_string(i)))
+        });
     auto result = tableNon.select({"char"}, Table::ConsL({std::make_pair("char", std::vector<Table::ConLiteral>({
         {Table::GE, "13"},
         {Table::LT, "26"}
@@ -202,14 +244,14 @@ TEST_F(TableTest, nonClusterSelectMultipleIdxPages)
 
 TEST_F(TableTest, nonClusterRemove)
 {
-    tableNon.insert(Table::ColL({std::make_pair("int", "0"), std::make_pair("char", "0")}));
-    tableNon.insert(Table::ColL({std::make_pair("int", "1"), std::make_pair("char", "0")}));
-    tableNon.insert(Table::ColL({std::make_pair("int", "1"), std::make_pair("char", "1")}));
-    tableNon.insert(Table::ColL({std::make_pair("int", "1"), std::make_pair("char", "2")}));
-    tableNon.insert(Table::ColL({std::make_pair("int", "1"), std::make_pair("char", "3")}));
-    tableNon.insert(Table::ColL({std::make_pair("int", "1"), std::make_pair("char", "4")}));
-    tableNon.insert(Table::ColL({std::make_pair("int", "1"), std::make_pair("char", "5")}));
-    tableNon.insert(Table::ColL({std::make_pair("int", "1"), std::make_pair("char", "6")}));
+    tableNon.insert({std::make_pair("int", Optional<std::string>("0")), std::make_pair("char", Optional<std::string>("0"))});
+    tableNon.insert({std::make_pair("int", Optional<std::string>("1")), std::make_pair("char", Optional<std::string>("0"))});
+    tableNon.insert({std::make_pair("int", Optional<std::string>("1")), std::make_pair("char", Optional<std::string>("1"))});
+    tableNon.insert({std::make_pair("int", Optional<std::string>("1")), std::make_pair("char", Optional<std::string>("2"))});
+    tableNon.insert({std::make_pair("int", Optional<std::string>("1")), std::make_pair("char", Optional<std::string>("3"))});
+    tableNon.insert({std::make_pair("int", Optional<std::string>("1")), std::make_pair("char", Optional<std::string>("4"))});
+    tableNon.insert({std::make_pair("int", Optional<std::string>("1")), std::make_pair("char", Optional<std::string>("5"))});
+    tableNon.insert({std::make_pair("int", Optional<std::string>("1")), std::make_pair("char", Optional<std::string>("6"))});
 
     tableNon.remove(Table::ConsL({std::make_pair("int", std::vector<Table::ConLiteral>({
             {Table::EQ, "1"},
@@ -232,9 +274,10 @@ TEST_F(TableTest, nonClusterRemove)
 TEST_F(TableTest, bothIndexSelect)
 {
     for (int i = 0; i < 30; i++)
-        tableBoth.insert(Table::ColL({
-            std::make_pair("int1", std::to_string(30 - i)), std::make_pair("int2", std::to_string(i))
-        }));
+        tableBoth.insert({
+            std::make_pair("int1", Optional<std::string>(std::to_string(30 - i))),
+            std::make_pair("int2", Optional<std::string>(std::to_string(i)))
+        });
     auto result = tableBoth.select({"int1", "int2"}, Table::ConsL({std::make_pair("int2", std::vector<Table::ConLiteral>({
         {Table::GE, "7"},
         {Table::LT, "24"}
@@ -255,14 +298,14 @@ TEST_F(TableTest, bothIndexSelect)
 
 TEST_F(TableTest, bothIndexRemove)
 {
-    tableBoth.insert(Table::ColL({std::make_pair("int1", "-1"), std::make_pair("int2", "0")}));
-    tableBoth.insert(Table::ColL({std::make_pair("int1", "0"), std::make_pair("int2", "1")}));
-    tableBoth.insert(Table::ColL({std::make_pair("int1", "1"), std::make_pair("int2", "1")}));
-    tableBoth.insert(Table::ColL({std::make_pair("int1", "2"), std::make_pair("int2", "1")}));
-    tableBoth.insert(Table::ColL({std::make_pair("int1", "3"), std::make_pair("int2", "1")}));
-    tableBoth.insert(Table::ColL({std::make_pair("int1", "4"), std::make_pair("int2", "1")}));
-    tableBoth.insert(Table::ColL({std::make_pair("int1", "5"), std::make_pair("int2", "1")}));
-    tableBoth.insert(Table::ColL({std::make_pair("int1", "6"), std::make_pair("int2", "1")}));
+    tableBoth.insert({std::make_pair("int1", Optional<std::string>("-1")), std::make_pair("int2", Optional<std::string>("0"))});
+    tableBoth.insert({std::make_pair("int1", Optional<std::string>("0")), std::make_pair("int2", Optional<std::string>("1"))});
+    tableBoth.insert({std::make_pair("int1", Optional<std::string>("1")), std::make_pair("int2", Optional<std::string>("1"))});
+    tableBoth.insert({std::make_pair("int1", Optional<std::string>("2")), std::make_pair("int2", Optional<std::string>("1"))});
+    tableBoth.insert({std::make_pair("int1", Optional<std::string>("3")), std::make_pair("int2", Optional<std::string>("1"))});
+    tableBoth.insert({std::make_pair("int1", Optional<std::string>("4")), std::make_pair("int2", Optional<std::string>("1"))});
+    tableBoth.insert({std::make_pair("int1", Optional<std::string>("5")), std::make_pair("int2", Optional<std::string>("1"))});
+    tableBoth.insert({std::make_pair("int1", Optional<std::string>("6")), std::make_pair("int2", Optional<std::string>("1"))});
 
     tableBoth.remove(Table::ConsL({std::make_pair("int2", std::vector<Table::ConLiteral>({
             {Table::EQ, "1"},
@@ -282,14 +325,92 @@ TEST_F(TableTest, bothIndexRemove)
     ASSERT_TRUE(*result[0]["int1"] == *Type::newFromLiteral("6", Type::INT));
 }
 
+TEST_F(TableTest, selectNull)
+{
+    tableBoth.insert({
+        std::make_pair("int1", Optional<std::string>("0")),
+        std::make_pair("int2", Optional<std::string>("0"))
+    });
+    tableBoth.insert({
+        std::make_pair("int1", Optional<std::string>("1")),
+        std::make_pair("int2", None())
+    });
+    tableBoth.insert({
+        std::make_pair("int1", Optional<std::string>("2")),
+        std::make_pair("int2", Optional<std::string>("2"))
+    });
+    auto result = tableBoth.select({"int1"}, {std::make_pair("int2", std::vector<Table::ConLiteral>({
+        {Table::IS_NULL, ""},
+    }))});
+    ASSERT_THAT(result.size(), Eq(1));
+    ASSERT_TRUE(*result[0]["int1"] == *Type::newFromLiteral("1", Type::INT));
+}
+
+TEST_F(TableTest, selectNotNull)
+{
+    tableBoth.insert({
+        std::make_pair("int1", Optional<std::string>("0")),
+        std::make_pair("int2", Optional<std::string>("0"))
+    });
+    tableBoth.insert({
+        std::make_pair("int1", Optional<std::string>("1")),
+        std::make_pair("int2", None())
+    });
+    tableBoth.insert({
+        std::make_pair("int1", Optional<std::string>("2")),
+        std::make_pair("int2", Optional<std::string>("2"))
+    });
+    auto result = tableBoth.select({"int1"}, {std::make_pair("int2", std::vector<Table::ConLiteral>({
+        {Table::IS_NOT_NULL, ""},
+    }))});
+    ASSERT_THAT(result.size(), Eq(2));
+    ASSERT_TRUE(*result[0]["int1"] == *Type::newFromLiteral("0", Type::INT));
+    ASSERT_TRUE(*result[1]["int1"] == *Type::newFromLiteral("2", Type::INT));
+}
+
+TEST_F(TableTest, compareToNullIsFalse)
+{
+    tableBoth.insert({
+        std::make_pair("int1", Optional<std::string>("0")),
+        std::make_pair("int2", Optional<std::string>("0"))
+    });
+    tableBoth.insert({
+        std::make_pair("int1", Optional<std::string>("1")),
+        std::make_pair("int2", None())
+    });
+    tableBoth.insert({
+        std::make_pair("int1", Optional<std::string>("2")),
+        std::make_pair("int2", Optional<std::string>("2"))
+    });
+    tableBoth.insert({
+        std::make_pair("int1", Optional<std::string>("3")),
+        std::make_pair("int2", Optional<std::string>("3"))
+    });
+    auto result = tableBoth.select({"int1"}, {std::make_pair("int2", std::vector<Table::ConLiteral>({
+        {Table::LT, "3"},
+    }))});
+    ASSERT_THAT(result.size(), Eq(2));
+    ASSERT_TRUE(*result[0]["int1"] == *Type::newFromLiteral("0", Type::INT));
+    ASSERT_TRUE(*result[1]["int1"] == *Type::newFromLiteral("2", Type::INT));
+}
+
+TEST_F(TableTest, unspecifiedColumnShouldBeNull)
+{
+    tableBoth.insert({std::make_pair("int1", Optional<std::string>("1"))});
+    auto result = tableBoth.select({"int1", "int2"}, {});
+    ASSERT_THAT(result.size(), Eq(1));
+    ASSERT_TRUE(*result[0]["int1"] == *Type::newFromLiteral("1", Type::INT));
+    ASSERT_THAT(result[0]["int2"], Eq(nullptr));
+}
+
 TEST_F(TableTest, bothIndexManyInRefPage)
 {
     for (int i = 0; i < 70; i++)
-        tableBothWithLargePri.insert(Table::ColL({
-            std::make_pair("int1", std::to_string(i)),
-            std::make_pair("int2", "0"),
-            std::make_pair("payload", std::to_string(i)),
-        }));
+        tableBothWithLargePri.insert({
+            std::make_pair("int1", Optional<std::string>(std::to_string(i))),
+            std::make_pair("int2", Optional<std::string>("0")),
+            std::make_pair("payload", Optional<std::string>(std::to_string(i))),
+        });
     tableBothWithLargePri.remove(Table::ConsL({std::make_pair("int2", std::vector<Table::ConLiteral>({
             {Table::EQ, "0"},
         })),
@@ -307,11 +428,11 @@ TEST_F(TableTest, bothIndexManyInRefPage)
 TEST_F(TableTest, bothIndexManyInRefPageRemovingHead)
 {
     for (int i = 0; i < 70; i++)
-        tableBothWithLargePri.insert(Table::ColL({
-            std::make_pair("int1", std::to_string(i)),
-            std::make_pair("int2", "0"),
-            std::make_pair("payload", std::to_string(i)),
-        }));
+        tableBothWithLargePri.insert({
+            std::make_pair("int1", Optional<std::string>(std::to_string(i))),
+            std::make_pair("int2", Optional<std::string>("0")),
+            std::make_pair("payload", Optional<std::string>(std::to_string(i))),
+        });
     tableBothWithLargePri.remove(Table::ConsL({std::make_pair("int2", std::vector<Table::ConLiteral>({
             {Table::EQ, "0"},
         })),

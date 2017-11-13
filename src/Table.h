@@ -15,7 +15,7 @@ public:
     };
 
     typedef std::unordered_map< std::string, std::vector<ConLiteral> > ConsL;
-    typedef std::unordered_map< std::string, std::string > ColL;
+    typedef std::unordered_map< std::string, Optional<std::string> > ColL;
     using BaseTable::ColVal;
 
 private:
@@ -39,7 +39,11 @@ public:
      */
     void insert(const ColL &literals)
     {
-        BaseTable::insert(genVals(literals));
+        auto vals = genVals(literals);
+        for (const auto &col : recCols)
+            if (!vals.count(col.first))
+                vals[col.first] = nullptr;
+        BaseTable::insert(vals);
     }
 
     /** Delete records that meet the constraint

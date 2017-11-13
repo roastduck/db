@@ -90,6 +90,9 @@ TEST_F(TableMgrTest, foreignKeyViolationDuringInsertion)
         {},
         { (TableMgr::ForeignKey){ "master", Table::Index({"int"}), Table::Index({"int"}) } }
     );
-    ASSERT_THROW(mgr.insert("slave", { Table::ColL({std::make_pair("int", "1")}) }), ForeignKeyViolatedException);
+    ASSERT_THROW(
+        mgr.insert("slave", { Table::ColL({std::make_pair("int", Optional<std::string>("1"))}) }),
+        ForeignKeyViolatedException
+    );
 }
 
