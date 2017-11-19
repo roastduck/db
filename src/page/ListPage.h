@@ -114,6 +114,10 @@ public:
      *  We CANNOT copy data across pages if there is no primary index, or non-clustered indexes would fail
      */
     static void copy(ListPage *page1, int rank1, ListPage *page2, int rank2);
+
+    /** Copy everything except identifier from one page to another
+     */
+    static void copy(ListPage *page1, ListPage *page2);
 };
 
 #endif // LIST_PAGE_H_

@@ -80,3 +80,12 @@ void ListPage::copy(ListPage *page1, int rank1, ListPage *page2, int rank2)
     std::copy(page1->accessConst(rank1), page1->accessConst(rank1) + page1->recBytes, page2->accessMut(rank2));
 }
 
+void ListPage::copy(ListPage *page1, ListPage *page2)
+{
+    page2->setSize(page1->getSize());
+    page2->setNext(page1->getNext());
+    page2->setPrev(page1->getPrev());
+    for (int i = 0; i < page1->getSize(); i++)
+        copy(page1, i, page2, i);
+}
+

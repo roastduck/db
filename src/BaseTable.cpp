@@ -325,6 +325,7 @@ Optional<int> BaseTable::removeRecur(int pageID, const BaseTable::ColVal &vals, 
 bool BaseTable::removeLinear(int pageID, const ConsVal &constraints, bool onlyOne)
 {
     const int startID = pageID;
+    assert(getDataPage(startID).getPrev() == -1);
     bool removedOne = false, empty = false;
     while (true)
     {
@@ -345,12 +346,8 @@ bool BaseTable::removeLinear(int pageID, const ConsVal &constraints, bool onlyOn
                     empty = true;
                 else
                 {
-                    ListPage &next = getDataPage(nextID);
-                    page.setSize(next.getSize());
-                    page.setNext(next.getNext());
+                    ListPage::copy(&getDataPage(nextID), &page);
                     page.setPrev(-1);
-                    for (int i = 0; i < page.getSize(); i++)
-                        ListPage::copy(&next, i, &page, i);
                     std::swap(pageID, nextID);
                 }
             }
@@ -511,9 +508,7 @@ void BaseTable::rotateRoot(int rootID, int newChildRID, const Index &index, shor
     int newChildLID = newDataPage(root.getIdent());
     ListPage &newChildL = getDataPage(newChildLID);
     ListPage &newChildR = getDataPage(newChildRID);
-    newChildL.setSize(root.getSize());
-    for (int i = 0; i < root.getSize(); i++)
-        ListPage::copy(&root, i, &newChildL, i);
+    ListPage::copy(&root, &newChildL);
     destroyDataPage(rootID);
     int newID = newDataPage(ident); // if this is primary 0, need to change Ident from RECORD to PRIMARY
     assert(newID == rootID);
@@ -540,9 +535,7 @@ void BaseTable::removeRoot(int rootID)
     ListPage &root = getDataPage(rootID);
     int childID = dynamic_cast<IntType*>(root.getValue(0, "$child").get())->getVal();
     ListPage &child = getDataPage(childID);
-    root.setSize(child.getSize());
-    for (int i = 0; i < root.getSize(); i++)
-        ListPage::copy(&child, i, &root, i);
+    ListPage::copy(&child, &root);
     destroyDataPage(childID);
 }
 
