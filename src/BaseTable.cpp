@@ -16,22 +16,43 @@ BaseTable::BaseTable
     for (const auto &pair : _cols)
         allColumns.push_back(pair.first);
 
-    // Reserve 0 for primary entrance
-    if (!isFree(0)) newDataPage(RECORD);
-    // Initialize entry page for non-clustered index entrance
-    if (!isFree(1)) newDataPage(ENTRY);
-    for (int i = getDataPage(1).getSize(); i < int(_nonClus.size()); i++)
+    // Initialize entry page
+    if (!isFree(ENTRY_PAGE)) newDataPage(ENTRY);
+    // i = 0 is for primary entry, i > 0 is for non-cluster entry
+    for (int i = getDataPage(ENTRY_PAGE).getSize(); i <= int(_nonClus.size()); i++)
     {
-        int pageID = newDataPage(NON_CLUSTER, i);
-        getDataPage(1).setValue(i, "$page", Type::newFromLiteral(std::to_string(pageID), Type::INT));
+        int pageID = newDataPage(i ? NON_CLUSTER + i - 1: RECORD);
+        getDataPage(ENTRY_PAGE).setValue(i, "$page", Type::newFromLiteral(std::to_string(pageID), Type::INT));
     }
-    getDataPage(1).setSize(nonClus.size());
+    getDataPage(ENTRY_PAGE).setSize(nonClus.size() + 1);
 }
 
-int BaseTable::entry(int indexID)
+int BaseTable::priEntry()
 {
-    assert(indexID >= 0 && indexID < getDataPage(1).getSize());
-    return dynamic_cast<IntType*>(getDataPage(1).getValue(indexID, "$page").get())->getVal();
+    return dynamic_cast<IntType*>(getDataPage(ENTRY_PAGE).getValue(0, "$page").get())->getVal();
+}
+
+void BaseTable::setPriEntry(int e)
+{
+    ColVal newItem;
+    newItem["$page"] = Type::newType(Type::INT);
+    dynamic_cast<IntType*>(newItem["$page"].get())->setVal(e);
+    getDataPage(ENTRY_PAGE).setValues(0, std::move(newItem));
+}
+
+int BaseTable::ncEntry(int indexID)
+{
+    assert(indexID + 1 >= 1 && indexID + 1 < getDataPage(ENTRY_PAGE).getSize());
+    return dynamic_cast<IntType*>(getDataPage(ENTRY_PAGE).getValue(indexID + 1, "$page").get())->getVal();
+}
+
+void BaseTable::setNcEntry(int indexID, int e)
+{
+    assert(indexID + 1 >= 1 && indexID + 1 < getDataPage(ENTRY_PAGE).getSize());
+    ColVal newItem;
+    newItem["$page"] = Type::newType(Type::INT);
+    dynamic_cast<IntType*>(newItem["$page"].get())->setVal(e);
+    getDataPage(ENTRY_PAGE).setValues(indexID + 1, std::move(newItem));
 }
 
 bool BaseTable::meetCons(ListPage &page, int rank, const BaseTable::ConsVal &cons) const
@@ -483,7 +504,7 @@ void BaseTable::selectRefLinear(
                     if (primary.isOk())
                     {
                         auto key = refPage.getValues(j, primary.ok());
-                        Pos item = findFirst(0, key, primary.ok(), true);
+                        Pos item = findFirst(priEntry(), key, primary.ok(), true);
                         assert(item.first >= 0); // This item must exist
                         ListPage &recPage = getDataPage(item.first);
                         if (meetCons(recPage, item.second, constraints))
@@ -511,22 +532,21 @@ void BaseTable::selectRefLinear(
     }
 }
 
-void BaseTable::rotateRoot(int rootID, int newChildRID, const Index &index, short ident)
+void BaseTable::rotateRoot(int newChildLID, int newChildRID, const Index &index, short ident)
 {
-    ListPage &root = getDataPage(rootID);
-    int newChildLID = newDataPage(root.getIdent());
     ListPage &newChildL = getDataPage(newChildLID);
     ListPage &newChildR = getDataPage(newChildRID);
-    ListPage::copy(&root, &newChildL);
-    destroyDataPage(rootID);
-    int newID = newDataPage(ident); // if this is primary 0, need to change Ident from RECORD to PRIMARY
-    assert(newID == rootID);
+    int rootID = newDataPage(ident); // May need to change from RECORD to PRIMARY
+    ListPage &root = getDataPage(rootID);
+    if (ident >= NON_CLUSTER)
+        setNcEntry(ident - NON_CLUSTER, rootID);
+    else
+        setPriEntry(rootID);
 
     ColVal newItemL = newChildL.getValues(0, index);
     newItemL["$child"] = Type::newType(Type::INT);
     dynamic_cast<IntType*>(newItemL["$child"].get())->setVal(newChildLID);
     root.setValues(0, newItemL);
-    // destroyPage won't destory the page object, so no need to reload `root`
 
     ColVal newItemR = newChildR.getValues(0, index);
     newItemR["$child"] = Type::newType(Type::INT);
@@ -543,9 +563,12 @@ void BaseTable::removeRoot(int rootID)
 {
     ListPage &root = getDataPage(rootID);
     int childID = dynamic_cast<IntType*>(root.getValue(0, "$child").get())->getVal();
-    ListPage &child = getDataPage(childID);
-    ListPage::copy(&child, &root);
-    destroyDataPage(childID);
+    const short ident = root.getIdent();
+    if (ident >= NON_CLUSTER)
+        setNcEntry(ident - NON_CLUSTER, childID);
+    else
+        setPriEntry(childID);
+    destroyDataPage(rootID);
 }
 
 BaseTable::Bound BaseTable::getBound(const BaseTable::ConsVal &constraints, const BaseTable::Index &index)
@@ -613,21 +636,21 @@ void BaseTable::insert(const BaseTable::ColVal &vals)
         valWithPos[pair.first] = Type::newFromCopy(pair.second);
     if (primary.isOk())
     {
-        int newChildRID = insertRecur(0, vals, primary.ok());
+        int newChildRID = insertRecur(priEntry(), vals, primary.ok());
         if (newChildRID != -1) // root should still be page 0
-            rotateRoot(0, newChildRID, primary.ok(), PRIMARY);
+            rotateRoot(priEntry(), newChildRID, primary.ok(), PRIMARY);
     } else
     {
-        int pageID = insertLinear(0, vals, RECORD);
+        int pageID = insertLinear(priEntry(), vals, RECORD);
         auto pageIDCol = Type::newType(Type::INT);
         dynamic_cast<IntType*>(pageIDCol.get())->setVal(pageID);
         valWithPos["$page"] = std::move(pageIDCol);
     }
     for (int i = 0; i < int(nonClus.size()); i++)
     {
-        int newChildRID = insertRecur(entry(i), valWithPos, nonClus[i]);
+        int newChildRID = insertRecur(ncEntry(i), valWithPos, nonClus[i]);
         if (newChildRID != -1)
-            rotateRoot(entry(i), newChildRID, nonClus[i], getDataPage(entry(i)).getIdent());
+            rotateRoot(ncEntry(i), newChildRID, nonClus[i], getDataPage(ncEntry(i)).getIdent());
     }
 }
 
@@ -637,31 +660,27 @@ void BaseTable::remove(const ConsVal &constraints)
     if (primary.isOk() || !nonClus.empty())
         toDel = select(allColumns, constraints);
     if (primary.isOk())
-    {
-        ListPage &root = getDataPage(0);
         for (const auto &record : toDel.ok())
         {
-            removeRecur(0, record, primary.ok());
+            ListPage &root = getDataPage(priEntry()); // This line placed here to be updated after `removeRoot` below
+            removeRecur(priEntry(), record, primary.ok());
             if (root.getIdent() == PRIMARY && root.getSize() == 1)
-                removeRoot(0);
+                removeRoot(priEntry());
         }
-    }
     else
-        removeLinear(0, constraints, false);
+        removeLinear(priEntry(), constraints, false);
 
     for (int i = 0; i < int(nonClus.size()); i++)
-    {
-        ListPage &root = getDataPage(entry(i));
         for (const auto &record : toDel.ok())
         {
-            removeRecur(entry(i), record, nonClus[i]);
+            ListPage &root = getDataPage(ncEntry(i)); // This line placed here to be updated after `removeRoot` below
+            removeRecur(ncEntry(i), record, nonClus[i]);
             if (
                 root.getSize() == 1 &&
                 getDataPage(dynamic_cast<IntType*>(root.getValue(0, "$child").get())->getVal()).getIdent() != REF
             )
-                removeRoot(entry(i));
+                removeRoot(ncEntry(i));
         }
-    }
 }
 
 std::vector<BaseTable::ColVal> BaseTable::select(const BaseTable::Index &targets, const ConsVal &constraints)
@@ -687,7 +706,7 @@ std::vector<BaseTable::ColVal> BaseTable::select(const BaseTable::Index &targets
         best = i;
     }
     if (!~best && !primary.isOk())
-        selectLinear(ret, targets, constraints);
+        selectLinear(ret, targets, constraints, Pos(priEntry(), 0));
     else
     {
         // NOTE: l.size() can still be 0 here
@@ -698,7 +717,7 @@ std::vector<BaseTable::ColVal> BaseTable::select(const BaseTable::Index &targets
             if (l.count(name)) indexL.push_back(name);
             if (r.count(name)) indexR.push_back(name);
         }
-        Pos start = findFirst(!~best ? 0 : entry(best), l, indexL, !openL); // ( : first >, [ : first >=
+        Pos start = findFirst(!~best ? priEntry() : ncEntry(best), l, indexL, !openL); // ( : first >, [ : first >=
         if (!~best)
             selectLinear(ret, targets, constraints, start, r, indexR, !openR);
         else
@@ -713,16 +732,12 @@ void BaseTable::addIndex(const BaseTable::Index &index)
     int indexID = nonClus.size();
     nonClus.push_back(index);
     registerNewIndex(index); // Update `TablePages` This line should before newDataPage
-    int entryID = newDataPage(NON_CLUSTER, indexID);
-    ColVal newItem;
-    newItem["$page"] = Type::newType(Type::INT);
-    dynamic_cast<IntType*>(newItem["$page"].get())->setVal(entryID);
-    getDataPage(1).setValues(indexID, std::move(newItem));
-    getDataPage(1).setSize(indexID + 1);
+    getDataPage(ENTRY_PAGE).setSize(getDataPage(ENTRY_PAGE).getSize() + 1);
+    setNcEntry(indexID, newDataPage(NON_CLUSTER, indexID));
 
     // Build new index tree
     // Don't select all and then insert, which will consume lots of memory
-    for (int pageID = 0; pageID != -1;)
+    for (int pageID = priEntry(); pageID != -1;)
     {
         ListPage &page = getDataPage(pageID);
         assert(page.getIdent() == RECORD);
@@ -734,9 +749,9 @@ void BaseTable::addIndex(const BaseTable::Index &index)
                 valWithPos["$page"] = Type::newType(Type::INT);
                 dynamic_cast<IntType*>(valWithPos["$page"].get())->setVal(pageID);
             }
-            int newChildRID = insertRecur(entryID, std::move(valWithPos), index);
+            int newChildRID = insertRecur(ncEntry(indexID), std::move(valWithPos), index);
             if (newChildRID != -1)
-                rotateRoot(entryID, newChildRID, index, getDataPage(entryID).getIdent());
+                rotateRoot(ncEntry(indexID), newChildRID, index, getDataPage(ncEntry(indexID)).getIdent());
         }
         pageID = page.getNext();
     }

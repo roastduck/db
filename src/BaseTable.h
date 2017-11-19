@@ -38,13 +38,21 @@ protected:
     typedef std::pair< std::pair<ColVal, bool /* open interval */>, std::pair<ColVal, bool> > Bound;
 
 private:
+    const int ENTRY_PAGE = 0;
+
     Index allColumns;
     Optional<Index> primary; // Primary index
     std::vector<Index> nonClus; // Non-cluster indexes
 
+    /** Primary entry page ID
+     */
+    int priEntry();
+    void setPriEntry(int e);
+
     /** Entry page ID of a non-cluster index
      */
-    int entry(int indexID);
+    int ncEntry(int indexID);
+    void setNcEntry(int indexID, int e);
 
     /** Check if a record meets ALL the constraints in `cons`, i.e. items in cons are ANDed together
      */
@@ -124,13 +132,11 @@ private:
         const ColVal &stopV, const Index &stopIdx, bool stopEq
     );
 
-    /** When root node has a new neighbour, we have to add a new root for them, but the root (entrance) ID
-     *  must be unique. So we have to rotate after that
+    /** When root node has a new neighbour, we have to add a new root for them
      */
-    void rotateRoot(int rootID, int newChildRID, const Index &index, short ident);
+    void rotateRoot(int newChildLID, int newChildRID, const Index &index, short ident);
 
-    /** Same as above, when removing a root, we are actually moving its content to its only child and remove
-     *  the child
+    /** Same as above, when removing a root, we have to register the new root
      */
     void removeRoot(int rootID);
 
