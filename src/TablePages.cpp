@@ -20,13 +20,16 @@ TablePages::TablePages(
 
     nonClusCols.reserve(_nonClus.size());
     for (const auto &item : _nonClus)
-    {
-        Cols node;
-        for (const std::string &name : item)
-            node[name] = recCols.at(name);
-        node["$child"] = (Column){Type::INT, 0, true};
-        nonClusCols.push_back(std::move(node));
-    }
+        registerNewIndex(item);
+}
+
+void TablePages::registerNewIndex(const Index &index)
+{
+    Cols node;
+    for (const std::string &name : index)
+        node[name] = recCols.at(name);
+    node["$child"] = (Column){Type::INT, 0, true};
+    nonClusCols.push_back(std::move(node));
 }
 
 TablePages::Cols TablePages::identToCols(short ident)
@@ -37,6 +40,8 @@ TablePages::Cols TablePages::identToCols(short ident)
         assert(false);
     case RECORD:
         return recCols;
+    case ENTRY:
+        return {std::make_pair("$page", (Column){Type::INT, 0, true})};
     case REF:
         return refCols;
     case PRIMARY:

@@ -16,13 +16,22 @@ BaseTable::BaseTable
     for (const auto &pair : _cols)
         allColumns.push_back(pair.first);
 
-    // reserve 0 for primary entrance, 1 ~ nonClus.size() for non-clustered index entrance
-    for (int i = 0; i <= int(nonClus.size()); i++)
-        if (!isFree(i))
-        {
-            int pageID = newDataPage(!i ? RECORD : NON_CLUSTER + i - 1); // RECORD is the leaf node of PRIMARY
-            assert(pageID == i);
-        }
+    // Reserve 0 for primary entrance
+    if (!isFree(0)) newDataPage(RECORD);
+    // Initialize entry page for non-clustered index entrance
+    if (!isFree(1)) newDataPage(ENTRY);
+    for (int i = getDataPage(1).getSize(); i < int(_nonClus.size()); i++)
+    {
+        int pageID = newDataPage(NON_CLUSTER, i);
+        getDataPage(1).setValue(i, "$page", Type::newFromLiteral(std::to_string(pageID), Type::INT));
+    }
+    getDataPage(1).setSize(nonClus.size());
+}
+
+int BaseTable::entry(int indexID)
+{
+    assert(indexID >= 0 && indexID < getDataPage(1).getSize());
+    return dynamic_cast<IntType*>(getDataPage(1).getValue(indexID, "$page").get())->getVal();
 }
 
 bool BaseTable::meetCons(ListPage &page, int rank, const BaseTable::ConsVal &cons) const
@@ -616,9 +625,9 @@ void BaseTable::insert(const BaseTable::ColVal &vals)
     }
     for (int i = 0; i < int(nonClus.size()); i++)
     {
-        int newChildRID = insertRecur(i + 1, valWithPos, nonClus[i]);
+        int newChildRID = insertRecur(entry(i), valWithPos, nonClus[i]);
         if (newChildRID != -1)
-            rotateRoot(i + 1, newChildRID, nonClus[i], getDataPage(i + 1).getIdent());
+            rotateRoot(entry(i), newChildRID, nonClus[i], getDataPage(entry(i)).getIdent());
     }
 }
 
@@ -642,15 +651,15 @@ void BaseTable::remove(const ConsVal &constraints)
 
     for (int i = 0; i < int(nonClus.size()); i++)
     {
-        ListPage &root = getDataPage(i + 1);
+        ListPage &root = getDataPage(entry(i));
         for (const auto &record : toDel.ok())
         {
-            removeRecur(i + 1, record, nonClus[i]);
+            removeRecur(entry(i), record, nonClus[i]);
             if (
                 root.getSize() == 1 &&
                 getDataPage(dynamic_cast<IntType*>(root.getValue(0, "$child").get())->getVal()).getIdent() != REF
             )
-                removeRoot(i + 1);
+                removeRoot(entry(i));
         }
     }
 }
@@ -689,12 +698,47 @@ std::vector<BaseTable::ColVal> BaseTable::select(const BaseTable::Index &targets
             if (l.count(name)) indexL.push_back(name);
             if (r.count(name)) indexR.push_back(name);
         }
-        Pos start = findFirst(best + 1, l, indexL, !openL); // ( : first >, [ : first >=
+        Pos start = findFirst(!~best ? 0 : entry(best), l, indexL, !openL); // ( : first >, [ : first >=
         if (!~best)
             selectLinear(ret, targets, constraints, start, r, indexR, !openR);
         else
             selectRefLinear(ret, targets, constraints, start, r, indexR, !openR);
     }
     return ret;
+}
+
+void BaseTable::addIndex(const BaseTable::Index &index)
+{
+    // Update entry
+    int indexID = nonClus.size();
+    nonClus.push_back(index);
+    registerNewIndex(index); // Update `TablePages` This line should before newDataPage
+    int entryID = newDataPage(NON_CLUSTER, indexID);
+    ColVal newItem;
+    newItem["$page"] = Type::newType(Type::INT);
+    dynamic_cast<IntType*>(newItem["$page"].get())->setVal(entryID);
+    getDataPage(1).setValues(indexID, std::move(newItem));
+    getDataPage(1).setSize(indexID + 1);
+
+    // Build new index tree
+    // Don't select all and then insert, which will consume lots of memory
+    for (int pageID = 0; pageID != -1;)
+    {
+        ListPage &page = getDataPage(pageID);
+        assert(page.getIdent() == RECORD);
+        for (int i = 0; i < page.getSize(); i++)
+        {
+            auto valWithPos = page.getValues(i, allColumns);
+            if (!primary.isOk())
+            {
+                valWithPos["$page"] = Type::newType(Type::INT);
+                dynamic_cast<IntType*>(valWithPos["$page"].get())->setVal(pageID);
+            }
+            int newChildRID = insertRecur(entryID, std::move(valWithPos), index);
+            if (newChildRID != -1)
+                rotateRoot(entryID, newChildRID, index, getDataPage(entryID).getIdent());
+        }
+        pageID = page.getNext();
+    }
 }
 

@@ -447,3 +447,18 @@ TEST_F(TableTest, bothIndexManyInRefPageRemovingHead)
     ASSERT_THAT(result.size(), Eq(15));
 }
 
+TEST_F(TableTest, dynamicAddIndex)
+{
+    for (int i = 10; i < 60; i++) // NOTE: "3" > "10"
+        table.insert({
+            std::make_pair("int", Optional<std::string>("0")),
+            std::make_pair("char", Optional<std::string>(std::to_string(i)))
+        });
+    table.addIndex({"char"});
+    auto result = table.select({"char"}, Table::ConsL({std::make_pair("char", std::vector<Table::ConLiteral>({
+        {Table::GE, "13"},
+        {Table::LT, "46"}
+    }))}));
+    ASSERT_THAT(result.size(), Eq(33));
+}
+

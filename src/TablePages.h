@@ -20,9 +20,10 @@ protected:
     // Page Identifiers
     static const short INVALID = 0; // Must be 0, because the page is initialized to be 0
     static const short RECORD = 1; // Normal data pages
-    static const short REF = 2; // Leaf of non-clustered index
-    static const short PRIMARY = 3; // Primary tree node
-    static const short NON_CLUSTER = 4; // >= 4 for non-clustered index
+    static const short ENTRY = 2; // List of entry of non-cluster indexes
+    static const short REF = 3; // Leaf of non-clustered index
+    static const short PRIMARY = 4; // Primary tree node
+    static const short NON_CLUSTER = 5; // >= 5 for non-clustered index
 
 private:
     PageCache &cache;
@@ -56,6 +57,8 @@ protected:
         PageCache &_cache, const std::string &_tableName, const Cols &_cols,
         const Optional<Index> &_primary = None(), const std::vector<Index> &_nonClus = {}
     );
+
+    void registerNewIndex(const Index &index);
 
     /** Test if a data page is free
      */

@@ -5,6 +5,7 @@
 #include <memory>
 #include <unordered_map>
 #include "Table.h"
+#include "config.h"
 #include "Optional.h"
 #include "exception/NotNullException.h"
 #include "exception/NoDBInUseException.h"
@@ -16,9 +17,6 @@
 class TableMgr
 {
 private:
-    const int MAX_IDENTIFIER_LEN = 128;
-    const int MAX_COLUMN_NUM = 32;
-
     PageCache &cache;
     Table sysDbs, sysTables, sysCols, sysPriIdxes, sysNonClusIdxes, sysForeigns;
 

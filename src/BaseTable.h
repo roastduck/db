@@ -42,6 +42,10 @@ private:
     Optional<Index> primary; // Primary index
     std::vector<Index> nonClus; // Non-cluster indexes
 
+    /** Entry page ID of a non-cluster index
+     */
+    int entry(int indexID);
+
     /** Check if a record meets ALL the constraints in `cons`, i.e. items in cons are ANDed together
      */
     bool meetCons(ListPage &page, int rank, const ConsVal &cons) const;
@@ -145,6 +149,10 @@ protected:
 
 public:
     const Optional<Index> &getPrimary() const { return primary; }
+
+    /** Add a non-cluster index
+     */
+    void addIndex(const Index &index);
 };
 
 #endif // BASE_TABLE_H_
