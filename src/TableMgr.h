@@ -7,6 +7,7 @@
 #include "Table.h"
 #include "config.h"
 #include "Optional.h"
+#include "filesystem/PairHash.h"
 #include "exception/NotNullException.h"
 #include "exception/NoDBInUseException.h"
 #include "exception/NoSuchThingException.h"
@@ -36,6 +37,13 @@ public:
         std::string referee;
         Table::Index referrerCols, refereeCols;
     };
+
+    struct OuterCon
+    {
+        Table::ConDir dir;
+        std::string col1, col2;
+    };
+    typedef std::vector<OuterCon> OuterCons;
 
     /************************************/
     /* DB Managements                   */
@@ -92,9 +100,20 @@ public:
     /************************************/
 
     /** INSERT INTO <tbName> VALUES <valueLists>
+     *  @throw : NoSuchThingException
      *  @throw NotNullException
      */
     void insert(const std::string &tbName, std::vector<Table::ColL> valueLists);
+
+    /** SELECT <selector> FROM <tableList> WHERE <whereClause>
+     *  @throw : NoSuchThingException
+     */
+    std::vector<Table::ColVal> select(
+        std::unordered_map< std::string, Table::Index > targets, /// table -> columns
+        std::vector< std::string > tableList,
+        std::unordered_map< std::string, Table::ConsL > innerCons, /// table -> constraints
+        std::unordered_map< std::pair<std::string, std::string>, OuterCons, PairHash<std::string, std::string> > outterCons
+    );
 };
 
 #endif // TABLE_MGR_H_

@@ -1,3 +1,4 @@
+#include <algorithm>
 #include "TableMgr.h"
 #include "type/IntType.h"
 #include "type/CharType.h"
@@ -243,6 +244,9 @@ std::vector<Table::ColVal> TableMgr::showTables()
 
 void TableMgr::insert(const std::string &tbName, std::vector<Table::ColL> valueLists)
 {
+    if (!tables.count(tbName))
+        throw NoSuchThingException("table", tbName);
+
     // Check foreign key
     for (const auto &valueList : valueLists)
     {
@@ -269,5 +273,82 @@ void TableMgr::insert(const std::string &tbName, std::vector<Table::ColL> valueL
     // Insert
     for (const auto &valueList : valueLists)
         tables.at(tbName)->insert(valueList);
+}
+
+std::vector<Table::ColVal> TableMgr::select(
+    std::unordered_map< std::string, Table::Index > targets, /// table -> columns
+    std::vector< std::string > tableList,
+    std::unordered_map< std::string, Table::ConsL > innerCons, /// table -> constraints
+    std::unordered_map< std::pair<std::string, std::string>, TableMgr::OuterCons, PairHash<std::string, std::string> > outterCons
+)
+{
+    for (const auto &name : tableList)
+        if (!tables.count(name))
+            throw NoSuchThingException("table", name);
+
+    // TODO: optimize the order of `tableList`
+
+    // Complement `targets`
+    for (const auto &item : outterCons)
+    {
+        Table::Index &tb1 = targets[item.first.first], &tb2 = targets[item.first.second];
+        for (const auto &out : item.second)
+        {
+            if (std::find(tb1.begin(), tb1.end(), out.col1) == tb1.end())
+                tb1.push_back(out.col1);
+            if (std::find(tb2.begin(), tb2.end(), out.col2) == tb2.end())
+                tb2.push_back(out.col2);
+        }
+    }
+
+    std::vector<Table::ColVal> buf1, buf2;
+    auto *feed = &buf1, *result = &buf2;
+    for (int i = 0; i < int(tables.size()); i++)
+    {
+        // Gather constraints
+        std::vector< std::pair<OuterCon, std::string> > outs; // [(constrints, table)]
+        for (int j = 0; j < i; j++)
+            for (const auto &pair : {std::make_pair(tableList[i], tableList[j]), std::make_pair(tableList[j], tableList[i])})
+                for (auto out : outterCons.count(pair) ? outterCons.at(pair) : OuterCons())
+                {
+                    if (pair.second == tableList[i])
+                    {
+                        std::swap(out.col1, out.col2);
+                        if (out.dir == Table::LT) out.dir = Table::GT; else
+                        if (out.dir == Table::LE) out.dir = Table::GE; else
+                        if (out.dir == Table::GT) out.dir = Table::LT; else
+                        if (out.dir == Table::GE) out.dir = Table::LE;
+                    } // Now `out.col1` is of `tableList[i]`, `out.col2` is of `tableList[j]`
+                    outs.push_back(std::make_pair(std::move(out), tableList[j]));
+                }
+
+        // Query
+        std::swap(feed, result);
+        for (auto &line : *feed)
+        {
+            Table::ConsL cons = innerCons.count(tableList[i]) ? innerCons.at(tableList[i]) : Table::ConsL();
+            for (const auto &pair : outs)
+            {
+                const OuterCon &out = pair.first;
+                const std::string &tb2 = pair.second;
+                Table::ConLiteral v;
+                v.dir = out.dir;
+                v.pivot = line.at(tb2 + "." + out.col2)->toString();
+                cons[out.col1].push_back(std::move(v));
+            }
+            auto block = tables.at(tableList[i])->select(
+                targets.count(tableList[i]) ? targets.at(tableList[i]) : Table::Index(),
+                cons
+            );
+            for (auto &newLine : block) // Here we destruct `line` and `block`
+            {
+                result->push_back(std::move(line));
+                for (auto &col : newLine)
+                    result->back()[tableList[i] + "." + col.first] = std::move(col.second);
+            }
+        }
+        feed->clear();
+    }
+    return std::move(*result);
 }
 
