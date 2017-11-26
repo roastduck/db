@@ -74,6 +74,26 @@ TEST_F(TableMgrTest, noDbInUse)
 /* Queries                          */
 /************************************/
 
+TEST_F(TableMgrTest, notNullExceptionDuringInsertion)
+{
+    mgr.createDb("db");
+    mgr.use("db");
+    mgr.createTable(
+        "table",
+        {
+            std::make_pair("int1", (Column){ Type::INT, 0, false }),
+            std::make_pair("int2", (Column){ Type::INT, 0, true })
+        }
+    );
+    mgr.insert("table", {{ None(), Optional<std::string>("1") }}); // This is OK
+    ASSERT_THROW(
+        mgr.insert("table", {{ Optional<std::string>("1"), None() }}),
+        NotNullException
+    );
+    auto result = mgr.select({}, { "table" }, {});
+    ASSERT_THAT(result.size(), Eq(1)); // Broken row doesn't inserted
+}
+
 TEST_F(TableMgrTest, foreignKeyViolationDuringInsertion)
 {
     mgr.createDb("db");
@@ -164,6 +184,33 @@ TEST_F(TableMgrTest, remove)
     );
     ASSERT_THAT(result.size(), Eq(1));
     ASSERT_THAT(result[0]["table.int"]->toString(), Eq("2"));
+}
+
+TEST_F(TableMgrTest, notNullExceptionDuringUpdating)
+{
+    mgr.createDb("db");
+    mgr.use("db");
+    mgr.createTable(
+        "table",
+        {
+            std::make_pair("int1", (Column){ Type::INT, 0, false }),
+            std::make_pair("int2", (Column){ Type::INT, 0, true })
+        }
+    );
+    mgr.insert("table", {{ Optional<std::string>("1"), Optional<std::string>("1") }});
+    mgr.update("table", { std::make_pair("int1", None()) }, {}); // This is OK
+    ASSERT_THROW(
+        mgr.update("table", { std::make_pair("int2", None()) }, {}),
+        NotNullException
+    );
+    auto result = mgr.select(
+        { std::make_pair("table", Table::Index({"int2"})) },
+        { "table" },
+        {}
+    );
+    ASSERT_THAT(result.size(), Eq(1));
+    ASSERT_THAT(result[0]["table.int2"], Ne(nullptr));
+    ASSERT_THAT(result[0]["table.int2"]->toString(), Eq("1")); // Broken update not proformed
 }
 
 TEST_F(TableMgrTest, foreignKeyViolationDuringUpdateAsReferrer)

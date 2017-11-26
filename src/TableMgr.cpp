@@ -354,12 +354,16 @@ void TableMgr::update(const std::string &tbName, const Table::ColL &setClause, c
     {
         Table::ColL fresh;
         for (const auto &item : original)
-            if (item.second == nullptr)
-                fresh[item.first] = None();
-            else
-                fresh[item.first] = item.second->toString();
+            if (item.first[0] != '$')
+            {
+                if (item.second == nullptr)
+                    fresh[item.first] = None();
+                else
+                    fresh[item.first] = item.second->toString();
+            }
         for (const auto &item : setClause)
             fresh[item.first] = item.second;
+        freshRows.push_back(fresh);
 
         // As a referrer
         for (const auto &foreign : sysForeigns.select({"referrerCols", "referee"}, {
@@ -397,8 +401,6 @@ void TableMgr::update(const std::string &tbName, const Table::ColL &setClause, c
             if (nameExists(*tables.at(referrer), commaSep(referrerCols), keys))
                 throw ForeignKeyViolatedException(referrer, referrerCols, tbName, commaJoin(priIdxOpt.ok()));
         }
-
-        freshRows.push_back(std::move(fresh));
     }
 
     // Update
