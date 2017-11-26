@@ -14,6 +14,7 @@
 #include "exception/IDAlreadyUsedException.h"
 #include "exception/RefereeNotPrimaryException.h"
 #include "exception/ForeignKeyViolatedException.h"
+#include "exception/ValueListLengthNotMatchException.h"
 
 class TableMgr
 {
@@ -44,6 +45,7 @@ public:
         std::string col1, col2;
     };
     typedef std::vector<OuterCon> OuterCons;
+    typedef std::unordered_map< std::pair<std::string, std::string>, OuterCons, PairHash<std::string, std::string> > OuterConsMap;
 
     /************************************/
     /* DB Managements                   */
@@ -79,7 +81,7 @@ public:
      */
     void createTable(
         const std::string &name,
-        const Table::Cols &cols,
+        const std::vector< std::pair<std::string, Column> > &cols,
         const Optional<Table::Index> &primary = None(),
         const std::vector<Table::Index> &nonClus = {},
         const std::vector<ForeignKey> foreigns = {}
@@ -101,18 +103,19 @@ public:
 
     /** INSERT INTO <tbName> VALUES <valueLists>
      *  @throw : NoSuchThingException
-     *  @throw NotNullException
+     *  @throw : NotNullException
+     *  @throw : ValueListLengthNotMatchException
      */
-    void insert(const std::string &tbName, std::vector<Table::ColL> valueLists);
+    void insert(const std::string &tbName, const std::vector< std::vector< Optional<std::string> > > &valueLists);
 
     /** SELECT <selector> FROM <tableList> WHERE <whereClause>
      *  @throw : NoSuchThingException
      */
     std::vector<Table::ColVal> select(
         std::unordered_map< std::string, Table::Index > targets, /// table -> columns
-        std::vector< std::string > tableList,
-        std::unordered_map< std::string, Table::ConsL > innerCons, /// table -> constraints
-        std::unordered_map< std::pair<std::string, std::string>, OuterCons, PairHash<std::string, std::string> > outterCons
+        const std::vector< std::string > &tableList,
+        const std::unordered_map< std::string, Table::ConsL > &innerCons, /// table -> constraints
+        const OuterConsMap &outterCons = {}
     );
 };
 

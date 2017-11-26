@@ -157,7 +157,7 @@ std::vector<Table::ColVal> TableMgr::showDbs()
 
 void TableMgr::createTable(
     const std::string &name,
-    const Table::Cols &cols,
+    const std::vector< std::pair<std::string, Column> > &cols,
     const Optional<Table::Index> &primary,
     const std::vector<Table::Index> &nonClus,
     const std::vector<TableMgr::ForeignKey> foreigns
@@ -185,7 +185,9 @@ void TableMgr::createTable(
         std::make_pair("db", curDb.ok()),
         std::make_pair("table", name)
     });
+    Table::Cols colsMap;
     for (const auto &col : cols)
+    {
         sysCols.insert({
             std::make_pair("db", curDb.ok()),
             std::make_pair("table", name),
@@ -194,6 +196,8 @@ void TableMgr::createTable(
             std::make_pair("length", std::to_string(col.second.length)),
             std::make_pair("notNull", std::to_string((int)col.second.notNull))
         });
+        colsMap[col.first] = col.second;
+    }
     if (primary.isOk())
         sysPriIdxes.insert({
             std::make_pair("db", curDb.ok()),
@@ -214,7 +218,7 @@ void TableMgr::createTable(
             std::make_pair("referrerCols", commaJoin(key.referrerCols))
         });
 
-    tables[name] = std::unique_ptr<Table>(new Table(cache, curDb.ok() + "." + name, cols, primary, nonClus));
+    tables[name] = std::unique_ptr<Table>(new Table(cache, curDb.ok() + "." + name, colsMap, primary, nonClus));
 }
 
 void TableMgr::dropTable(const std::string &name)
@@ -242,13 +246,32 @@ std::vector<Table::ColVal> TableMgr::showTables()
 /* Queries                          */
 /************************************/
 
-void TableMgr::insert(const std::string &tbName, std::vector<Table::ColL> valueLists)
+void TableMgr::insert(const std::string &tbName, const std::vector< std::vector< Optional<std::string> > > &valueLists)
 {
     if (!tables.count(tbName))
         throw NoSuchThingException("table", tbName);
 
-    // Check foreign key
+    // DO NOT use BaseTable.allColumns because it's out of order
+    Table::Index allColumns;
+    for (const auto &col : sysCols.select({"name"}, {
+        std::make_pair("db", std::vector<Table::ConLiteral>({{Table::EQ, curDb.ok()}})),
+        std::make_pair("table", std::vector<Table::ConLiteral>({{Table::EQ, tbName}}))
+    }))
+        allColumns.push_back(dynamic_cast<CharType*>(col.at("name").get())->getVal());
+
+    std::vector<Table::ColL> valueMaps;
     for (const auto &valueList : valueLists)
+    {
+        if (valueList.size() != allColumns.size())
+            throw ValueListLengthNotMatchException(valueList.size(), allColumns.size());
+        Table::ColL valueMap;
+        for (int i = 0; i < int(valueList.size()); i++)
+            valueMap[allColumns[i]] = valueList[i];
+        valueMaps.push_back(std::move(valueMap));
+    }
+
+    // Check foreign key
+    for (const auto &valueMap : valueMaps)
     {
         for (const auto &foreign : sysForeigns.select({"referrerCols", "referee"}, {
             std::make_pair("db", std::vector<Table::ConLiteral>({{Table::EQ, curDb.ok()}})),
@@ -259,9 +282,9 @@ void TableMgr::insert(const std::string &tbName, std::vector<Table::ColL> valueL
             const std::string &referrerCols = dynamic_cast<CharType*>(foreign.at("referrerCols").get())->getVal();
             for (const auto &col : commaSep(referrerCols))
             {
-                if (!valueList.count(col) || !valueList.at(col).isOk())
+                if (!valueMap.count(col) || !valueMap.at(col).isOk())
                     throw NotNullException(col);
-                keys.push_back(valueList.at(col).ok());
+                keys.push_back(valueMap.at(col).ok());
             }
             const std::string &referee = dynamic_cast<CharType*>(foreign.at("referee").get())->getVal();
             const Table::Index &refereeCols = tables.at(referee)->getPrimary().ok();
@@ -271,15 +294,15 @@ void TableMgr::insert(const std::string &tbName, std::vector<Table::ColL> valueL
     }
 
     // Insert
-    for (const auto &valueList : valueLists)
-        tables.at(tbName)->insert(valueList);
+    for (const auto &valueMap : valueMaps)
+        tables.at(tbName)->insert(valueMap);
 }
 
 std::vector<Table::ColVal> TableMgr::select(
     std::unordered_map< std::string, Table::Index > targets, /// table -> columns
-    std::vector< std::string > tableList,
-    std::unordered_map< std::string, Table::ConsL > innerCons, /// table -> constraints
-    std::unordered_map< std::pair<std::string, std::string>, TableMgr::OuterCons, PairHash<std::string, std::string> > outterCons
+    const std::vector< std::string > &tableList,
+    const std::unordered_map< std::string, Table::ConsL > &innerCons, /// table -> constraints
+    const OuterConsMap &outterCons
 )
 {
     for (const auto &name : tableList)
@@ -303,6 +326,7 @@ std::vector<Table::ColVal> TableMgr::select(
 
     std::vector<Table::ColVal> buf1, buf2;
     auto *feed = &buf1, *result = &buf2;
+    result->push_back({});
     for (int i = 0; i < int(tables.size()); i++)
     {
         // Gather constraints

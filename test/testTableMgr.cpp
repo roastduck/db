@@ -81,8 +81,8 @@ TEST_F(TableMgrTest, foreignKeyViolationDuringInsertion)
     mgr.createTable(
         "master",
         { std::make_pair("int", (Column){ Type::INT, 0, true }) },
-        { Table::Index({"int"})
-    });
+        { Table::Index({"int"}) }
+    );
     mgr.createTable(
         "slave",
         { std::make_pair("int", (Column){ Type::INT, 0, true }) },
@@ -91,8 +91,132 @@ TEST_F(TableMgrTest, foreignKeyViolationDuringInsertion)
         { (TableMgr::ForeignKey){ "master", Table::Index({"int"}), Table::Index({"int"}) } }
     );
     ASSERT_THROW(
-        mgr.insert("slave", { Table::ColL({std::make_pair("int", Optional<std::string>("1"))}) }),
+        mgr.insert("slave", {{ Optional<std::string>("1") }}),
         ForeignKeyViolatedException
     );
+}
+
+TEST_F(TableMgrTest, valueLengthNotMatch)
+{
+    mgr.createDb("db");
+    mgr.use("db");
+    mgr.createTable(
+        "table",
+        {
+            std::make_pair("a", (Column){ Type::INT, 0, true }),
+            std::make_pair("b", (Column){ Type::INT, 0, true }),
+            std::make_pair("c", (Column){ Type::INT, 0, true })
+        }
+    );
+    ASSERT_THROW(
+        mgr.insert("table", {{ Optional<std::string>("1"), Optional<std::string>("2") }}),
+        ValueListLengthNotMatchException
+    );
+}
+
+TEST_F(TableMgrTest, insertAndSelect)
+{
+    mgr.createDb("db");
+    mgr.use("db");
+    mgr.createTable(
+        "table",
+        { std::make_pair("int", (Column){ Type::INT, 0, true }) }
+    );
+    mgr.insert("table", {{ Optional<std::string>("1") }});
+    mgr.insert("table", {{ Optional<std::string>("2") }});
+    std::unordered_map< std::string, Table::ConsL > innerCons;
+    innerCons["table"]["int"] = std::vector<Table::ConLiteral>({{Table::EQ, "1"}});
+    auto result = mgr.select(
+        { std::make_pair("table", Table::Index({"int"})) },
+        { "table" },
+        innerCons
+    );
+    ASSERT_THAT(result.size(), Eq(1));
+    ASSERT_THAT(result[0]["table.int"]->toString(), Eq("1"));
+}
+
+TEST_F(TableMgrTest, insertOrder)
+{
+    mgr.createDb("db");
+    mgr.use("db");
+    mgr.createTable(
+        "table",
+        {
+            std::make_pair("f", (Column){ Type::INT, 0, true }),
+            std::make_pair("o", (Column){ Type::INT, 0, true }),
+            std::make_pair("b", (Column){ Type::INT, 0, true }),
+            std::make_pair("a", (Column){ Type::INT, 0, true }),
+            std::make_pair("r", (Column){ Type::INT, 0, true }),
+        }
+    );
+    mgr.insert("table", {{
+        Optional<std::string>("1"),
+        Optional<std::string>("2"),
+        Optional<std::string>("3"),
+        Optional<std::string>("4"),
+        Optional<std::string>("5")
+    }});
+    auto result = mgr.select(
+        { std::make_pair("table", Table::Index({"f", "o", "b", "a", "r"})) },
+        { "table" },
+        {}
+    );
+    ASSERT_THAT(result.size(), Eq(1));
+    ASSERT_THAT(result[0]["table.f"]->toString(), Eq("1"));
+    ASSERT_THAT(result[0]["table.o"]->toString(), Eq("2"));
+    ASSERT_THAT(result[0]["table.b"]->toString(), Eq("3"));
+    ASSERT_THAT(result[0]["table.a"]->toString(), Eq("4"));
+    ASSERT_THAT(result[0]["table.r"]->toString(), Eq("5"));
+}
+
+
+TEST_F(TableMgrTest, twoTablesConnection)
+{
+    mgr.createDb("db");
+    mgr.use("db");
+    mgr.createTable(
+        "t1",
+        {
+            std::make_pair("a", (Column){ Type::CHAR, 1, true }),
+            std::make_pair("b", (Column){ Type::INT, 0, true })
+        }
+    );
+    mgr.createTable(
+        "t2",
+        {
+            std::make_pair("c", (Column){ Type::INT, 0, true }),
+            std::make_pair("d", (Column){ Type::CHAR, 1, true })
+        }
+    );
+
+    mgr.insert("t1", {{ Optional<std::string>("a"), Optional<std::string>("1") }});
+    mgr.insert("t1", {{ Optional<std::string>("b"), Optional<std::string>("3") }});
+    mgr.insert("t1", {{ Optional<std::string>("c"), Optional<std::string>("4") }});
+
+    mgr.insert("t2", {{ Optional<std::string>("1"), Optional<std::string>("X") }});
+    mgr.insert("t2", {{ Optional<std::string>("4"), Optional<std::string>("Y") }});
+    mgr.insert("t2", {{ Optional<std::string>("5"), Optional<std::string>("Z") }});
+
+    TableMgr::OuterCon out;
+    out.dir = Table::EQ;
+    out.col1 = "b";
+    out.col2 = "c";
+    TableMgr::OuterConsMap outMap;
+    outMap[std::pair<std::string, std::string>("t1", "t2")] = { out };
+    auto result = mgr.select(
+        {
+            std::make_pair("t1", Table::Index({"a"})),
+            std::make_pair("t2", Table::Index({"d"}))
+        },
+        { "t1", "t2" },
+        {},
+        outMap
+    );
+
+    ASSERT_THAT(result.size(), Eq(2));
+    ASSERT_THAT(result[0]["t1.a"]->toString(), Eq("a"));
+    ASSERT_THAT(result[0]["t2.d"]->toString(), Eq("X"));
+    ASSERT_THAT(result[1]["t1.a"]->toString(), Eq("c"));
+    ASSERT_THAT(result[1]["t2.d"]->toString(), Eq("Y"));
 }
 
