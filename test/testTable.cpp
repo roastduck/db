@@ -148,6 +148,22 @@ TEST_F(TableTest, primarySelect)
     ASSERT_THAT(result.size(), Eq(13));
 }
 
+TEST_F(TableTest, primarySelectRedundent)
+{
+    for (int i = 0; i < 20; i++)
+        tablePri.insert({
+            std::make_pair("int", Optional<std::string>(std::to_string(i))),
+            std::make_pair("char", Optional<std::string>(""))
+        });
+    auto result = tablePri.select({"int"}, Table::ConsL({std::make_pair("int", std::vector<Table::ConLiteral>({
+        {Table::GT, "1"},
+        {Table::GE, "3"},
+        {Table::LT, "16"},
+        {Table::LE, "16"}
+    }))}));
+    ASSERT_THAT(result.size(), Eq(13));
+}
+
 TEST_F(TableTest, primarySelectCombinational)
 {
     for (int i = 0; i < 3; i++)

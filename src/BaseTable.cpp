@@ -571,6 +571,18 @@ void BaseTable::removeRoot(int rootID)
     destroyDataPage(rootID);
 }
 
+void BaseTable::updLBound(BaseTable::ColVal &l, const std::string &name, bool &open, const std::unique_ptr<Type> &_l, bool _open)
+{
+    if (!l.count(name) || Type::less(l.at(name), _l) || (Type::equal(_l, l.at(name)) && !open && _open))
+        l[name] = Type::newFromCopy(_l), open = _open;
+}
+
+void BaseTable::updRBound(BaseTable::ColVal &r, const std::string &name, bool &open, const std::unique_ptr<Type> &_r, bool _open)
+{
+    if (!r.count(name) || Type::less(_r, r.at(name)) || (Type::equal(_r, r.at(name)) && !open && _open))
+        r[name] = Type::newFromCopy(_r), open = _open;
+}
+
 BaseTable::Bound BaseTable::getBound(const BaseTable::ConsVal &constraints, const BaseTable::Index &index)
 {
     ColVal l, r;
@@ -582,43 +594,31 @@ BaseTable::Bound BaseTable::getBound(const BaseTable::ConsVal &constraints, cons
             for (const auto &item : constraints.at(name))
                 switch (item.dir)
                 {
-                    // Don't care about redundent or conflictory consitions
-                    // The linear scanning guarentees the correctness
                 case IS_NULL:
-                    l[name] = nullptr;
-                    r[name] = nullptr;
-                    openL = openR = false;
+                    updRBound(r, name, openR, nullptr, false);
                     done = false;
                     break;
                 case IS_NOT_NULL:
-                    l[name] = nullptr;
-                    openL = true;
+                    updLBound(l, name, openL, nullptr, true);
                     break;
                 case EQ:
-                    l[name] = Type::newFromCopy(item.pivot);
-                    r[name] = Type::newFromCopy(item.pivot);
-                    openL = openR = false;
+                    updLBound(l, name, openL, item.pivot, false);
+                    updRBound(r, name, openR, item.pivot, false);
                     done = false;
                     break;
                 case LE:
-                    r[name] = Type::newFromCopy(item.pivot);
-                    openR = false;
-                    if (!l.count(name))
-                        l[name] = nullptr, openL = true;
+                    updLBound(l, name, openL, nullptr, true);
+                    updRBound(r, name, openR, item.pivot, false);
                     break;
                 case LT:
-                    r[name] = Type::newFromCopy(item.pivot);
-                    openR = true;
-                    if (!l.count(name))
-                        l[name] = nullptr, openL = true;
+                    updLBound(l, name, openL, nullptr, true);
+                    updRBound(r, name, openR, item.pivot, true);
                     break;
                 case GE:
-                    l[name] = Type::newFromCopy(item.pivot);
-                    openL = false;
+                    updLBound(l, name, openL, item.pivot, false);
                     break;
                 case GT:
-                    l[name] = Type::newFromCopy(item.pivot);
-                    openL = true;
+                    updLBound(l, name, openL, item.pivot, true);
                     break;
                 default:
                     ; // leave it

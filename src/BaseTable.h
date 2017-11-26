@@ -140,6 +140,8 @@ private:
      */
     void removeRoot(int rootID);
 
+    void updLBound(ColVal &l, const std::string &name, bool &open, const std::unique_ptr<Type> &_l, bool _open);
+    void updRBound(ColVal &r, const std::string &name, bool &open, const std::unique_ptr<Type> &_r, bool _open);
     Bound getBound(const ConsVal &constraints, const Index &index);
 
 protected:

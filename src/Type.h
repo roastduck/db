@@ -69,6 +69,11 @@ public:
     /** Make a new object identical to an orignal one
      */
     static std::unique_ptr<Type> newFromCopy(const std::unique_ptr<Type> &ori);
+
+    /** Comparasion with null treated as -inf
+     */
+    static bool less(const std::unique_ptr<Type> &lhs, const std::unique_ptr<Type> &rhs);
+    static bool equal(const std::unique_ptr<Type> &lhs, const std::unique_ptr<Type> &rhs);
 };
 
 bool operator==(const Type &t1, const Type &t2);

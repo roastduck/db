@@ -61,6 +61,21 @@ std::unique_ptr<Type> Type::newFromCopy(const std::unique_ptr<Type> &ori)
     return ret;
 }
 
+bool Type::less(const std::unique_ptr<Type> &lhs, const std::unique_ptr<Type> &rhs)
+{
+    if (lhs == nullptr && rhs == nullptr) return false;
+    if (lhs == nullptr) return true;
+    if (rhs == nullptr) return false;
+    return *lhs < *rhs;
+}
+
+bool Type::equal(const std::unique_ptr<Type> &lhs, const std::unique_ptr<Type> &rhs)
+{
+    if (lhs == nullptr && rhs == nullptr) return true;
+    if (lhs == nullptr || rhs == nullptr) return false;
+    return *lhs == *rhs;
+}
+
 #define GEN_OP(op) \
     bool operator op (const Type &t1, const Type &t2) \
     { \
