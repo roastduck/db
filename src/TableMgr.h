@@ -107,13 +107,22 @@ public:
      *  @throw : NoSuchThingException
      *  @throw : NotNullException
      *  @throw : ValueListLengthNotMatchException
+     *  @throw : ForeignKeyViolatedException
      */
     void insert(const std::string &tbName, const std::vector< std::vector< Optional<std::string> > > &valueLists);
 
     /** DELETE FROM <tbName> WHERE <whereClause>
      *  @throw : NoSuchThingException
+     *  @throw : ForeignKeyViolatedException
      */
     void remove(const std::string &tbName, const Table::ConsL &cons);
+
+    /** UPDATE <tbName> SET <setClause> WHERE <whereClause>
+     *  @throw : NoSuchThingException
+     *  @throw : ForeignKeyViolatedException
+     *  @throw : NotNullException
+     */
+    void update(const std::string &tbName, const Table::ColL &setClause, const Table::ConsL &cons);
 
     /** SELECT <selector> FROM <tableList> WHERE <whereClause>
      *  @throw : NoSuchThingException

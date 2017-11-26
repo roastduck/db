@@ -157,6 +157,7 @@ protected:
 
 public:
     const Optional<Index> &getPrimary() const { return primary; }
+    const Index &getAllColumns() const { return allColumns; }
 
     /** Add a non-cluster index
      */
