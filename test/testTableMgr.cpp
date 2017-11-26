@@ -114,6 +114,57 @@ TEST_F(TableMgrTest, valueLengthNotMatch)
     );
 }
 
+TEST_F(TableMgrTest, foreignKeyViolationDuringDeletion)
+{
+    mgr.createDb("db");
+    mgr.use("db");
+    mgr.createTable(
+        "master",
+        { std::make_pair("int", (Column){ Type::INT, 0, true }) },
+        { Table::Index({"int"}) }
+    );
+    mgr.createTable(
+        "slave",
+        { std::make_pair("int", (Column){ Type::INT, 0, true }) },
+        None(),
+        {},
+        { (TableMgr::ForeignKey){ "master", Table::Index({"int"}), Table::Index({"int"}) } }
+    );
+    mgr.insert("master", {{ Optional<std::string>("1") }});
+    mgr.insert("slave", {{ Optional<std::string>("1") }});
+    mgr.remove("master", { std::make_pair("int", std::vector<Table::ConLiteral>({
+        {Table::EQ, "2"}
+    })) }); // this deletes nothing
+    ASSERT_THROW(
+        mgr.remove("master", { std::make_pair("int", std::vector<Table::ConLiteral>({
+            {Table::EQ, "1"}
+        })) }),
+        ForeignKeyViolatedException
+    );
+}
+
+TEST_F(TableMgrTest, remove)
+{
+    mgr.createDb("db");
+    mgr.use("db");
+    mgr.createTable(
+        "table",
+        { std::make_pair("int", (Column){ Type::INT, 0, true }) }
+    );
+    mgr.insert("table", {{ Optional<std::string>("1") }});
+    mgr.insert("table", {{ Optional<std::string>("2") }});
+    mgr.remove("table", { std::make_pair("int", std::vector<Table::ConLiteral>({
+        {Table::EQ, "1"}
+    })) });
+    auto result = mgr.select(
+        { std::make_pair("table", Table::Index({"int"})) },
+        { "table" },
+        {}
+    );
+    ASSERT_THAT(result.size(), Eq(1));
+    ASSERT_THAT(result[0]["table.int"]->toString(), Eq("2"));
+}
+
 TEST_F(TableMgrTest, insertAndSelect)
 {
     mgr.createDb("db");

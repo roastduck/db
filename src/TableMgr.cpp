@@ -298,6 +298,40 @@ void TableMgr::insert(const std::string &tbName, const std::vector< std::vector<
         tables.at(tbName)->insert(valueMap);
 }
 
+void TableMgr::remove(const std::string &tbName, const Table::ConsL &cons)
+{
+    if (!tables.count(tbName))
+        throw NoSuchThingException("table", tbName);
+
+    // Check foreign key
+    const auto &priIdxOpt = tables.at(tbName)->getPrimary();
+    if (priIdxOpt.isOk())
+    {
+        const auto &priIdx = priIdxOpt.ok();
+        for (const auto &row : tables.at(tbName)->select(priIdx, cons))
+        {
+            Table::ConsL foreignCons;
+            for (const auto &item : row)
+                foreignCons[item.first].push_back({ Table::EQ, item.second->toString() });
+
+            for (const auto &foreign : sysForeigns.select({"referrerCols", "referrer"}, {
+                std::make_pair("db", std::vector<Table::ConLiteral>({{Table::EQ, curDb.ok()}})),
+                std::make_pair("referee", std::vector<Table::ConLiteral>({{Table::EQ, tbName}}))
+            }))
+            {
+                const std::string &referrer = dynamic_cast<CharType*>(foreign.at("referrer").get())->getVal();
+                const std::string &referrerCols = dynamic_cast<CharType*>(foreign.at("referrerCols").get())->getVal();
+                auto cols = tables.at(referrer)->select(commaSep(referrerCols), foreignCons);
+                if (!cols.empty())
+                    throw ForeignKeyViolatedException(referrer, referrerCols, tbName, commaJoin(priIdx));
+            }
+        }
+    }
+
+    // Delete
+    tables.at(tbName)->remove(cons);
+}
+
 std::vector<Table::ColVal> TableMgr::select(
     std::unordered_map< std::string, Table::Index > targets, /// table -> columns
     const std::vector< std::string > &tableList,

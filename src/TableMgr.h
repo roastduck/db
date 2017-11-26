@@ -101,12 +101,19 @@ public:
     /* Queries                          */
     /************************************/
 
+    // If no DB in use in queries, just throw NoSuchThingException
+
     /** INSERT INTO <tbName> VALUES <valueLists>
      *  @throw : NoSuchThingException
      *  @throw : NotNullException
      *  @throw : ValueListLengthNotMatchException
      */
     void insert(const std::string &tbName, const std::vector< std::vector< Optional<std::string> > > &valueLists);
+
+    /** DELETE FROM <tbName> WHERE <whereClause>
+     *  @throw : NoSuchThingException
+     */
+    void remove(const std::string &tbName, const Table::ConsL &cons);
 
     /** SELECT <selector> FROM <tableList> WHERE <whereClause>
      *  @throw : NoSuchThingException
