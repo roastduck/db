@@ -53,6 +53,7 @@ private:
      */
     int ncEntry(int indexID);
     void setNcEntry(int indexID, int e);
+    void delNcEntry(int indexID);
 
     /** Check if a record meets ALL the constraints in `cons`, i.e. items in cons are ANDed together
      */
@@ -144,6 +145,8 @@ private:
     void updRBound(ColVal &r, const std::string &name, bool &open, const std::unique_ptr<Type> &_r, bool _open);
     Bound getBound(const ConsVal &constraints, const Index &index);
 
+    void delIndexRecur(int pageID);
+
 protected:
     BaseTable
     (
@@ -162,6 +165,10 @@ public:
     /** Add a non-cluster index
      */
     void addIndex(const Index &index);
+
+    /** Delete a non-cluster index
+     */
+    void delIndex(int indexID);
 };
 
 #endif // BASE_TABLE_H_

@@ -55,6 +55,15 @@ void BaseTable::setNcEntry(int indexID, int e)
     getDataPage(ENTRY_PAGE).setValues(indexID + 1, std::move(newItem));
 }
 
+void BaseTable::delNcEntry(int indexID)
+{
+    assert(indexID + 1 >= 1 && indexID + 1 < getDataPage(ENTRY_PAGE).getSize());
+    ListPage &entry = getDataPage(ENTRY_PAGE);
+    entry.setSize(entry.getSize() - 1);
+    for (int i = indexID + 1; i < entry.getSize(); i++)
+        entry.copy(i + 1, i);
+}
+
 bool BaseTable::meetCons(ListPage &page, int rank, const BaseTable::ConsVal &cons) const
 {
     for (const auto &pair : cons)
@@ -755,5 +764,36 @@ void BaseTable::addIndex(const BaseTable::Index &index)
         }
         pageID = page.getNext();
     }
+}
+
+void BaseTable::delIndexRecur(int pageID)
+{
+    ListPage *page = &getDataPage(pageID);
+    if (page->getIdent() == REF)
+    {
+        while (!~pageID)
+        {
+            page = &getDataPage(pageID);
+            int nextID = page->getNext();
+            destroyDataPage(pageID);
+            pageID = nextID;
+        }
+        return;
+    }
+    assert(page->getIdent() >= NON_CLUSTER);
+    for (int i = 0; i < page->getSize(); i++)
+    {
+        int childID = dynamic_cast<IntType*>(page->getValue(i, "$child").get())->getVal();
+        delIndexRecur(childID);
+    }
+    destroyDataPage(pageID);
+}
+
+void BaseTable::delIndex(int indexID)
+{
+    delIndexRecur(ncEntry(indexID));
+    delNcEntry(indexID);
+    nonClus.erase(nonClus.begin() + indexID);
+    registerDelIndex(indexID);
 }
 

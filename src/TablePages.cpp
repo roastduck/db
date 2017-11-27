@@ -32,6 +32,11 @@ void TablePages::registerNewIndex(const Index &index)
     nonClusCols.push_back(std::move(node));
 }
 
+void TablePages::registerDelIndex(int indexID)
+{
+    nonClusCols.erase(nonClusCols.begin() + indexID);
+}
+
 TablePages::Cols TablePages::identToCols(short ident)
 {
     switch (ident)

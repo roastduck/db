@@ -59,6 +59,7 @@ protected:
     );
 
     void registerNewIndex(const Index &index);
+    void registerDelIndex(int indexID);
 
     /** Test if a data page is free
      */
