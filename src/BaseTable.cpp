@@ -735,7 +735,7 @@ std::vector<BaseTable::ColVal> BaseTable::select(const BaseTable::Index &targets
     return ret;
 }
 
-void BaseTable::addIndex(const BaseTable::Index &index)
+int BaseTable::addIndex(const BaseTable::Index &index)
 {
     // Update entry
     int indexID = nonClus.size();
@@ -764,6 +764,7 @@ void BaseTable::addIndex(const BaseTable::Index &index)
         }
         pageID = page.getNext();
     }
+    return indexID;
 }
 
 void BaseTable::delIndexRecur(int pageID)

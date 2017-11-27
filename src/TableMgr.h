@@ -98,6 +98,22 @@ public:
     std::vector<Table::ColVal> showTables();
 
     /************************************/
+    /* Index Managements                */
+    /************************************/
+
+    // If no DB in use in queries, just throw NoSuchThingException
+
+    /** CREATE INDEX <tbName> '(' <colName> ')'
+     *  @throw : NoSuchThingException
+     */
+    void createIndex(const std::string &tbName, const Table::Index &colName);
+
+    /** DROP INDEX <tbName> '(' <colName> ')'
+     *  @throw : NoSuchThingException
+     */
+    void dropIndex(const std::string &tbName, const Table::Index &colName);
+
+    /************************************/
     /* Queries                          */
     /************************************/
 

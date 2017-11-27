@@ -29,8 +29,9 @@ TableMgr::TableMgr(PageCache &_cache)
       sysNonClusIdxes(cache, "$system.nonClusterIndexes", {
             std::make_pair("db", (Column){ Type::CHAR, MAX_IDENTIFIER_LEN, true }),
             std::make_pair("table", (Column){ Type::CHAR, MAX_IDENTIFIER_LEN, true }),
-            std::make_pair("columns", (Column){ Type::CHAR, (MAX_IDENTIFIER_LEN + 1) * MAX_COLUMN_NUM, true })
-      }, None(), {Table::Index({"db", "table"})}),
+            std::make_pair("columns", (Column){ Type::CHAR, (MAX_IDENTIFIER_LEN + 1) * MAX_COLUMN_NUM, true }),
+            std::make_pair("indexID", (Column){ Type::INT, 0, true })
+      }, {Table::Index({"db", "table", "columns"})}),
       sysForeigns(cache, "$system.foreignKeys", {
             std::make_pair("db", (Column){ Type::CHAR, MAX_IDENTIFIER_LEN, true }),
             std::make_pair("referrer", (Column){ Type::CHAR, MAX_IDENTIFIER_LEN, true }),
@@ -204,12 +205,17 @@ void TableMgr::createTable(
             std::make_pair("table", name),
             std::make_pair("columns", commaJoin(primary.ok()))
         });
+    int indexID = 0;
     for (const auto &idx : nonClus)
+    {
         sysNonClusIdxes.insert({
             std::make_pair("db", curDb.ok()),
             std::make_pair("table", name),
-            std::make_pair("columns", commaJoin(idx))
+            std::make_pair("columns", commaJoin(idx)),
+            std::make_pair("indexID", std::to_string(indexID))
         });
+        indexID++;
+    }
     for (const auto &key : foreigns)
         sysForeigns.insert({
             std::make_pair("db", curDb.ok()),
@@ -240,6 +246,41 @@ std::vector<Table::ColVal> TableMgr::showTables()
     return sysTables.select({"table"}, {
         std::make_pair("db", std::vector<Table::ConLiteral>({(Table::ConLiteral){Table::EQ, curDb.ok()}})),
     });
+}
+
+/************************************/
+/* Index Managements                */
+/************************************/
+
+void TableMgr::createIndex(const std::string &tbName, const Table::Index &colName)
+{
+    if (!tables.count(tbName))
+        throw NoSuchThingException("table", tbName);
+
+    int indexID = tables.at(tbName)->addIndex(colName);
+    sysNonClusIdxes.insert({
+        std::make_pair("db", curDb.ok()),
+        std::make_pair("table", tbName),
+        std::make_pair("columns", commaJoin(colName)),
+        std::make_pair("indexID", std::to_string(indexID))
+    });
+}
+
+void TableMgr::dropIndex(const std::string &tbName, const Table::Index &colName)
+{
+    if (!tables.count(tbName))
+        throw NoSuchThingException("table", tbName);
+
+    auto result = sysNonClusIdxes.select({"indexID"}, {
+        std::make_pair("db", std::vector<Table::ConLiteral>({{Table::EQ, curDb.ok()}})),
+        std::make_pair("table", std::vector<Table::ConLiteral>({{Table::EQ, tbName}})),
+        std::make_pair("column", std::vector<Table::ConLiteral>({{Table::EQ, commaJoin(colName)}}))
+    });
+    if (result.empty())
+        throw NoSuchThingException("index", "(" + commaJoin(colName) + ")");
+    assert(result.size() == 1);
+    auto indexID = dynamic_cast<IntType*>(result[0].at("column").get())->getVal();
+    tables.at(tbName)->delIndex(indexID);
 }
 
 /************************************/

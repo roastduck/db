@@ -163,8 +163,9 @@ public:
     const Index &getAllColumns() const { return allColumns; }
 
     /** Add a non-cluster index
+     *  @return : new index ID
      */
-    void addIndex(const Index &index);
+    int addIndex(const Index &index);
 
     /** Delete a non-cluster index
      */
