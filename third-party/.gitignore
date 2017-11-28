@@ -1,0 +1,4 @@
+# Google Test and Antlr4 will be downloaded automatically via CMake
+/*
+!/antlr-4.7-complete.jar
+!/.gitignore

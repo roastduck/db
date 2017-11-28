@@ -4,6 +4,7 @@ project(DB)
 
 OPTION(ENABLE_GCOV "Enable gcov (debug, Linux builds only)" OFF)
 OPTION(BUILD_TEST "Build test (will download and build Google Test)" OFF)
+OPTION(REBUILD_PARSER "Rebuild parser (Java runtime needed)" OFF)
 
 set(CMAKE_CXX_FLAGS_DEBUG "-Wall -Wextra -ggdb")
 set(CMAKE_CXX_FLAGS_RELEASE "-DNDEBUG -O3")
@@ -17,10 +18,47 @@ if(NOT CMAKE_BUILD_TYPE)
     SET(CMAKE_BUILD_TYPE Release)
 endif(NOT CMAKE_BUILD_TYPE)
 
+set(ANTLR4CPP_JAR_LOCATION ${CMAKE_BINARY_DIR}/third-party/antlr-4.7-complete.jar)
+set(ANTLR4CPP_GENERATED_SRC_DIR ${CMAKE_BINARY_DIR}/src/parser)
+configure_file(antlr4.CMakeLists.txt.in ${CMAKE_BINARY_DIR}/third-party/antlr4/download/CMakeLists.txt)
+add_subdirectory(${CMAKE_BINARY_DIR}/third-party/antlr4/download)
+
+# add external build for antlrcpp
+# add antrl4cpp artifacts to project environment
+include_directories(${CMAKE_BINARY_DIR}/third-party/antlr4/include/antlr4-runtime)
+foreach(src_path misc atn dfa tree support)
+    include_directories(${CMAKE_BINARY_DIR}/third-party/antlr4/include/antlr4-runtime/${src_path})
+endforeach(src_path)
+link_directories(${CMAKE_BINARY_DIR}/third-party/antlr4/lib)
+
+if (REBUILD_PARSER)
+    find_package(Java COMPONENTS Runtime REQUIRED)
+    set(GRAMMAR_OUTPUT
+        ${CMAKE_BINARY_DIR}/src/parser/SqlLexer.cpp
+        ${CMAKE_BINARY_DIR}/src/parser/SqlLexer.h
+        ${CMAKE_BINARY_DIR}/src/parser/SqlParser.cpp
+        ${CMAKE_BINARY_DIR}/src/parser/SqlParser.h
+    )
+    set(GRAMMAR_LEXER ${CMAKE_BINARY_DIR}/src/parser/SqlLexer.g4)
+    set(GRAMMAR_PARSER ${CMAKE_BINARY_DIR}/src/parser/SqlParser.g4)
+
+    add_custom_command(
+        OUTPUT ${GRAMMAR_OUTPUT}
+        COMMAND "${Java_JAVA_EXECUTABLE}" -jar "${ANTLR4CPP_JAR_LOCATION}" -Werror -Dlanguage=Cpp -no-listener -no-visitor -o "${ANTLR4CPP_GENERATED_SRC_DIR}" "${GRAMMAR_LEXER}" "${GRAMMAR_PARSER}"
+        DEPENDS "${GRAMMAR_LEXER}" "${GRAMMAR_PARSER}"
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    )
+endif()
+
 file(GLOB_RECURSE SRCS ${CMAKE_BINARY_DIR}/src/*.cpp)
 list(REMOVE_ITEM SRCS ${CMAKE_BINARY_DIR}/src/main.cpp)
+if (REBUILD_PARSER)
+    list(APPEND SRCS ${GRAMMAR_OUTPUT})
+endif()
 
 add_executable(db ${SRCS} ${CMAKE_BINARY_DIR}/src/main.cpp)
+add_dependencies(db antlr4cpp)
+target_link_libraries(db antlr4-runtime)
 
 set_target_properties(
     db
@@ -34,6 +72,8 @@ if (BUILD_TEST)
     file(GLOB_RECURSE TESTS ${CMAKE_BINARY_DIR}/test/*.cpp)
 
     add_executable(db_test ${SRCS} ${TESTS})
+    add_dependencies(db_test antlr4cpp)
+    target_link_libraries(db_test antlr4-runtime)
 
     target_include_directories(db_test PRIVATE ${CMAKE_BINARY_DIR}/src)
 
@@ -48,16 +88,16 @@ if (BUILD_TEST)
     # Download and unpack googletest at configure time
     configure_file(gtest.CMakeLists.txt.in third-party/googletest/download/CMakeLists.txt)
     execute_process(COMMAND ${CMAKE_COMMAND} -G "${CMAKE_GENERATOR}" .
-      RESULT_VARIABLE result
-      WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/third-party/googletest/download )
+        RESULT_VARIABLE result
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/third-party/googletest/download )
     if(result)
-      message(FATAL_ERROR "CMake step for googletest failed: ${result}")
+        message(FATAL_ERROR "CMake step for googletest failed: ${result}")
     endif()
     execute_process(COMMAND ${CMAKE_COMMAND} --build .
-      RESULT_VARIABLE result
-      WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/third-party/googletest/download )
+        RESULT_VARIABLE result
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/third-party/googletest/download )
     if(result)
-      message(FATAL_ERROR "Build step for googletest failed: ${result}")
+        message(FATAL_ERROR "Build step for googletest failed: ${result}")
     endif()
 
     # Prevent overriding the parent project's compiler/linker

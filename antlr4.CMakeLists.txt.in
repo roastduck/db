@@ -1,0 +1,17 @@
+CMAKE_MINIMUM_REQUIRED(VERSION 2.8.12.2)
+PROJECT(antlr4-download CXX)
+INCLUDE(ExternalProject)
+FIND_PACKAGE(Git REQUIRED)
+
+ExternalProject_ADD(antlr4cpp
+  PREFIX             ${CMAKE_BINARY_DIR}/third-party/antlr4/
+
+  GIT_REPOSITORY     https://github.com/antlr/antlr4.git
+  GIT_TAG            4.7
+
+  UPDATE_COMMAND     ""
+  TEST_COMMAND       ""
+
+  CONFIGURE_COMMAND  ${CMAKE_COMMAND} -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR> <SOURCE_DIR>/runtime/Cpp
+)
+
