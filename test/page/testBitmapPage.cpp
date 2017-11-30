@@ -9,7 +9,7 @@ using namespace testing;
 class BitmapPageTest : public Test
 {
 public:
-    MockPageMgr pageMgr;
+    NiceMock<MockPageMgr> pageMgr;
     PageCache cache;
     BitmapPage page;
 

@@ -10,7 +10,7 @@ using namespace testing;
 class TableMgrTest : public Test
 {
 public:
-    MockPageMgr pageMgr;
+    NiceMock<MockPageMgr> pageMgr;
     PageCache cache;
     TableMgr mgr;
 

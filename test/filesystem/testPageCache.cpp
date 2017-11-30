@@ -9,7 +9,7 @@ using namespace testing;
 class PageCacheTest : public Test
 {
 public:
-    MockPageMgr pageMgr;
+    NiceMock<MockPageMgr> pageMgr;
     PageCache pageCache;
 
     PageCacheTest() : pageCache(pageMgr, 2) {}

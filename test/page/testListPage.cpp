@@ -13,8 +13,7 @@ using namespace testing;
 class ListPageTest : public Test
 {
 public:
-
-    MockPageMgr pageMgr;
+    NiceMock<MockPageMgr> pageMgr;
     PageCache cache;
     ListPage page;
 

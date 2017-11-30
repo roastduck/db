@@ -11,7 +11,7 @@ using namespace testing;
 class TableTest : public Test
 {
 public:
-    MockPageMgr pageMgr;
+    NiceMock<MockPageMgr> pageMgr;
     PageCache cache;
     Table table, tablePri, tableNon, tableBoth, tableBothWithLargePri;
 

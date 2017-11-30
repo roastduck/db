@@ -11,7 +11,7 @@ using namespace testing;
 class ParserTest : public Test
 {
 public:
-    MockPageMgr pageMgr;
+    NiceMock<MockPageMgr> pageMgr;
     PageCache cache;
     TableMgr mgr;
     Input input;
