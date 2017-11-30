@@ -37,6 +37,6 @@ TEST_F(ConsoleTest, commandInMultipleLines)
     console.addCommand("DATABASE db;");
     auto dbs = mgr.showDbs();
     ASSERT_THAT(dbs.size(), Eq(1));
-    ASSERT_THAT(dbs[0]["db"]->toString(), Eq("db"));
+    ASSERT_THAT(dbs[0][TableMgr::DB]->toString(), Eq("db"));
 }
 

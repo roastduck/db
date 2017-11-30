@@ -46,7 +46,7 @@ TEST_F(ParserTest, oneLetterIdentifier)
     input.parse("CREATE DATABASE a;");
     auto dbs = mgr.showDbs();
     ASSERT_THAT(dbs.size(), Eq(1));
-    ASSERT_THAT(dbs[0]["db"]->toString(), Eq("a"));
+    ASSERT_THAT(dbs[0][TableMgr::DB]->toString(), Eq("a"));
 }
 
 TEST_F(ParserTest, createDb)
@@ -54,6 +54,6 @@ TEST_F(ParserTest, createDb)
     input.parse("CREATE DATABASE db;");
     auto dbs = mgr.showDbs();
     ASSERT_THAT(dbs.size(), Eq(1));
-    ASSERT_THAT(dbs[0]["db"]->toString(), Eq("db"));
+    ASSERT_THAT(dbs[0][TableMgr::DB]->toString(), Eq("db"));
 }
 

@@ -32,8 +32,8 @@ TEST_F(TableMgrTest, manageDbs)
     mgr.dropDb("db2");
     auto dbs = mgr.showDbs();
     ASSERT_THAT(dbs.size(), Eq(2));
-    ASSERT_THAT(dbs[0]["db"]->toString(), Eq("db1"));
-    ASSERT_THAT(dbs[1]["db"]->toString(), Eq("db3"));
+    ASSERT_THAT(dbs[0][TableMgr::DB]->toString(), Eq("db1"));
+    ASSERT_THAT(dbs[1][TableMgr::DB]->toString(), Eq("db3"));
 }
 
 TEST_F(TableMgrTest, duplicatedDbName)
@@ -61,8 +61,8 @@ TEST_F(TableMgrTest, manageTables)
     mgr.dropTable("table2");
     auto tables = mgr.showTables();
     ASSERT_THAT(tables.size(), Eq(2));
-    ASSERT_THAT(tables[0]["table"]->toString(), Eq("table1"));
-    ASSERT_THAT(tables[1]["table"]->toString(), Eq("table3"));
+    ASSERT_THAT(tables[0][TableMgr::TABLE]->toString(), Eq("table1"));
+    ASSERT_THAT(tables[1][TableMgr::TABLE]->toString(), Eq("table3"));
 }
 
 TEST_F(TableMgrTest, noDbInUse)

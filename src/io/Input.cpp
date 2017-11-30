@@ -10,6 +10,7 @@ void Input::parse(antlr4::CharStream &charStream)
     SqlParser parser(&tokens);
     parser.setErrorHandler(Ref<antlr4::BailErrorStrategy>(new antlr4::BailErrorStrategy()));
     parser.setTableMgr(&tableMgr);
+    parser.setOutput(&output);
     try
     {
         try

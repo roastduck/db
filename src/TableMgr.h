@@ -18,7 +18,18 @@
 
 class TableMgr
 {
+public:
+    // Field names in system tables
+    // We are defining these because they might be output
+    static constexpr const char *DB = "Database";
+    static constexpr const char *TABLE = "Table";
+    static constexpr const char *FIELD = "Field";
+    static constexpr const char *TYPE = "Type";
+    static constexpr const char *LENGTH = "Length";
+    static constexpr const char *NOT_NULL = "Not Null";
+
 private:
+    // Field names in system tables
     PageCache &cache;
     Table sysDbs, sysTables, sysCols, sysPriIdxes, sysNonClusIdxes, sysForeigns;
 

@@ -4,40 +4,47 @@
 #include "type/CharType.h"
 #include "exception/NotUniqueException.h"
 
+constexpr const char *TableMgr::DB;
+constexpr const char *TableMgr::TABLE;
+constexpr const char *TableMgr::FIELD;
+constexpr const char *TableMgr::TYPE;
+constexpr const char *TableMgr::LENGTH;
+constexpr const char *TableMgr::NOT_NULL;
+
 TableMgr::TableMgr(PageCache &_cache)
     : cache(_cache),
       sysDbs(cache, "$system.dbs", {
-            std::make_pair("db", (Column){ Type::CHAR, MAX_IDENTIFIER_LEN, true })
-      }, Table::Index({"db"})),
+            std::make_pair(DB, (Column){ Type::CHAR, MAX_IDENTIFIER_LEN, true })
+      }, Table::Index({DB})),
       sysTables(cache, "$system.tables", {
-            std::make_pair("db", (Column){ Type::CHAR, MAX_IDENTIFIER_LEN, true }),
-            std::make_pair("table", (Column){ Type::CHAR, MAX_IDENTIFIER_LEN, true }),
-      }, Table::Index({"db", "table"})),
+            std::make_pair(DB, (Column){ Type::CHAR, MAX_IDENTIFIER_LEN, true }),
+            std::make_pair(TABLE, (Column){ Type::CHAR, MAX_IDENTIFIER_LEN, true }),
+      }, Table::Index({DB, TABLE})),
       sysCols(cache, "$system.columns", {
-            std::make_pair("db", (Column){ Type::CHAR, MAX_IDENTIFIER_LEN, true }),
-            std::make_pair("table", (Column){ Type::CHAR, MAX_IDENTIFIER_LEN, true }),
-            std::make_pair("name", (Column){ Type::CHAR, MAX_IDENTIFIER_LEN, true }),
-            std::make_pair("typeID", (Column){ Type::INT, 0, true }),
-            std::make_pair("length", (Column){ Type::INT, 0, true }),
-            std::make_pair("notNull", (Column){ Type::INT, 0, true })
-      }, None(), {Table::Index({"db", "table"})}),
+            std::make_pair(DB, (Column){ Type::CHAR, MAX_IDENTIFIER_LEN, true }),
+            std::make_pair(TABLE, (Column){ Type::CHAR, MAX_IDENTIFIER_LEN, true }),
+            std::make_pair(FIELD, (Column){ Type::CHAR, MAX_IDENTIFIER_LEN, true }),
+            std::make_pair(TYPE, (Column){ Type::INT, 0, true }),
+            std::make_pair(LENGTH, (Column){ Type::INT, 0, true }),
+            std::make_pair(NOT_NULL, (Column){ Type::INT, 0, true })
+      }, None(), {Table::Index({DB, TABLE})}),
       sysPriIdxes(cache, "$system.primaryIndexes", {
-            std::make_pair("db", (Column){ Type::CHAR, MAX_IDENTIFIER_LEN, true }),
-            std::make_pair("table", (Column){ Type::CHAR, MAX_IDENTIFIER_LEN, true }),
+            std::make_pair(DB, (Column){ Type::CHAR, MAX_IDENTIFIER_LEN, true }),
+            std::make_pair(TABLE, (Column){ Type::CHAR, MAX_IDENTIFIER_LEN, true }),
             std::make_pair("columns", (Column){ Type::CHAR, (MAX_IDENTIFIER_LEN + 1) * MAX_COLUMN_NUM, true })
-      }, Table::Index({"db", "table"})),
+      }, Table::Index({DB, TABLE})),
       sysNonClusIdxes(cache, "$system.nonClusterIndexes", {
-            std::make_pair("db", (Column){ Type::CHAR, MAX_IDENTIFIER_LEN, true }),
-            std::make_pair("table", (Column){ Type::CHAR, MAX_IDENTIFIER_LEN, true }),
+            std::make_pair(DB, (Column){ Type::CHAR, MAX_IDENTIFIER_LEN, true }),
+            std::make_pair(TABLE, (Column){ Type::CHAR, MAX_IDENTIFIER_LEN, true }),
             std::make_pair("columns", (Column){ Type::CHAR, (MAX_IDENTIFIER_LEN + 1) * MAX_COLUMN_NUM, true }),
             std::make_pair("indexID", (Column){ Type::INT, 0, true })
-      }, {Table::Index({"db", "table", "columns"})}),
+      }, {Table::Index({DB, TABLE, "columns"})}),
       sysForeigns(cache, "$system.foreignKeys", {
-            std::make_pair("db", (Column){ Type::CHAR, MAX_IDENTIFIER_LEN, true }),
+            std::make_pair(DB, (Column){ Type::CHAR, MAX_IDENTIFIER_LEN, true }),
             std::make_pair("referrer", (Column){ Type::CHAR, MAX_IDENTIFIER_LEN, true }),
             std::make_pair("referee", (Column){ Type::CHAR, MAX_IDENTIFIER_LEN, true }),
             std::make_pair("referrerCols", (Column){ Type::CHAR, (MAX_IDENTIFIER_LEN + 1) * MAX_COLUMN_NUM, true })
-      }, None(), {Table::Index({"db", "referrer"}), Table::Index({"db", "referee"})})
+      }, None(), {Table::Index({DB, "referrer"}), Table::Index({DB, "referee"})})
 {}
 
 bool TableMgr::nameExists(Table &table, const std::vector<std::string> &col, const std::vector<std::string> &name)
@@ -81,7 +88,7 @@ void TableMgr::createDb(const std::string &name)
 {
     try
     {
-        sysDbs.insert({std::make_pair("db", name)});
+        sysDbs.insert({std::make_pair(DB, name)});
     } catch (const NotUniqueException &e)
     {
         throw IDAlreadyUsedException("database", name);
@@ -90,43 +97,43 @@ void TableMgr::createDb(const std::string &name)
 
 void TableMgr::use(const std::string &name)
 {
-    if (!nameExists(sysDbs, {"db"}, {name}))
+    if (!nameExists(sysDbs, {DB}, {name}))
         throw NoSuchThingException("database", name);
     curDb = name;
 
     tables.clear();
-    for (const auto &tableRec : sysTables.select({"table"}, {
-        std::make_pair("db", std::vector<Table::ConLiteral>({{Table::EQ, name}}))
+    for (const auto &tableRec : sysTables.select({TABLE}, {
+        std::make_pair(DB, std::vector<Table::ConLiteral>({{Table::EQ, name}}))
     }))
     {
         // getVal returns reference
-        const std::string &table = dynamic_cast<CharType*>(tableRec.at("table").get())->getVal();
+        const std::string &table = dynamic_cast<CharType*>(tableRec.at(TABLE).get())->getVal();
 
         Table::Cols cols;
-        for (const auto &colRec : sysCols.select({"name", "typeID", "length", "notNull"}, {
-            std::make_pair("db", std::vector<Table::ConLiteral>({{Table::EQ, name}})),
-            std::make_pair("table", std::vector<Table::ConLiteral>({{Table::EQ, table}}))
+        for (const auto &colRec : sysCols.select({FIELD, TYPE, LENGTH, NOT_NULL}, {
+            std::make_pair(DB, std::vector<Table::ConLiteral>({{Table::EQ, name}})),
+            std::make_pair(TABLE, std::vector<Table::ConLiteral>({{Table::EQ, table}}))
         }))
         {
-            const std::string &colName = dynamic_cast<CharType*>(colRec.at("name").get())->getVal();
+            const std::string &colName = dynamic_cast<CharType*>(colRec.at(FIELD).get())->getVal();
             Column col;
-            col.typeID = (Type::TypeID)dynamic_cast<IntType*>(colRec.at("typeID").get())->getVal();
-            col.length = dynamic_cast<IntType*>(colRec.at("length").get())->getVal();
-            col.notNull = dynamic_cast<IntType*>(colRec.at("notNull").get())->getVal();
+            col.typeID = (Type::TypeID)dynamic_cast<IntType*>(colRec.at(TYPE).get())->getVal();
+            col.length = dynamic_cast<IntType*>(colRec.at(LENGTH).get())->getVal();
+            col.notNull = dynamic_cast<IntType*>(colRec.at(NOT_NULL).get())->getVal();
             cols[colName] = std::move(col);
         }
 
         Optional<Table::Index> primary = None();
         for (const auto &priRec : sysPriIdxes.select({"columns"}, {
-            std::make_pair("db", std::vector<Table::ConLiteral>({{Table::EQ, name}})),
-            std::make_pair("table", std::vector<Table::ConLiteral>({{Table::EQ, table}}))
+            std::make_pair(DB, std::vector<Table::ConLiteral>({{Table::EQ, name}})),
+            std::make_pair(TABLE, std::vector<Table::ConLiteral>({{Table::EQ, table}}))
         }))
             primary = commaSep(dynamic_cast<CharType*>(priRec.at("columns").get())->getVal());
 
         std::vector<Table::Index> nonClus;
         for (const auto &nonClusRec : sysNonClusIdxes.select({"columns"}, {
-            std::make_pair("db", std::vector<Table::ConLiteral>({{Table::EQ, name}})),
-            std::make_pair("table", std::vector<Table::ConLiteral>({{Table::EQ, table}}))
+            std::make_pair(DB, std::vector<Table::ConLiteral>({{Table::EQ, name}})),
+            std::make_pair(TABLE, std::vector<Table::ConLiteral>({{Table::EQ, table}}))
         }))
             nonClus.push_back(commaSep(dynamic_cast<CharType*>(nonClusRec.at("columns").get())->getVal()));
 
@@ -138,9 +145,9 @@ void TableMgr::use(const std::string &name)
 
 void TableMgr::dropDb(const std::string &name)
 {
-    if (!nameExists(sysDbs, {"db"}, {name}))
+    if (!nameExists(sysDbs, {DB}, {name}))
         throw NoSuchThingException("database", name);
-    sysDbs.remove({std::make_pair("db", std::vector<Table::ConLiteral>({
+    sysDbs.remove({std::make_pair(DB, std::vector<Table::ConLiteral>({
         {Table::EQ, name}
     }))});
     if (curDb.isOk() && name == curDb.ok())
@@ -149,7 +156,7 @@ void TableMgr::dropDb(const std::string &name)
 
 std::vector<Table::ColVal> TableMgr::showDbs()
 {
-    return sysDbs.select({"db"}, {});
+    return sysDbs.select({DB}, {});
 }
 
 /************************************/
@@ -166,15 +173,15 @@ void TableMgr::createTable(
 {
     if (!curDb.isOk())
         throw NoDBInUseException();
-    if (nameExists(sysTables, {"db", "table"}, {curDb.ok(), name}))
-        throw IDAlreadyUsedException("table", name);
+    if (nameExists(sysTables, {DB, TABLE}, {curDb.ok(), name}))
+        throw IDAlreadyUsedException(TABLE, name);
     for (const auto &key : foreigns)
     {
         std::string refereeCols = commaJoin(key.refereeCols);
         std::string primary = "";
         auto result = sysPriIdxes.select({"columns"}, {
-            std::make_pair("db", std::vector<Table::ConLiteral>({(Table::ConLiteral){Table::EQ, curDb.ok()}})),
-            std::make_pair("table", std::vector<Table::ConLiteral>({(Table::ConLiteral){Table::EQ, key.referee}}))
+            std::make_pair(DB, std::vector<Table::ConLiteral>({(Table::ConLiteral){Table::EQ, curDb.ok()}})),
+            std::make_pair(TABLE, std::vector<Table::ConLiteral>({(Table::ConLiteral){Table::EQ, key.referee}}))
         });
         if (!result.empty())
             primary = result[0]["columns"]->toString();
@@ -183,34 +190,34 @@ void TableMgr::createTable(
     }
 
     sysTables.insert({
-        std::make_pair("db", curDb.ok()),
-        std::make_pair("table", name)
+        std::make_pair(DB, curDb.ok()),
+        std::make_pair(TABLE, name)
     });
     Table::Cols colsMap;
     for (const auto &col : cols)
     {
         sysCols.insert({
-            std::make_pair("db", curDb.ok()),
-            std::make_pair("table", name),
-            std::make_pair("name", col.first),
-            std::make_pair("typeID", std::to_string((int)col.second.typeID)),
-            std::make_pair("length", std::to_string(col.second.length)),
-            std::make_pair("notNull", std::to_string((int)col.second.notNull))
+            std::make_pair(DB, curDb.ok()),
+            std::make_pair(TABLE, name),
+            std::make_pair(FIELD, col.first),
+            std::make_pair(TYPE, std::to_string((int)col.second.typeID)),
+            std::make_pair(LENGTH, std::to_string(col.second.length)),
+            std::make_pair(NOT_NULL, std::to_string((int)col.second.notNull))
         });
         colsMap[col.first] = col.second;
     }
     if (primary.isOk())
         sysPriIdxes.insert({
-            std::make_pair("db", curDb.ok()),
-            std::make_pair("table", name),
+            std::make_pair(DB, curDb.ok()),
+            std::make_pair(TABLE, name),
             std::make_pair("columns", commaJoin(primary.ok()))
         });
     int indexID = 0;
     for (const auto &idx : nonClus)
     {
         sysNonClusIdxes.insert({
-            std::make_pair("db", curDb.ok()),
-            std::make_pair("table", name),
+            std::make_pair(DB, curDb.ok()),
+            std::make_pair(TABLE, name),
             std::make_pair("columns", commaJoin(idx)),
             std::make_pair("indexID", std::to_string(indexID))
         });
@@ -218,7 +225,7 @@ void TableMgr::createTable(
     }
     for (const auto &key : foreigns)
         sysForeigns.insert({
-            std::make_pair("db", curDb.ok()),
+            std::make_pair(DB, curDb.ok()),
             std::make_pair("referrer", name),
             std::make_pair("referee", key.referee),
             std::make_pair("referrerCols", commaJoin(key.referrerCols))
@@ -233,8 +240,8 @@ void TableMgr::dropTable(const std::string &name)
         throw NoDBInUseException();
     for (Table *table : {&sysForeigns, &sysNonClusIdxes, &sysPriIdxes, &sysCols, &sysTables})
         table->remove({
-            std::make_pair("db", std::vector<Table::ConLiteral>({{Table::EQ, curDb.ok()}})),
-            std::make_pair(table == &sysForeigns ? "referrer" : "table", std::vector<Table::ConLiteral>({{Table::EQ, name}}))
+            std::make_pair(DB, std::vector<Table::ConLiteral>({{Table::EQ, curDb.ok()}})),
+            std::make_pair(table == &sysForeigns ? "referrer" : TABLE, std::vector<Table::ConLiteral>({{Table::EQ, name}}))
         });
     tables.erase(name);
 }
@@ -243,8 +250,8 @@ std::vector<Table::ColVal> TableMgr::showTables()
 {
     if (!curDb.isOk())
         throw NoDBInUseException();
-    return sysTables.select({"table"}, {
-        std::make_pair("db", std::vector<Table::ConLiteral>({(Table::ConLiteral){Table::EQ, curDb.ok()}})),
+    return sysTables.select({TABLE}, {
+        std::make_pair(DB, std::vector<Table::ConLiteral>({(Table::ConLiteral){Table::EQ, curDb.ok()}})),
     });
 }
 
@@ -255,12 +262,12 @@ std::vector<Table::ColVal> TableMgr::showTables()
 void TableMgr::createIndex(const std::string &tbName, const Table::Index &colName)
 {
     if (!tables.count(tbName))
-        throw NoSuchThingException("table", tbName);
+        throw NoSuchThingException(TABLE, tbName);
 
     int indexID = tables.at(tbName)->addIndex(colName);
     sysNonClusIdxes.insert({
-        std::make_pair("db", curDb.ok()),
-        std::make_pair("table", tbName),
+        std::make_pair(DB, curDb.ok()),
+        std::make_pair(TABLE, tbName),
         std::make_pair("columns", commaJoin(colName)),
         std::make_pair("indexID", std::to_string(indexID))
     });
@@ -269,11 +276,11 @@ void TableMgr::createIndex(const std::string &tbName, const Table::Index &colNam
 void TableMgr::dropIndex(const std::string &tbName, const Table::Index &colName)
 {
     if (!tables.count(tbName))
-        throw NoSuchThingException("table", tbName);
+        throw NoSuchThingException(TABLE, tbName);
 
     auto result = sysNonClusIdxes.select({"indexID"}, {
-        std::make_pair("db", std::vector<Table::ConLiteral>({{Table::EQ, curDb.ok()}})),
-        std::make_pair("table", std::vector<Table::ConLiteral>({{Table::EQ, tbName}})),
+        std::make_pair(DB, std::vector<Table::ConLiteral>({{Table::EQ, curDb.ok()}})),
+        std::make_pair(TABLE, std::vector<Table::ConLiteral>({{Table::EQ, tbName}})),
         std::make_pair("column", std::vector<Table::ConLiteral>({{Table::EQ, commaJoin(colName)}}))
     });
     if (result.empty())
@@ -290,12 +297,12 @@ void TableMgr::dropIndex(const std::string &tbName, const Table::Index &colName)
 void TableMgr::insert(const std::string &tbName, const std::vector< std::vector< Optional<std::string> > > &valueLists)
 {
     if (!tables.count(tbName))
-        throw NoSuchThingException("table", tbName);
+        throw NoSuchThingException(TABLE, tbName);
 
     // DO NOT use BaseTable.allColumns because it's out of order
-    const auto allColumns = sysCols.select({"name", "notNull"}, {
-        std::make_pair("db", std::vector<Table::ConLiteral>({{Table::EQ, curDb.ok()}})),
-        std::make_pair("table", std::vector<Table::ConLiteral>({{Table::EQ, tbName}}))
+    const auto allColumns = sysCols.select({FIELD, NOT_NULL}, {
+        std::make_pair(DB, std::vector<Table::ConLiteral>({{Table::EQ, curDb.ok()}})),
+        std::make_pair(TABLE, std::vector<Table::ConLiteral>({{Table::EQ, tbName}}))
     });
 
     std::vector<Table::ColL> valueMaps;
@@ -306,8 +313,8 @@ void TableMgr::insert(const std::string &tbName, const std::vector< std::vector<
         Table::ColL valueMap;
         for (int i = 0; i < int(valueList.size()); i++)
         {
-            const std::string &col = dynamic_cast<CharType*>(allColumns[i].at("name").get())->getVal();
-            if (!valueList[i].isOk() && dynamic_cast<IntType*>(allColumns[i].at("notNull").get())->getVal())
+            const std::string &col = dynamic_cast<CharType*>(allColumns[i].at(FIELD).get())->getVal();
+            if (!valueList[i].isOk() && dynamic_cast<IntType*>(allColumns[i].at(NOT_NULL).get())->getVal())
                 throw NotNullException(col);
             valueMap[col] = valueList[i];
         }
@@ -318,7 +325,7 @@ void TableMgr::insert(const std::string &tbName, const std::vector< std::vector<
     for (const auto &valueMap : valueMaps)
     {
         for (const auto &foreign : sysForeigns.select({"referrerCols", "referee"}, {
-            std::make_pair("db", std::vector<Table::ConLiteral>({{Table::EQ, curDb.ok()}})),
+            std::make_pair(DB, std::vector<Table::ConLiteral>({{Table::EQ, curDb.ok()}})),
             std::make_pair("referrer", std::vector<Table::ConLiteral>({{Table::EQ, tbName}}))
         }))
         {
@@ -341,7 +348,7 @@ void TableMgr::insert(const std::string &tbName, const std::vector< std::vector<
 void TableMgr::remove(const std::string &tbName, const Table::ConsL &cons)
 {
     if (!tables.count(tbName))
-        throw NoSuchThingException("table", tbName);
+        throw NoSuchThingException(TABLE, tbName);
 
     // Check foreign key
     const auto &priIdxOpt = tables.at(tbName)->getPrimary();
@@ -354,7 +361,7 @@ void TableMgr::remove(const std::string &tbName, const Table::ConsL &cons)
             for (const auto &col : priIdx)
                 keys.push_back(row.at(col)->toString());
             for (const auto &foreign : sysForeigns.select({"referrerCols", "referrer"}, {
-                std::make_pair("db", std::vector<Table::ConLiteral>({{Table::EQ, curDb.ok()}})),
+                std::make_pair(DB, std::vector<Table::ConLiteral>({{Table::EQ, curDb.ok()}})),
                 std::make_pair("referee", std::vector<Table::ConLiteral>({{Table::EQ, tbName}}))
             }))
             {
@@ -373,16 +380,16 @@ void TableMgr::remove(const std::string &tbName, const Table::ConsL &cons)
 void TableMgr::update(const std::string &tbName, const Table::ColL &setClause, const Table::ConsL &cons)
 {
     if (!tables.count(tbName))
-        throw NoSuchThingException("table", tbName);
+        throw NoSuchThingException(TABLE, tbName);
 
     // Check not null
-    for (const auto &col : sysCols.select({"name", "notNull"}, {
-        std::make_pair("db", std::vector<Table::ConLiteral>({{Table::EQ, curDb.ok()}})),
-        std::make_pair("table", std::vector<Table::ConLiteral>({{Table::EQ, tbName}}))
+    for (const auto &col : sysCols.select({FIELD, NOT_NULL}, {
+        std::make_pair(DB, std::vector<Table::ConLiteral>({{Table::EQ, curDb.ok()}})),
+        std::make_pair(TABLE, std::vector<Table::ConLiteral>({{Table::EQ, tbName}}))
     }))
     {
-        const std::string &colName = dynamic_cast<CharType*>(col.at("name").get())->getVal();
-        bool notNull = dynamic_cast<IntType*>(col.at("notNull").get())->getVal();
+        const std::string &colName = dynamic_cast<CharType*>(col.at(FIELD).get())->getVal();
+        bool notNull = dynamic_cast<IntType*>(col.at(NOT_NULL).get())->getVal();
         if (setClause.count(colName) && !setClause.at(colName).isOk() && notNull)
             throw NotNullException(colName);
     }
@@ -408,7 +415,7 @@ void TableMgr::update(const std::string &tbName, const Table::ColL &setClause, c
 
         // As a referrer
         for (const auto &foreign : sysForeigns.select({"referrerCols", "referee"}, {
-            std::make_pair("db", std::vector<Table::ConLiteral>({{Table::EQ, curDb.ok()}})),
+            std::make_pair(DB, std::vector<Table::ConLiteral>({{Table::EQ, curDb.ok()}})),
             std::make_pair("referrer", std::vector<Table::ConLiteral>({{Table::EQ, tbName}}))
         }))
         {
@@ -433,7 +440,7 @@ void TableMgr::update(const std::string &tbName, const Table::ColL &setClause, c
         }
         if (!priChanged) continue;
         for (const auto &foreign : sysForeigns.select({"referrerCols", "referrer"}, {
-            std::make_pair("db", std::vector<Table::ConLiteral>({{Table::EQ, curDb.ok()}})),
+            std::make_pair(DB, std::vector<Table::ConLiteral>({{Table::EQ, curDb.ok()}})),
             std::make_pair("referee", std::vector<Table::ConLiteral>({{Table::EQ, tbName}}))
         }))
         {
@@ -459,7 +466,7 @@ std::vector<Table::ColVal> TableMgr::select(
 {
     for (const auto &name : tableList)
         if (!tables.count(name))
-            throw NoSuchThingException("table", name);
+            throw NoSuchThingException(TABLE, name);
 
     // TODO: optimize the order of `tableList`
 
