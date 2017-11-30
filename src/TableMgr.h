@@ -26,7 +26,8 @@ public:
     static constexpr const char *FIELD = "Field";
     static constexpr const char *TYPE = "Type";
     static constexpr const char *LENGTH = "Length";
-    static constexpr const char *NOT_NULL = "Not Null";
+    static constexpr const char *NOT_NULL = "Not null";
+    static constexpr const char *IS_PRI = "Primary key";
 
 private:
     // Field names in system tables
@@ -99,7 +100,7 @@ public:
     );
 
     /** Drop a table
-     *  @throw : NoDBInUseException
+     *  @throw : NoSuchThingException
      */
     void dropTable(const std::string &name);
 
@@ -107,6 +108,11 @@ public:
      *  @throw : NoDBInUseException
      */
     std::vector<Table::ColVal> showTables();
+
+    /** DESC <tbName>
+     *  @throw : NoSuchThingException
+     */
+    std::vector<Table::ColVal> desc(const std::string &name);
 
     /************************************/
     /* Index Managements                */

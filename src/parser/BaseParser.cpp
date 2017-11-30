@@ -28,3 +28,22 @@ void BaseParser::showTables()
     output->addResult(tableMgr->showTables());
 }
 
+void BaseParser::createTable(
+    const std::string &name, const BaseParser::Cols &cols, const BaseParser::PriIdx &priIdx, const BaseParser::Fors &fors
+)
+{
+    tableMgr->createTable(name, cols, priIdx, {}, fors);
+    output->addInfo("Created table " + name);
+}
+
+void BaseParser::dropTable(const std::string &name)
+{
+    tableMgr->dropTable(name);
+    output->addInfo("Dropped table " + name);
+}
+
+void BaseParser::desc(const std::string &name)
+{
+    output->addResult(tableMgr->desc(name), {TableMgr::FIELD, TableMgr::TYPE, TableMgr::NOT_NULL, TableMgr::IS_PRI});
+}
+

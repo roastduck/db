@@ -15,7 +15,7 @@ private:
 
     const int PADDING = 1; /// Number of spaces around the text in a table cell
 
-    void printHoriBar(const std::unordered_map<std::string, int> &width);
+    void printHoriBar(const std::unordered_map<std::string, int> &width, const Table::Index &order);
 
 public:
     Output(std::ostream &_out = std::cout, std::ostream &_err = std::cerr)
@@ -26,7 +26,10 @@ public:
 
     void addInfo(const std::string &info) { out << info << std::endl; }
 
-    void addResult(const std::vector<Table::ColVal> &result);
+    /** Display a table
+     *  @param order : Optionally specify the order of columns to be output
+     */
+    void addResult(const std::vector<Table::ColVal> &result, Table::Index order = {});
 };
 
 #endif // OUTPUT_H_

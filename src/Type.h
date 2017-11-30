@@ -22,8 +22,8 @@ public:
         INT,
         FLOAT,
         DATE,
-        CHAR
-        // VARCHAR is treated as CHAR
+        CHAR,
+        VARCHAR // VARCHAR is treated as CHAR, but using different ID for DESC
     };
 
     virtual TypeID getTypeID() const = 0;
@@ -74,6 +74,10 @@ public:
      */
     static bool less(const std::unique_ptr<Type> &lhs, const std::unique_ptr<Type> &rhs);
     static bool equal(const std::unique_ptr<Type> &lhs, const std::unique_ptr<Type> &rhs);
+
+    /** Get name corresponding name of TypeID
+     */
+    static std::string getName(TypeID id);
 };
 
 bool operator==(const Type &t1, const Type &t2);

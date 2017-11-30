@@ -4,6 +4,7 @@
 #include "type/FloatType.h"
 #include "type/DateType.h"
 #include "type/CharType.h"
+#include "type/VarcharType.h"
 
 std::unique_ptr<Type> Type::newType(Type::TypeID typeID, int length)
 {
@@ -17,6 +18,8 @@ std::unique_ptr<Type> Type::newType(Type::TypeID typeID, int length)
         return std::unique_ptr<Type>(new DateType(length));
     case CHAR:
         return std::unique_ptr<Type>(new CharType(length));
+    case VARCHAR:
+        return std::unique_ptr<Type>(new VarcharType(length));
     default:
         assert(false);
     }
@@ -55,6 +58,9 @@ std::unique_ptr<Type> Type::newFromCopy(const std::unique_ptr<Type> &ori)
     case CHAR:
         dynamic_cast<CharType*>(ret.get())->setVal(dynamic_cast<CharType*>(ori.get())->getVal());
         break;
+    case VARCHAR:
+        dynamic_cast<CharType*>(ret.get())->setVal(dynamic_cast<VarcharType*>(ori.get())->getVal());
+        break;
     default:
         assert(false);
     }
@@ -76,6 +82,19 @@ bool Type::equal(const std::unique_ptr<Type> &lhs, const std::unique_ptr<Type> &
     return *lhs == *rhs;
 }
 
+std::string Type::getName(TypeID id)
+{
+    switch (id)
+    {
+    case INT: return "INT";
+    case FLOAT: return "FLOAT";
+    case DATE: return "DATE";
+    case CHAR: return "CHAR";
+    case VARCHAR: return "VARCHAR";
+    default: assert(false);
+    }
+}
+
 #define GEN_OP(op) \
     bool operator op (const Type &t1, const Type &t2) \
     { \
@@ -90,6 +109,8 @@ bool Type::equal(const std::unique_ptr<Type> &lhs, const std::unique_ptr<Type> &
             return (DateType&)t1 op (DateType&)t2; \
         case Type::CHAR: \
             return (CharType&)t1 op (CharType&)t2; \
+        case Type::VARCHAR: \
+            return (VarcharType&)t1 op (VarcharType&)t2; \
         default: \
             assert(false); \
         } \

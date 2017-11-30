@@ -4,15 +4,15 @@
 #include "Output.h"
 #include "../Type.h"
 
-void Output::printHoriBar(const std::unordered_map<std::string, int> &width)
+void Output::printHoriBar(const std::unordered_map<std::string, int> &width, const Table::Index &order)
 {
     out.fill('-');
-    for (const auto &col : width)
-        out.width(col.second + 2 * PADDING + 1), out << std::left << '+';
+    for (const auto &col : order)
+        out.width(width.at(col) + 2 * PADDING + 1), out << std::left << '+';
     out << '+' << std::endl;
 }
 
-void Output::addResult(const std::vector<Table::ColVal> &result)
+void Output::addResult(const std::vector<Table::ColVal> &result, Table::Index order)
 {
     if (result.empty())
     {
@@ -37,31 +37,35 @@ void Output::addResult(const std::vector<Table::ColVal> &result)
         }
 
     // Add header
-    printHoriBar(width);
+    if (order.empty())
+        for (const auto &col : width)
+            order.push_back(col.first);
+    assert(order.size() == width.size());
+    printHoriBar(width, order);
     out.fill(' ');
-    for (const auto &col : width)
+    for (const auto &col : order)
     {
         out << '|';
         out.width(PADDING), out << "";
-        out.width(col.second + PADDING), out << col.first;
+        out.width(width.at(col) + PADDING), out << col;
     }
     out << '|' << std::endl;
-    printHoriBar(width);
+    printHoriBar(width, order);
 
     // Output
     for (const auto &row : result)
     {
         out.fill(' ');
-        for (const auto &col : width)
+        for (const auto &col : order)
         {
             out << '|';
             out.width(PADDING);
             out << "";
-            out.width(col.second + PADDING);
-            out << (row.count(col.first) ? row.at(col.first)->toString() : "");
+            out.width(width.at(col) + PADDING);
+            out << (row.count(col) ? row.at(col)->toString() : "");
         }
         out << '|' << std::endl;
-        printHoriBar(width);
+        printHoriBar(width, order);
     }
 }
 

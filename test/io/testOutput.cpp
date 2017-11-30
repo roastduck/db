@@ -36,7 +36,7 @@ TEST_F(OutputTest, addResult)
     result[0]["col2"] = Type::newFromLiteral("x", Type::CHAR, 10);
     result[1]["col1"] = Type::newFromLiteral("1", Type::INT);
     result[1]["col2"] = Type::newFromLiteral("foobar", Type::CHAR, 10);
-    output.addResult(result);
+    output.addResult(result, {"col1", "col2"});
     ASSERT_THAT(out.str(), Eq(
         "+------+--------+\n"
         "| col1 | col2   |\n"

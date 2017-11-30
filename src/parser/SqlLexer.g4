@@ -60,6 +60,7 @@ SET:        S E T;
 SELECT:     S E L E C T;
 IS:         I S;
 INT:        I N T;
+CHAR:       C H A R;
 VARCHAR:    V A R C H A R;
 DESC:       D E S C;
 REFERENCES: R E F E R E N C E S;
@@ -73,4 +74,7 @@ Identifier: [A-Za-z][_0-9A-Za-z]*;
 Int:        [0-9]+;
 String:     '\'' [^']* '\'';
 
-SEMICOLON:  ';';
+SEMICOLON:          ';';
+LEFT_PARENTHESIS:   '(';
+RIGHT_PARENTHESIS:  ')';
+COMMA:              ',';

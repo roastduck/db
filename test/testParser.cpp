@@ -96,7 +96,7 @@ TEST_F(ParserTest, use)
     input.parse("USE db;");
     ASSERT_THAT(outStream.str(), Eq("Database changed to db\n"));
 }
-/*
+
 TEST_F(ParserTest, showTables)
 {
     input.parse("CREATE DATABASE db; USE db; CREATE TABLE tb();");
@@ -110,4 +110,41 @@ TEST_F(ParserTest, showTables)
         "+-------+\n"
     ));
 }
-*/
+
+TEST_F(ParserTest, multiplePrimary)
+{
+    input.parse("CREATE DATABASE db; USE db;");
+    input.parse("CREATE TABLE tb(a INT, b INT, PRIMARY KEY (a), PRIMARY KEY (b));");
+    ASSERT_THAT(errStream.str(), Eq("There can only be at most one primary index in a table\n"));
+}
+
+TEST_F(ParserTest, dropTable)
+{
+    input.parse("CREATE DATABASE db; USE db; CREATE TABLE tb();");
+    outStream.str("");
+    input.parse("DROP TABLE tb;");
+    ASSERT_THAT(outStream.str(), Eq("Dropped table tb\n"));
+    outStream.str("");
+    input.parse("SHOW TABLES;");
+    outStream.str("(Empty set)");
+}
+
+TEST_F(ParserTest, desc)
+{
+    input.parse("CREATE DATABASE db; USE db;");
+    input.parse("CREATE TABLE tb(a INT NOT NULL, b VARCHAR(5), c DATE, PRIMARY KEY (a,b));");
+    outStream.str("");
+    input.parse("DESC tb;");
+    ASSERT_THAT(outStream.str(), Eq(
+        "+-------+------------+----------+-------------+\n"
+        "| Field | Type       | Not null | Primary key |\n"
+        "+-------+------------+----------+-------------+\n"
+        "| a     | INT        | YES      | YES         |\n"
+        "+-------+------------+----------+-------------+\n"
+        "| b     | VARCHAR(5) | NO       | YES         |\n"
+        "+-------+------------+----------+-------------+\n"
+        "| c     | DATE       | NO       | NO          |\n"
+        "+-------+------------+----------+-------------+\n"
+    ));
+}
+

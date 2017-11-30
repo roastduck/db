@@ -10,6 +10,7 @@ constexpr const char *TableMgr::FIELD;
 constexpr const char *TableMgr::TYPE;
 constexpr const char *TableMgr::LENGTH;
 constexpr const char *TableMgr::NOT_NULL;
+constexpr const char *TableMgr::IS_PRI;
 
 TableMgr::TableMgr(PageCache &_cache)
     : cache(_cache),
@@ -236,8 +237,8 @@ void TableMgr::createTable(
 
 void TableMgr::dropTable(const std::string &name)
 {
-    if (!curDb.isOk())
-        throw NoDBInUseException();
+    if (!tables.count(name))
+        throw NoSuchThingException(TABLE, name);
     for (Table *table : {&sysForeigns, &sysNonClusIdxes, &sysPriIdxes, &sysCols, &sysTables})
         table->remove({
             std::make_pair(DB, std::vector<Table::ConLiteral>({{Table::EQ, curDb.ok()}})),
@@ -253,6 +254,32 @@ std::vector<Table::ColVal> TableMgr::showTables()
     return sysTables.select({TABLE}, {
         std::make_pair(DB, std::vector<Table::ConLiteral>({(Table::ConLiteral){Table::EQ, curDb.ok()}})),
     });
+}
+
+std::vector<Table::ColVal> TableMgr::desc(const std::string &name)
+{
+    if (!tables.count(name))
+        throw NoSuchThingException(TABLE, name);
+    auto result = sysCols.select({FIELD, TYPE, LENGTH, NOT_NULL}, {
+        std::make_pair(DB, std::vector<Table::ConLiteral>({(Table::ConLiteral){Table::EQ, curDb.ok()}})),
+        std::make_pair(TABLE, std::vector<Table::ConLiteral>({(Table::ConLiteral){Table::EQ, name}}))
+    });
+    const auto &priIdx = tables.at(name)->getPrimary();
+    for (auto &row : result)
+    {
+        const std::string &field = dynamic_cast<CharType*>(row.at(FIELD).get())->getVal();
+        std::string typeStr = Type::getName(Type::TypeID(dynamic_cast<IntType*>(row.at(TYPE).get())->getVal()));
+        int length = dynamic_cast<IntType*>(row.at(LENGTH).get())->getVal();
+        bool notNull = dynamic_cast<IntType*>(row.at(NOT_NULL).get())->getVal();
+        if (length > 0)
+            typeStr += "(" + std::to_string(length) + ")";
+        row.at(TYPE) = Type::newFromLiteral(typeStr, Type::CHAR, typeStr.length());
+        row.at(NOT_NULL) = Type::newFromLiteral(notNull ? "YES" : "NO", Type::CHAR, 3);
+        bool isPri = priIdx.isOk() && std::find(priIdx.ok().begin(), priIdx.ok().end(), field) != priIdx.ok().end();
+        row[IS_PRI] = Type::newFromLiteral(isPri ? "YES" : "NO", Type::CHAR, 3);
+        row.erase(LENGTH);
+    }
+    return result;
 }
 
 /************************************/
