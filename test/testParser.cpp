@@ -28,6 +28,20 @@ TEST_F(ParserTest, syntaxError)
     ASSERT_THROW(input.parse("error syntex"), antlr4::ParseCancellationException);
 }
 
+TEST_F(ParserTest, keywordCannotBeIdentifier)
+{
+    ASSERT_THROW(input.parse("CREATE DATABASE DATABASE;"), antlr4::ParseCancellationException);
+}
+
+TEST_F(ParserTest, oneLetterIdentifier)
+{
+    // We are testing this because there are 1-letter lexical tokens
+    input.parse("CREATE DATABASE a;");
+    auto dbs = mgr.showDbs();
+    ASSERT_THAT(dbs.size(), Eq(1));
+    ASSERT_THAT(dbs[0]["db"]->toString(), Eq("a"));
+}
+
 TEST_F(ParserTest, createDb)
 {
     input.parse("CREATE DATABASE db;");
