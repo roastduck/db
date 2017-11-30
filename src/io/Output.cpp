@@ -31,6 +31,8 @@ void Output::addResult(const std::vector<Table::ColVal> &result)
                 width.count(col.first) ? width.at(col.first) : int(col.first.length()), // Header
                 int(col.second->toString().length())
             ); // width[col.first] = std::max(...) is wrong, because it will create empty item first
+            if (col.second->getTypeID() == Type::INT)
+                w = std::max(w, col.second->getLength());
             width[col.first] = w;
         }
 

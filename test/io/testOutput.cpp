@@ -42,3 +42,17 @@ TEST_F(OutputTest, addResult)
     ));
 }
 
+TEST_F(OutputTest, lengthOptionInIntType)
+{
+    std::vector<Table::ColVal> result(1);
+    result[0]["c"] = Type::newFromLiteral("0", Type::INT, 5);
+    output.addResult(result);
+    ASSERT_THAT(out.str(), Eq(
+        "+-------+\n"
+        "| c     |\n"
+        "+-------+\n"
+        "| 0     |\n" // length 5 + 2 padding
+        "+-------+\n"
+    ));
+}
+
