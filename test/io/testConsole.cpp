@@ -1,5 +1,7 @@
+#include <sstream>
 #include "TableMgr.h"
 #include "io/Input.h"
+#include "io/Output.h"
 #include "io/Console.h"
 #include "antlr4-runtime.h"
 
@@ -15,13 +17,16 @@ public:
     NiceMock<MockPageMgr> pageMgr;
     PageCache cache;
     TableMgr mgr;
+    std::ostringstream outStream, errStream;
+    Output output;
     Input input;
     Console console;
 
     ConsoleTest()
         : cache(pageMgr),
           mgr(cache),
-          input(mgr),
+          output(outStream, errStream),
+          input(mgr, output),
           console(input)
     {}
 };

@@ -1,4 +1,6 @@
+#include <sstream>
 #include "io/Input.h"
+#include "io/Output.h"
 #include "TableMgr.h"
 #include "antlr4-runtime.h"
 
@@ -14,23 +16,28 @@ public:
     NiceMock<MockPageMgr> pageMgr;
     PageCache cache;
     TableMgr mgr;
+    std::ostringstream outStream, errStream;
+    Output output;
     Input input;
 
     ParserTest()
         : cache(pageMgr),
           mgr(cache),
-          input(mgr)
+          output(outStream, errStream),
+          input(mgr, output)
     {}
 };
 
 TEST_F(ParserTest, syntaxError)
 {
-    ASSERT_THROW(input.parse("error syntex"), antlr4::ParseCancellationException);
+    input.parse("error syntex");
+    ASSERT_THAT(errStream.str(), Eq("Syntax error"));
 }
 
 TEST_F(ParserTest, keywordCannotBeIdentifier)
 {
-    ASSERT_THROW(input.parse("CREATE DATABASE DATABASE;"), antlr4::ParseCancellationException);
+    input.parse("CREATE DATABASE DATABASE;");
+    ASSERT_THAT(errStream.str(), Eq("Syntax error"));
 }
 
 TEST_F(ParserTest, oneLetterIdentifier)

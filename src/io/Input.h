@@ -2,20 +2,28 @@
 #define INPUT_H_
 
 #include <string>
+#include "Output.h"
 #include "../TableMgr.h"
+#include "antlr4-runtime.h"
 
 class Input
 {
 private:
     TableMgr &tableMgr;
+    Output &output;
+
+    /** Parse a char stream
+     *  All exceptions defined in exception/ can be thrown from this method
+     */
+    void parse(antlr4::CharStream &charStream);
 
 public:
-    Input(TableMgr &_tableMgr) : tableMgr(_tableMgr) {}
+    Input(TableMgr &_tableMgr, Output &_output)
+        : tableMgr(_tableMgr), output(_output)
+    {}
 
     /** Parse a string
      *  This string must have a complete sytax
-     *  @throw antlr4::ParseCancellationException
-     *  and any exceptions thrown by TableMgr
      */
     void parse(const std::string &text);
 };
