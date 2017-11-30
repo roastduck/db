@@ -22,7 +22,9 @@ public:
         : out(_out), err(_err)
     {}
 
-    void addExcept(const std::exception &e) { err << e.what(); }
+    void addExcept(const std::exception &e) { err << e.what() << std::endl; }
+
+    void addInfo(const std::string &info) { out << info << std::endl; }
 
     void addResult(const std::vector<Table::ColVal> &result);
 };

@@ -16,7 +16,11 @@ protected:
     BaseParser(antlr4::TokenStream *input)
         : antlr4::Parser(input), tableMgr(NULL) {}
 
+    void showDbs();
     void createDb(const std::string &name);
+    void dropDb(const std::string &name);
+    void use(const std::string &name);
+    void showTables();
 
 public:
     void setTableMgr(TableMgr *_tableMgr) { tableMgr = _tableMgr; }

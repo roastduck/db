@@ -21,7 +21,13 @@ TEST_F(OutputTest, addExcept)
 {
     std::runtime_error e("what");
     output.addExcept(e);
-    ASSERT_THAT(err.str(), Eq("what"));
+    ASSERT_THAT(err.str(), Eq("what\n"));
+}
+
+TEST_F(OutputTest, addInfo)
+{
+    output.addInfo("info");
+    ASSERT_THAT(out.str(), Eq("info\n"));
 }
 
 TEST_F(OutputTest, addResult)

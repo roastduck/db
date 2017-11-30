@@ -19,7 +19,15 @@ options {
 program : stmt* EOF
         ;
 
-stmt    : CREATE DATABASE Identifier ';'
+stmt    : SHOW DATABASES ';'
+          { showDbs(); }
+        | CREATE DATABASE Identifier ';'
           { createDb($Identifier.text); }
+        | DROP DATABASE Identifier ';'
+          { dropDb($Identifier.text); }
+        | USE Identifier ';'
+          { use($Identifier.text); }
+        | SHOW TABLES ';'
+          { showTables(); }
         ;
 

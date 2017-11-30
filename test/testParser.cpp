@@ -31,13 +31,13 @@ public:
 TEST_F(ParserTest, syntaxError)
 {
     input.parse("error syntex");
-    ASSERT_THAT(errStream.str(), Eq("Syntax error"));
+    ASSERT_THAT(errStream.str(), Eq("Syntax error\n"));
 }
 
 TEST_F(ParserTest, keywordCannotBeIdentifier)
 {
     input.parse("CREATE DATABASE DATABASE;");
-    ASSERT_THAT(errStream.str(), Eq("Syntax error"));
+    ASSERT_THAT(errStream.str(), Eq("Syntax error\n"));
 }
 
 TEST_F(ParserTest, oneLetterIdentifier)
@@ -55,5 +55,59 @@ TEST_F(ParserTest, createDb)
     auto dbs = mgr.showDbs();
     ASSERT_THAT(dbs.size(), Eq(1));
     ASSERT_THAT(dbs[0][TableMgr::DB]->toString(), Eq("db"));
+    ASSERT_THAT(outStream.str(), Eq("Created database db\n"));
 }
 
+TEST_F(ParserTest, lowerCase)
+{
+    input.parse("CrEaTe DaTAbASe db;");
+    ASSERT_THAT(outStream.str(), Eq("Created database db\n"));
+}
+
+TEST_F(ParserTest, showDbs)
+{
+    input.parse("CREATE DATABASE db;");
+    outStream.str("");
+    input.parse("SHOW DATABASES;");
+    ASSERT_THAT(outStream.str(), Eq(
+        "+----------+\n"
+        "| Database |\n"
+        "+----------+\n"
+        "| db       |\n"
+        "+----------+\n"
+    ));
+}
+
+TEST_F(ParserTest, dropDb)
+{
+    input.parse("CREATE DATABASE db;");
+    outStream.str("");
+    input.parse("DROP DATABASE db;");
+    ASSERT_THAT(outStream.str(), Eq("Dropped database db\n"));
+    outStream.str("");
+    input.parse("SHOW DATABASES;");
+    ASSERT_THAT(outStream.str(), Eq("(Empty set)\n"));
+}
+
+TEST_F(ParserTest, use)
+{
+    input.parse("CREATE DATABASE db;");
+    outStream.str("");
+    input.parse("USE db;");
+    ASSERT_THAT(outStream.str(), Eq("Database changed to db\n"));
+}
+/*
+TEST_F(ParserTest, showTables)
+{
+    input.parse("CREATE DATABASE db; USE db; CREATE TABLE tb();");
+    outStream.str("");
+    input.parse("SHOW TABLES;");
+    ASSERT_THAT(outStream.str(), Eq(
+        "+-------+\n"
+        "| Table |\n"
+        "+-------+\n"
+        "| tb    |\n"
+        "+-------+\n"
+    ));
+}
+*/

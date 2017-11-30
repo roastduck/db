@@ -16,7 +16,7 @@ void Output::addResult(const std::vector<Table::ColVal> &result)
 {
     if (result.empty())
     {
-        out << "(Empty Set)" << std::endl;
+        out << "(Empty set)" << std::endl;
         return;
     }
 
