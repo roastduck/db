@@ -15,7 +15,7 @@ options {
 #endif
 }
 
-// Actual grammar start.
+// Actual grammar starts.
 program : stmt* EOF
         ;
 
