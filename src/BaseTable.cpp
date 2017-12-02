@@ -64,7 +64,7 @@ void BaseTable::delNcEntry(int indexID)
         entry.copy(i + 1, i);
 }
 
-bool BaseTable::meetCons(ListPage &page, int rank, const BaseTable::ConsVal &cons) const
+bool BaseTable::meetCons(ListPage &page, int rank, const BaseTable::ConsVal &cons, const BaseTable::OuterCons &oCons) const
 {
     for (const auto &pair : cons)
     {
@@ -102,6 +102,34 @@ bool BaseTable::meetCons(ListPage &page, int rank, const BaseTable::ConsVal &con
                 break;
             default: assert(false);
             }
+        }
+    }
+    for (const auto &item : oCons)
+    {
+        std::unique_ptr<Type> lhs = page.getValue(rank, item.col1);
+        std::unique_ptr<Type> rhs = page.getValue(rank, item.col2);
+        if (lhs == nullptr || rhs == nullptr) return false;
+        switch (item.dir)
+        {
+        case EQ:
+            if (!(*lhs == *rhs)) return false;
+            break;
+        case NE:
+            if (!(*lhs != *rhs)) return false;
+            break;
+        case LT:
+            if (!(*lhs < *rhs)) return false;
+            break;
+        case LE:
+            if (!(*lhs <= *rhs)) return false;
+            break;
+        case GT:
+            if (!(*lhs > *rhs)) return false;
+            break;
+        case GE:
+            if (!(*lhs >= *rhs)) return false;
+            break;
+        default: assert(false);
         }
     }
     return true;
@@ -346,7 +374,7 @@ Optional<int> BaseTable::removeRecur(int pageID, const BaseTable::ColVal &vals, 
             v.push_back({(ConValue){EQ, Type::newFromCopy(vals.at(name))}});
             c[name] = std::move(v); // move sementic is not supported in initializer_list
         }
-        if (removeLinear(childID, std::move(c), true))
+        if (removeLinear(childID, std::move(c), {}, true))
             return removeAndMerge(pageID, offset);
         return None();
     }
@@ -361,7 +389,7 @@ Optional<int> BaseTable::removeRecur(int pageID, const BaseTable::ColVal &vals, 
     return None();
 }
 
-bool BaseTable::removeLinear(int pageID, const ConsVal &constraints, bool onlyOne)
+bool BaseTable::removeLinear(int pageID, const ConsVal &constraints, const OuterCons &oCons, bool onlyOne)
 {
     const int startID = pageID;
     assert(getDataPage(startID).getPrev() == -1);
@@ -371,7 +399,7 @@ bool BaseTable::removeLinear(int pageID, const ConsVal &constraints, bool onlyOn
         ListPage &page = getDataPage(pageID);
         int oldSize = page.getSize(), size = oldSize;
         for (int i = 0, j = 0; i < oldSize; i++)
-            if (meetCons(page, i, constraints) && (!removedOne || !onlyOne))
+            if (meetCons(page, i, constraints, oCons) && (!removedOne || !onlyOne))
                 size--, removedOne = true;
             else
                 page.copy(i, j++);
@@ -447,11 +475,12 @@ BaseTable::Pos BaseTable::findFirst(int pageID, const BaseTable::ColVal &vals, c
 }
 
 void BaseTable::addToSelection(
-    std::vector<BaseTable::ColVal> &ret, int pageID, int off, const Index &targets, const BaseTable::ConsVal &constraints
+    std::vector<BaseTable::ColVal> &ret, int pageID, int off, const Index &targets,
+    const BaseTable::ConsVal &constraints, const OuterCons &oCons
 )
 {
     ListPage &page = getDataPage(pageID);
-    if (meetCons(page, off, constraints))
+    if (meetCons(page, off, constraints, oCons))
     {
         ret.push_back(page.getValues(off, targets));
         if (!primary.isOk()) // Useful for non-clustered indexes removal
@@ -465,8 +494,8 @@ void BaseTable::addToSelection(
 
 void BaseTable::selectLinear(
     std::vector<ColVal> &ret,
-    const BaseTable::Index &targets, const BaseTable::ConsVal &constraints, const BaseTable::Pos &start,
-    const BaseTable::ColVal &stopV, const BaseTable::Index &stopIdx, bool stopEq
+    const BaseTable::Index &targets, const BaseTable::ConsVal &constraints, const OuterCons &oCons,
+    const BaseTable::Pos &start, const BaseTable::ColVal &stopV, const BaseTable::Index &stopIdx, bool stopEq
 )
 {
     int pageID = start.first; // NOTE: page ID might be -1 return by findFirst
@@ -478,7 +507,7 @@ void BaseTable::selectLinear(
         int en = page.getSize();
         for (int i = st; i < en; i++)
         {
-            addToSelection(ret, pageID, i, targets, constraints);
+            addToSelection(ret, pageID, i, targets, constraints, oCons);
             if (stopEq && less(stopV, page.getValues(i, stopIdx), stopIdx))
                 return;
             if (!stopEq && !less(page.getValues(i, stopIdx), stopV, stopIdx))
@@ -490,8 +519,8 @@ void BaseTable::selectLinear(
 
 void BaseTable::selectRefLinear(
     std::vector<ColVal> &ret,
-    const BaseTable::Index &targets, const BaseTable::ConsVal &constraints, const BaseTable::Pos &start,
-    const BaseTable::ColVal &stopV, const BaseTable::Index &stopIdx, bool stopEq
+    const BaseTable::Index &targets, const BaseTable::ConsVal &constraints, const OuterCons &oCons,
+    const BaseTable::Pos &start, const BaseTable::ColVal &stopV, const BaseTable::Index &stopIdx, bool stopEq
 )
 {
     int pageID = start.first; // NOTE: page ID might be -1 return by findFirst
@@ -516,7 +545,7 @@ void BaseTable::selectRefLinear(
                         Pos item = findFirst(priEntry(), key, primary.ok(), true);
                         assert(item.first >= 0); // This item must exist
                         ListPage &recPage = getDataPage(item.first);
-                        if (meetCons(recPage, item.second, constraints))
+                        if (meetCons(recPage, item.second, constraints, oCons))
                             ret.push_back(recPage.getValues(item.second, targets));
                     } else
                     {
@@ -527,7 +556,7 @@ void BaseTable::selectRefLinear(
                             ListPage &recPage = getDataPage(key);
                             assert(recPage.getIdent() == RECORD);
                             for (int k = 0; k < recPage.getSize(); k++)
-                                addToSelection(ret, key, k, targets, constraints);
+                                addToSelection(ret, key, k, targets, constraints, oCons);
                         }
                     }
                 childID = refPage.getNext();
@@ -663,11 +692,11 @@ void BaseTable::insert(const BaseTable::ColVal &vals)
     }
 }
 
-void BaseTable::remove(const ConsVal &constraints)
+void BaseTable::remove(const ConsVal &constraints, const OuterCons &oCons)
 {
     Optional< std::vector<ColVal> > toDel;
     if (primary.isOk() || !nonClus.empty())
-        toDel = select(allColumns, constraints);
+        toDel = select(allColumns, constraints, oCons);
     if (primary.isOk())
         for (const auto &record : toDel.ok())
         {
@@ -677,7 +706,7 @@ void BaseTable::remove(const ConsVal &constraints)
                 removeRoot(priEntry());
         }
     else
-        removeLinear(priEntry(), constraints, false);
+        removeLinear(priEntry(), constraints, oCons, false);
 
     for (int i = 0; i < int(nonClus.size()); i++)
         for (const auto &record : toDel.ok())
@@ -692,7 +721,9 @@ void BaseTable::remove(const ConsVal &constraints)
         }
 }
 
-std::vector<BaseTable::ColVal> BaseTable::select(const BaseTable::Index &targets, const ConsVal &constraints)
+std::vector<BaseTable::ColVal> BaseTable::select(
+    const BaseTable::Index &targets, const ConsVal &constraints, const OuterCons &oCons
+)
 {
     std::vector<BaseTable::ColVal> ret;
 
@@ -715,7 +746,7 @@ std::vector<BaseTable::ColVal> BaseTable::select(const BaseTable::Index &targets
         best = i;
     }
     if (!~best && !primary.isOk())
-        selectLinear(ret, targets, constraints, Pos(priEntry(), 0));
+        selectLinear(ret, targets, constraints, oCons, Pos(priEntry(), 0));
     else
     {
         // NOTE: l.size() can still be 0 here
@@ -728,9 +759,9 @@ std::vector<BaseTable::ColVal> BaseTable::select(const BaseTable::Index &targets
         }
         Pos start = findFirst(!~best ? priEntry() : ncEntry(best), l, indexL, !openL); // ( : first >, [ : first >=
         if (!~best)
-            selectLinear(ret, targets, constraints, start, r, indexR, !openR);
+            selectLinear(ret, targets, constraints, oCons, start, r, indexR, !openR);
         else
-            selectRefLinear(ret, targets, constraints, start, r, indexR, !openR);
+            selectRefLinear(ret, targets, constraints, oCons, start, r, indexR, !openR);
     }
     return ret;
 }

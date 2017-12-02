@@ -37,6 +37,8 @@ stmt    : SHOW DATABASES ';'
           { desc($Identifier.text); }
         | INSERT INTO Identifier VALUES valueLists ';'
           { insert($Identifier.text, $valueLists.result); }
+        | DELETE FROM Identifier WHERE whereClauses[$Identifier.text] ';'
+          { remove($Identifier.text, $whereClauses.icm, $whereClauses.ocm); }
         ;
 
 fieldList returns [Cols cols, PriIdx priIdx, Fors fors]
@@ -93,5 +95,45 @@ value returns [Optional<std::string> result]
           { $result = $String.text.substr(1, $String.text.length() - 2); }
         | NULL_TOKEN
           { $result = None(); }
+        ;
+
+whereClauses[std::string defaultTb] returns [ICM icm, OCM ocm]
+        : whereClause[defaultTb, &$icm, &$ocm] (AND whereClause[defaultTb, &$icm, &$ocm])*
+        ;
+
+whereClause[std::string defaultTb, ICM *icm, OCM *ocm]
+        : col[defaultTb] op value
+          {
+            if ($value.result.isOk())
+                (*$icm)[$col.tb][$col.c].push_back((Table::ConLiteral){$op.dir, $value.result.ok()});
+            else // Trick when the condition is always false
+               (*$ocm)[std::make_pair($col.tb, $col.tb)].push_back((Table::OuterCon){Table::NE, $col.c, $col.c});
+          }
+        | col1=col[defaultTb] op col2=col[defaultTb]
+          { (*$ocm)[std::make_pair($col1.tb, $col2.tb)].push_back((Table::OuterCon){$op.dir, $col1.c, $col2.c}); }
+        | col[defaultTb] IS NULL_TOKEN
+          { (*$icm)[$col.tb][$col.c].push_back((Table::ConLiteral){Table::IS_NULL, ""}); }
+        | col[defaultTb] IS NOT NULL_TOKEN
+          { (*$icm)[$col.tb][$col.c].push_back((Table::ConLiteral){Table::IS_NOT_NULL, ""}); }
+        ;
+
+col[std::string defaultTb] returns [std::string tb, std::string c]
+        : (Identifier {$tb = $Identifier.text;} '.')? Identifier {$c = $Identifier.text;}
+          { if ($tb.empty()) $tb = $defaultTb; }
+        ;
+
+op returns [Table::ConDir dir]
+        : '<'
+          { $dir = Table::LT; }
+        | '<='
+          { $dir = Table::LE; }
+        | '>'
+          { $dir = Table::GT; }
+        | '>='
+          { $dir = Table::GE; }
+        | '='
+          { $dir = Table::EQ; }
+        | '<>'
+          { $dir = Table::NE; }
         ;
 

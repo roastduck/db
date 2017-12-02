@@ -25,6 +25,13 @@ public:
         GE  // >=
     };
 
+    struct OuterCon
+    {
+        ConDir dir;
+        std::string col1, col2;
+    };
+    typedef std::vector<OuterCon> OuterCons;
+
 protected:
     struct ConValue
     {
@@ -57,7 +64,7 @@ private:
 
     /** Check if a record meets ALL the constraints in `cons`, i.e. items in cons are ANDed together
      */
-    bool meetCons(ListPage &page, int rank, const ConsVal &cons) const;
+    bool meetCons(ListPage &page, int rank, const ConsVal &cons, const OuterCons &oCons) const;
 
     /** Compare two batches of columns in lexicological order specified in `order`
      *  This function treats null as negative infinity
@@ -107,14 +114,16 @@ private:
      *  @param onlyOne : return after removing any record
      *  @return true if there is no records left
      */
-    bool removeLinear(int pageID, const ConsVal &constraints, bool onlyOne);
+    bool removeLinear(int pageID, const ConsVal &constraints, const OuterCons &oCons, bool onlyOne);
 
     /** Find in `index` the first position to greater (equal) than `vals`
      *  @return might be (-1, 0)
      */
     Pos findFirst(int pageID, const ColVal &vals, const Index &index, bool equal);
 
-    void addToSelection(std::vector<ColVal> &ret, int pageID, int off, const Index &targets, const ConsVal &constraints);
+    void addToSelection(
+        std::vector<ColVal> &ret, int pageID, int off, const Index &targets, const ConsVal &constraints, const OuterCons &oCons
+    );
 
     /** Select records in O(n) manner
      *  It starts scanning at the `start` position, stops when current value > (or >=) `stopV`,
@@ -123,13 +132,13 @@ private:
      */
     void selectLinear(
         std::vector<ColVal> &ret,
-        const Index &targets, const ConsVal &constraints, const Pos &start = Pos(0, 0),
+        const Index &targets, const ConsVal &constraints, const OuterCons &oCons, const Pos &start = Pos(0, 0),
         const ColVal &stopV = {}, const Index &stopIdx = {}, bool stopEq = true
     );
 
     void selectRefLinear(
         std::vector<ColVal> &ret,
-        const Index &targets, const ConsVal &constraints, const Pos &start,
+        const Index &targets, const ConsVal &constraints, const OuterCons &oCons, const Pos &start,
         const ColVal &stopV, const Index &stopIdx, bool stopEq
     );
 
@@ -155,8 +164,8 @@ protected:
     );
 
     void insert(const ColVal &vals);
-    void remove(const ConsVal &constraints);
-    std::vector<ColVal> select(const Index &targets, const ConsVal &constraints);
+    void remove(const ConsVal &constraints, const OuterCons &oCons);
+    std::vector<ColVal> select(const Index &targets, const ConsVal &constraints, const OuterCons &oCons);
 
 public:
     const Optional<Index> &getPrimary() const { return primary; }

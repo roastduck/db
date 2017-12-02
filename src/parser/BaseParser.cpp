@@ -53,3 +53,34 @@ void BaseParser::insert(const std::string &tbName, const VLists &valueLists)
     output->addInfo("Inserted " + std::to_string(valueLists.size()) + " record(s) into table " + tbName);
 }
 
+void BaseParser::remove(const std::string &tbName, const ICM &icm, const OCM &ocm)
+{
+    tableMgr->remove(tbName, getTableIC(tbName, icm), getTableOC(tbName, ocm));
+    output->addInfo("Deleted from table " + tbName);
+}
+
+Table::ConsL BaseParser::getTableIC(const std::string &tbName, const ICM &icm)
+{
+    for (const auto &i : icm)
+        if (i.first != tbName)
+            for (const auto &j : i.second)
+                throw IllegalFieldException(i.first, j.first);
+    const auto ret = icm.find(tbName);
+    return ret == icm.end() ? Table::ConsL() : ret->second;
+}
+
+Table::OuterCons BaseParser::getTableOC(const std::string &tbName, const OCM &ocm)
+{
+    for (const auto &i : ocm)
+    {
+        if (i.first.first != tbName)
+            for (const auto &j : i.second)
+                throw IllegalFieldException(i.first.first, j.col1);
+        if (i.first.second != tbName)
+            for (const auto &j : i.second)
+                throw IllegalFieldException(i.first.second, j.col2);
+    }
+    const auto ret = ocm.find(std::make_pair(tbName, tbName));
+    return ret == ocm.end() ? Table::OuterCons() : ret->second;
+}
+

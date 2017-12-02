@@ -48,16 +48,16 @@ public:
 
     /** Delete records that meet the constraint
      */
-    void remove(const ConsL &constraints)
+    void remove(const ConsL &constraints, const OuterCons &oCons = {})
     {
-        BaseTable::remove(genConstraints(constraints));
+        BaseTable::remove(genConstraints(constraints), oCons);
     }
 
     /** Select records
      */
-    std::vector<ColVal> select(const std::vector<std::string> &targets, const ConsL &constraints)
+    std::vector<ColVal> select(const std::vector<std::string> &targets, const ConsL &constraints, const OuterCons &oCons = {})
     {
-        return BaseTable::select(targets, genConstraints(constraints));
+        return BaseTable::select(targets, genConstraints(constraints), oCons);
     }
 };
 

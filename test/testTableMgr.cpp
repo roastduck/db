@@ -384,7 +384,7 @@ TEST_F(TableMgrTest, twoTablesConnection)
     mgr.insert("t2", {{ Optional<std::string>("4"), Optional<std::string>("Y") }});
     mgr.insert("t2", {{ Optional<std::string>("5"), Optional<std::string>("Z") }});
 
-    TableMgr::OuterCon out;
+    Table::OuterCon out;
     out.dir = Table::EQ;
     out.col1 = "b";
     out.col2 = "c";

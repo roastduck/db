@@ -372,7 +372,7 @@ void TableMgr::insert(const std::string &tbName, const std::vector< std::vector<
         tables.at(tbName)->insert(valueMap);
 }
 
-void TableMgr::remove(const std::string &tbName, const Table::ConsL &cons)
+void TableMgr::remove(const std::string &tbName, const Table::ConsL &cons, const Table::OuterCons &oCons)
 {
     if (!tables.count(tbName))
         throw NoSuchThingException(TABLE, tbName);
@@ -382,7 +382,7 @@ void TableMgr::remove(const std::string &tbName, const Table::ConsL &cons)
     if (priIdxOpt.isOk())
     {
         const auto &priIdx = priIdxOpt.ok();
-        for (const auto &row : tables.at(tbName)->select(priIdx, cons))
+        for (const auto &row : tables.at(tbName)->select(priIdx, cons, oCons))
         {
             std::vector<std::string> keys;
             for (const auto &col : priIdx)
@@ -401,10 +401,12 @@ void TableMgr::remove(const std::string &tbName, const Table::ConsL &cons)
     }
 
     // Delete
-    tables.at(tbName)->remove(cons);
+    tables.at(tbName)->remove(cons, oCons);
 }
 
-void TableMgr::update(const std::string &tbName, const Table::ColL &setClause, const Table::ConsL &cons)
+void TableMgr::update(
+    const std::string &tbName, const Table::ColL &setClause, const Table::ConsL &cons, const Table::OuterCons &oCons
+)
 {
     if (!tables.count(tbName))
         throw NoSuchThingException(TABLE, tbName);
@@ -423,7 +425,7 @@ void TableMgr::update(const std::string &tbName, const Table::ColL &setClause, c
 
     // Check foreign key
     const auto &priIdxOpt = tables.at(tbName)->getPrimary();
-    const auto oriRows = tables.at(tbName)->select(tables.at(tbName)->getAllColumns(), cons);
+    const auto oriRows = tables.at(tbName)->select(tables.at(tbName)->getAllColumns(), cons, oCons);
     std::vector<Table::ColL> freshRows;
     for (const auto &original : oriRows)
     {
@@ -479,7 +481,7 @@ void TableMgr::update(const std::string &tbName, const Table::ColL &setClause, c
     }
 
     // Update
-    tables.at(tbName)->remove(cons);
+    tables.at(tbName)->remove(cons, oCons);
     for (const auto &row: freshRows)
         tables.at(tbName)->insert(row);
 }
@@ -500,6 +502,7 @@ std::vector<Table::ColVal> TableMgr::select(
     // Complement `targets`
     for (const auto &item : outterCons)
     {
+        if (item.first.first == item.first.second) continue;
         Table::Index &tb1 = targets[item.first.first], &tb2 = targets[item.first.second];
         for (const auto &out : item.second)
         {
@@ -516,10 +519,10 @@ std::vector<Table::ColVal> TableMgr::select(
     for (int i = 0; i < int(tables.size()); i++)
     {
         // Gather constraints
-        std::vector< std::pair<OuterCon, std::string> > outs; // [(constrints, table)]
+        std::vector< std::pair<Table::OuterCon, std::string> > outs; // [(constrints, table)]
         for (int j = 0; j < i; j++)
             for (const auto &pair : {std::make_pair(tableList[i], tableList[j]), std::make_pair(tableList[j], tableList[i])})
-                for (auto out : outterCons.count(pair) ? outterCons.at(pair) : OuterCons())
+                for (auto out : outterCons.count(pair) ? outterCons.at(pair) : Table::OuterCons())
                 {
                     if (pair.second == tableList[i])
                     {
@@ -537,9 +540,12 @@ std::vector<Table::ColVal> TableMgr::select(
         for (auto &line : *feed)
         {
             Table::ConsL cons = innerCons.count(tableList[i]) ? innerCons.at(tableList[i]) : Table::ConsL();
+            Table::OuterCons oCons;
+            if (outterCons.count(std::make_pair(tableList[i], tableList[i])))
+                oCons = outterCons.at(std::make_pair(tableList[i], tableList[i]));
             for (const auto &pair : outs)
             {
-                const OuterCon &out = pair.first;
+                const Table::OuterCon &out = pair.first;
                 const std::string &tb2 = pair.second;
                 Table::ConLiteral v;
                 v.dir = out.dir;
@@ -548,7 +554,8 @@ std::vector<Table::ColVal> TableMgr::select(
             }
             auto block = tables.at(tableList[i])->select(
                 targets.count(tableList[i]) ? targets.at(tableList[i]) : Table::Index(),
-                cons
+                cons,
+                oCons
             );
             for (auto &newLine : block) // Here we destruct `line` and `block`
             {

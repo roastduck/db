@@ -49,6 +49,10 @@ TEST_F(ParserTest, oneLetterIdentifier)
     ASSERT_THAT(dbs[0][TableMgr::DB]->toString(), Eq("a"));
 }
 
+/************************************/
+/* DB Managements                   */
+/************************************/
+
 TEST_F(ParserTest, createDb)
 {
     input.parse("CREATE DATABASE db;");
@@ -96,6 +100,10 @@ TEST_F(ParserTest, use)
     input.parse("USE db;");
     ASSERT_THAT(outStream.str(), Eq("Database changed to db\n"));
 }
+
+/************************************/
+/* Table Managements                */
+/************************************/
 
 TEST_F(ParserTest, showTables)
 {
@@ -148,6 +156,10 @@ TEST_F(ParserTest, desc)
     ));
 }
 
+/************************************/
+/* Queries                          */
+/************************************/
+
 TEST_F(ParserTest, insert)
 {
     input.parse("CREATE DATABASE db; USE db;");
@@ -165,5 +177,101 @@ TEST_F(ParserTest, insert)
     ASSERT_THAT(result[0]["tb.b"], Eq(nullptr));
     ASSERT_THAT(result[1]["tb.a"]->toString(), Eq("2"));
     ASSERT_THAT(result[1]["tb.b"]->toString(), Eq("X"));
+}
+
+TEST_F(ParserTest, remove)
+{
+    input.parse("CREATE DATABASE db; USE db;");
+    input.parse("CREATE TABLE tb(a INT);");
+    input.parse("INSERT INTO tb VALUES (1), (2), (3), (4), (NULL);");
+    outStream.str("");
+    input.parse("DELETE FROM tb WHERE a >= 3;");
+    ASSERT_THAT(outStream.str(), Eq("Deleted from table tb\n"));
+    auto result = mgr.select(
+        { std::make_pair("tb", Table::Index({"a"})) },
+        { "tb" },
+        {}
+    );
+    ASSERT_THAT(result.size(), Eq(3));
+    ASSERT_THAT(result[0]["tb.a"]->toString(), Eq("1"));
+    ASSERT_THAT(result[1]["tb.a"]->toString(), Eq("2"));
+    ASSERT_THAT(result[2]["tb.a"], Eq(nullptr));
+}
+
+TEST_F(ParserTest, removeWithComparasionBetweenColumns)
+{
+    input.parse("CREATE DATABASE db; USE db;");
+    input.parse("CREATE TABLE tb(a INT, b INT);");
+    input.parse("INSERT INTO tb VALUES (0,1), (2,2), (3,3);");
+    input.parse("DELETE FROM tb WHERE a=b AND a<3;");
+    auto result = mgr.select(
+        { std::make_pair("tb", Table::Index({"a"})) },
+        { "tb" },
+        {}
+    );
+    ASSERT_THAT(result.size(), Eq(2));
+    ASSERT_THAT(result[0]["tb.a"]->toString(), Eq("0"));
+    ASSERT_THAT(result[1]["tb.a"]->toString(), Eq("3"));
+}
+
+TEST_F(ParserTest, removeWithExplicitField)
+{
+    input.parse("CREATE DATABASE db; USE db;");
+    input.parse("CREATE TABLE tb(a INT);");
+    input.parse("INSERT INTO tb VALUES (1), (2);");
+    input.parse("DELETE FROM tb WHERE tb.a=1;");
+    auto result = mgr.select(
+        { std::make_pair("tb", Table::Index({"a"})) },
+        { "tb" },
+        {}
+    );
+    ASSERT_THAT(result.size(), Eq(1));
+    ASSERT_THAT(result[0]["tb.a"]->toString(), Eq("2"));
+}
+
+TEST_F(ParserTest, removeWithWrongTableDotField)
+{
+    input.parse("CREATE DATABASE db; USE db;");
+    input.parse("CREATE TABLE tb(a INT);");
+    input.parse("INSERT INTO tb VALUES (1), (2);");
+    input.parse("DELETE FROM tb WHERE wrong.a=1;");
+    ASSERT_THAT(errStream.str(), "Illegal field: wrong.a\n");
+    auto result = mgr.select(
+        { std::make_pair("tb", Table::Index({"a"})) },
+        { "tb" },
+        {}
+    );
+    ASSERT_THAT(result.size(), Eq(2));
+}
+
+TEST_F(ParserTest, removeIsNull)
+{
+    input.parse("CREATE DATABASE db; USE db;");
+    input.parse("CREATE TABLE tb(a INT);");
+    input.parse("INSERT INTO tb VALUES (1), (NULL);");
+    input.parse("DELETE FROM tb WHERE a IS NULL;");
+    auto result = mgr.select(
+        { std::make_pair("tb", Table::Index({"a"})) },
+        { "tb" },
+        {}
+    );
+    ASSERT_THAT(result.size(), Eq(1));
+    ASSERT_THAT(result[0]["tb.a"]->toString(), Eq("1"));
+}
+
+TEST_F(ParserTest, removeEqualsNull)
+{
+    input.parse("CREATE DATABASE db; USE db;");
+    input.parse("CREATE TABLE tb(a INT);");
+    input.parse("INSERT INTO tb VALUES (1), (NULL);");
+    input.parse("DELETE FROM tb WHERE a = NULL;");
+    auto result = mgr.select(
+        { std::make_pair("tb", Table::Index({"a"})) },
+        { "tb" },
+        {}
+    );
+    ASSERT_THAT(result.size(), Eq(2));
+    ASSERT_THAT(result[0]["tb.a"]->toString(), Eq("1"));
+    ASSERT_THAT(result[1]["tb.a"], Eq(nullptr));
 }
 

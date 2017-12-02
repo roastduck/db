@@ -51,13 +51,7 @@ public:
         Table::Index referrerCols, refereeCols;
     };
 
-    struct OuterCon
-    {
-        Table::ConDir dir;
-        std::string col1, col2;
-    };
-    typedef std::vector<OuterCon> OuterCons;
-    typedef std::unordered_map< std::pair<std::string, std::string>, OuterCons, PairHash<std::string, std::string> > OuterConsMap;
+    typedef std::unordered_map< std::pair<std::string, std::string>, Table::OuterCons, PairHash<std::string, std::string> > OuterConsMap;
 
     /************************************/
     /* DB Managements                   */
@@ -148,14 +142,16 @@ public:
      *  @throw : NoSuchThingException
      *  @throw : ForeignKeyViolatedException
      */
-    void remove(const std::string &tbName, const Table::ConsL &cons);
+    void remove(const std::string &tbName, const Table::ConsL &cons, const Table::OuterCons &oCons = {});
 
     /** UPDATE <tbName> SET <setClause> WHERE <whereClause>
      *  @throw : NoSuchThingException
      *  @throw : ForeignKeyViolatedException
      *  @throw : NotNullException
      */
-    void update(const std::string &tbName, const Table::ColL &setClause, const Table::ConsL &cons);
+    void update(
+        const std::string &tbName, const Table::ColL &setClause, const Table::ConsL &cons, const Table::OuterCons &oCons = {}
+    );
 
     /** SELECT <selector> FROM <tableList> WHERE <whereClause>
      *  @throw : NoSuchThingException

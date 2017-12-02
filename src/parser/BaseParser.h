@@ -8,6 +8,7 @@
 #include "../TableMgr.h"
 #include "../io/Output.h"
 #include "antlr4-runtime.h"
+#include "../exception/IllegalFieldException.h"
 #include "../exception/MultiplePrimaryException.h"
 
 class BaseParser : public antlr4::Parser
@@ -26,6 +27,8 @@ protected:
     typedef std::vector< TableMgr::ForeignKey > Fors;
     typedef std::vector< Optional< std::string > > VList;
     typedef std::vector< VList > VLists;
+    typedef std::unordered_map< std::string, Table::ConsL > ICM;
+    typedef TableMgr::OuterConsMap OCM;
 
     // Short helper functions
     template <class T>
@@ -40,6 +43,11 @@ protected:
     void dropTable(const std::string &name);
     void desc(const std::string &name);
     void insert(const std::string &tbName, const VLists &valueLists);
+    void remove(const std::string &tbName, const ICM &icm, const OCM &ocm);
+
+private:
+    Table::ConsL getTableIC(const std::string &tbName, const ICM &icm);
+    Table::OuterCons getTableOC(const std::string &tbName, const OCM &ocm);
 
 public:
     void setTableMgr(TableMgr *_tableMgr) { tableMgr = _tableMgr; }
