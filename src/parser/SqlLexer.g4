@@ -72,7 +72,7 @@ FOREIGN:    F O R E I G N;
 
 Identifier: [A-Za-z][_0-9A-Za-z]*;
 Int:        [0-9]+;
-String:     '\'' [^']* '\'';
+String:     '\'' ~[']* '\'';
 
 SEMICOLON:          ';';
 LEFT_PARENTHESIS:   '(';

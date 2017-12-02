@@ -47,3 +47,9 @@ void BaseParser::desc(const std::string &name)
     output->addResult(tableMgr->desc(name), {TableMgr::FIELD, TableMgr::TYPE, TableMgr::NOT_NULL, TableMgr::IS_PRI});
 }
 
+void BaseParser::insert(const std::string &tbName, const VLists &valueLists)
+{
+    tableMgr->insert(tbName, valueLists);
+    output->addInfo("Inserted " + std::to_string(valueLists.size()) + " record(s) into table " + tbName);
+}
+

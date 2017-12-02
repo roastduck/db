@@ -35,10 +35,12 @@ stmt    : SHOW DATABASES ';'
           { dropTable($Identifier.text); }
         | DESC Identifier
           { desc($Identifier.text); }
+        | INSERT INTO Identifier VALUES valueLists ';'
+          { insert($Identifier.text, $valueLists.result); }
         ;
 
 fieldList returns [Cols cols, PriIdx priIdx, Fors fors]
-        : /* empty */
+        : /* empty */ // Modification: we allow empty set
         | field[&$cols, &$priIdx, &$fors] (',' field[&$cols, &$priIdx, &$fors])*
         ;
 
@@ -57,7 +59,7 @@ field[Cols *cols, PriIdx *priIdx, Fors *fors]
         ;
 
 type returns [Type::TypeID typeID, int length = 0]
-        : INT
+        : INT // Modification: we allow INT without length
           { $typeID = Type::INT; }
         | INT '(' Int ')'
           { $typeID = Type::INT, $length = std::stoi($Int.text); }
@@ -73,5 +75,23 @@ type returns [Type::TypeID typeID, int length = 0]
 
 columnList returns [Table::Index result]
         : Identifier {$result.push_back($Identifier.text);} (',' Identifier {$result.push_back($Identifier.text);})*
+        ;
+
+valueLists returns [VLists result]
+        : valueList {append($result, $valueList.result);} (',' valueList {append($result, $valueList.result);})*
+        ;
+
+valueList returns [VList result]
+        : /* empty */ // Modification: we allow empty set
+        | '(' value {append($result, $value.result);} (',' value {append($result, $value.result);})* ')'
+        ;
+
+value returns [Optional<std::string> result]
+        : Int
+          { $result = $Int.text; }
+        | String // Out string has no escaping
+          { $result = $String.text.substr(1, $String.text.length() - 2); }
+        | NULL_TOKEN
+          { $result = None(); }
         ;
 

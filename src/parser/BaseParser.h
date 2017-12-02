@@ -24,6 +24,12 @@ protected:
     typedef std::vector< std::pair<std::string, Column> > Cols;
     typedef Optional< Table::Index > PriIdx;
     typedef std::vector< TableMgr::ForeignKey > Fors;
+    typedef std::vector< Optional< std::string > > VList;
+    typedef std::vector< VList > VLists;
+
+    // Short helper functions
+    template <class T>
+    static void append(std::vector<T> &vec, T &item) { vec.push_back(std::move(item)); }
 
     void showDbs();
     void createDb(const std::string &name);
@@ -33,6 +39,7 @@ protected:
     void createTable(const std::string &name, const Cols &cols, const PriIdx &priIdx, const Fors &fors);
     void dropTable(const std::string &name);
     void desc(const std::string &name);
+    void insert(const std::string &tbName, const VLists &valueLists);
 
 public:
     void setTableMgr(TableMgr *_tableMgr) { tableMgr = _tableMgr; }

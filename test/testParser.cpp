@@ -148,3 +148,22 @@ TEST_F(ParserTest, desc)
     ));
 }
 
+TEST_F(ParserTest, insert)
+{
+    input.parse("CREATE DATABASE db; USE db;");
+    input.parse("CREATE TABLE tb(a INT, b VARCHAR(5));");
+    outStream.str("");
+    input.parse("INSERT INTO tb VALUES (1, NULL), (2, 'X');");
+    ASSERT_THAT(outStream.str(), Eq("Inserted 2 record(s) into table tb\n"));
+    auto result = mgr.select(
+        { std::make_pair("tb", Table::Index({"a", "b"})) },
+        { "tb" },
+        {}
+    );
+    ASSERT_THAT(result.size(), Eq(2));
+    ASSERT_THAT(result[0]["tb.a"]->toString(), Eq("1"));
+    ASSERT_THAT(result[0]["tb.b"], Eq(nullptr));
+    ASSERT_THAT(result[1]["tb.a"]->toString(), Eq("2"));
+    ASSERT_THAT(result[1]["tb.b"]->toString(), Eq("X"));
+}
+
