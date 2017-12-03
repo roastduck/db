@@ -275,3 +275,27 @@ TEST_F(ParserTest, removeEqualsNull)
     ASSERT_THAT(result[1]["tb.a"], Eq(nullptr));
 }
 
+TEST_F(ParserTest, update)
+{
+    input.parse("CREATE DATABASE db; USE db;");
+    input.parse("CREATE TABLE tb(PRIMARY KEY(b), a INT, b INT);");
+    input.parse("INSERT INTO tb VALUES (0,1), (2,2), (3,3), (4,4);");
+    outStream.str("");
+    input.parse("UPDATE tb SET a = 5 WHERE a < 4 AND a = b;");
+    ASSERT_THAT(outStream.str(), Eq("Updated table tb\n"));
+    auto result = mgr.select(
+        { std::make_pair("tb", Table::Index({"a", "b"})) },
+        { "tb" },
+        {}
+    );
+    ASSERT_THAT(result.size(), Eq(4));
+    ASSERT_THAT(result[0]["tb.a"]->toString(), Eq("0"));
+    ASSERT_THAT(result[0]["tb.b"]->toString(), Eq("1"));
+    ASSERT_THAT(result[1]["tb.a"]->toString(), Eq("5"));
+    ASSERT_THAT(result[1]["tb.b"]->toString(), Eq("2"));
+    ASSERT_THAT(result[2]["tb.a"]->toString(), Eq("5"));
+    ASSERT_THAT(result[2]["tb.b"]->toString(), Eq("3"));
+    ASSERT_THAT(result[3]["tb.a"]->toString(), Eq("4"));
+    ASSERT_THAT(result[3]["tb.b"]->toString(), Eq("4"));
+}
+

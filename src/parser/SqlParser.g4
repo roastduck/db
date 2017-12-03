@@ -39,6 +39,8 @@ stmt    : SHOW DATABASES ';'
           { insert($Identifier.text, $valueLists.result); }
         | DELETE FROM Identifier WHERE whereClauses[$Identifier.text] ';'
           { remove($Identifier.text, $whereClauses.icm, $whereClauses.ocm); }
+        | UPDATE Identifier SET setClauses WHERE whereClauses[$Identifier.text] ';'
+          { update($Identifier.text, $setClauses.result, $whereClauses.icm, $whereClauses.ocm); }
         ;
 
 fieldList returns [Cols cols, PriIdx priIdx, Fors fors]
@@ -135,5 +137,14 @@ op returns [Table::ConDir dir]
           { $dir = Table::EQ; }
         | '<>'
           { $dir = Table::NE; }
+        ;
+
+setClauses returns [Table::ColL result] // We treate SET a=1, a=2 as legal operation
+        : setClause {$result[$setClause.k] = $setClause.v;} (',' setClause {$result[$setClause.k] = $setClause.v;})*
+        ;
+
+setClause returns [std::string k, Optional<std::string> v]
+        : Identifier '=' value
+          { $k = $Identifier.text, $v = $value.result; }
         ;
 

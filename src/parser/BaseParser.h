@@ -44,6 +44,7 @@ protected:
     void desc(const std::string &name);
     void insert(const std::string &tbName, const VLists &valueLists);
     void remove(const std::string &tbName, const ICM &icm, const OCM &ocm);
+    void update(const std::string &tbName, const Table::ColL &setClause, const ICM &icm, const OCM &ocm);
 
 private:
     Table::ConsL getTableIC(const std::string &tbName, const ICM &icm);

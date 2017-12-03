@@ -59,6 +59,12 @@ void BaseParser::remove(const std::string &tbName, const ICM &icm, const OCM &oc
     output->addInfo("Deleted from table " + tbName);
 }
 
+void BaseParser::update(const std::string &tbName, const Table::ColL &setClause, const ICM &icm, const OCM &ocm)
+{
+    tableMgr->update(tbName, setClause, getTableIC(tbName, icm), getTableOC(tbName, ocm));
+    output->addInfo("Updated table " + tbName);
+}
+
 Table::ConsL BaseParser::getTableIC(const std::string &tbName, const ICM &icm)
 {
     for (const auto &i : icm)
