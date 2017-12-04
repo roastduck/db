@@ -79,6 +79,7 @@ LEFT_PARENTHESIS:   '(';
 RIGHT_PARENTHESIS:  ')';
 COMMA:              ',';
 DOT:                '.';
+STAR:               '*';
 LESS_THAN:          '<';
 LESS_EQUAL:         '<=';
 GREATER_THAN:       '>';

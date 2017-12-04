@@ -29,6 +29,7 @@ protected:
     typedef std::vector< VList > VLists;
     typedef std::unordered_map< std::string, Table::ConsL > ICM;
     typedef TableMgr::OuterConsMap OCM;
+    typedef std::unordered_map< std::string, Table::Index > Tgt;
 
     // Short helper functions
     template <class T>
@@ -45,6 +46,8 @@ protected:
     void insert(const std::string &tbName, const VLists &valueLists);
     void remove(const std::string &tbName, const ICM &icm, const OCM &ocm);
     void update(const std::string &tbName, const Table::ColL &setClause, const ICM &icm, const OCM &ocm);
+    /** @param _targets = None means SELECT * */
+    void select(const Optional<Tgt> &_targets, const std::vector<std::string> &tableList, const ICM &icm, const OCM &ocm);
 
 private:
     Table::ConsL getTableIC(const std::string &tbName, const ICM &icm);

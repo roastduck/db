@@ -1,4 +1,6 @@
+#include <cassert>
 #include "BaseParser.h"
+#include "../type/CharType.h"
 
 void BaseParser::showDbs()
 {
@@ -53,19 +55,64 @@ void BaseParser::insert(const std::string &tbName, const VLists &valueLists)
     output->addInfo("Inserted " + std::to_string(valueLists.size()) + " record(s) into table " + tbName);
 }
 
-void BaseParser::remove(const std::string &tbName, const ICM &icm, const OCM &ocm)
+void BaseParser::remove(const std::string &tbName, const BaseParser::ICM &icm, const BaseParser::OCM &ocm)
 {
     tableMgr->remove(tbName, getTableIC(tbName, icm), getTableOC(tbName, ocm));
     output->addInfo("Deleted from table " + tbName);
 }
 
-void BaseParser::update(const std::string &tbName, const Table::ColL &setClause, const ICM &icm, const OCM &ocm)
+void BaseParser::update(
+    const std::string &tbName, const Table::ColL &setClause, const BaseParser::ICM &icm, const BaseParser::OCM &ocm
+)
 {
     tableMgr->update(tbName, setClause, getTableIC(tbName, icm), getTableOC(tbName, ocm));
     output->addInfo("Updated table " + tbName);
 }
 
-Table::ConsL BaseParser::getTableIC(const std::string &tbName, const ICM &icm)
+void BaseParser::select(
+    const Optional<BaseParser::Tgt> &_targets, const std::vector<std::string> &tableList,
+    const BaseParser::ICM &icm, const BaseParser::OCM &ocm
+)
+{
+    for (const auto &i : icm)
+        if (i.first.empty())
+            for (const auto &j : i.second)
+                throw IllegalFieldException(i.first, j.first);
+    for (const auto &i : ocm)
+    {
+        if (i.first.first.empty())
+            for (const auto &j : i.second)
+                throw IllegalFieldException(i.first.first, j.col1);
+        if (i.first.second.empty())
+            for (const auto &j : i.second)
+                throw IllegalFieldException(i.first.second, j.col2);
+    }
+
+    assert(!tableList.empty());
+    Tgt targets;
+    if (_targets.isOk())
+    {
+        targets = _targets.ok();
+        if (targets.count(""))
+        {
+            for (const auto &tgt : targets.at(""))
+                targets[tableList[0]].push_back(tgt);
+            targets.erase("");
+        }
+    } else
+        for (const auto &tb : tableList)
+            for (const auto &col : tableMgr->desc(tb))
+                targets[tb].push_back(dynamic_cast<CharType*>(col.at(TableMgr::FIELD).get())->getVal());
+
+    Table::Index order;
+    for (const auto &tb : tableList) // Can be improved here
+        if (targets.count(tb))
+            for (const auto &col : targets.at(tb))
+                order.push_back(tb + "." + col);
+    output->addResult(tableMgr->select(targets, tableList, icm, ocm), order);
+}
+
+Table::ConsL BaseParser::getTableIC(const std::string &tbName, const BaseParser::ICM &icm)
 {
     for (const auto &i : icm)
         if (i.first != tbName)
@@ -75,7 +122,7 @@ Table::ConsL BaseParser::getTableIC(const std::string &tbName, const ICM &icm)
     return ret == icm.end() ? Table::ConsL() : ret->second;
 }
 
-Table::OuterCons BaseParser::getTableOC(const std::string &tbName, const OCM &ocm)
+Table::OuterCons BaseParser::getTableOC(const std::string &tbName, const BaseParser::OCM &ocm)
 {
     for (const auto &i : ocm)
     {

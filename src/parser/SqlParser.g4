@@ -41,6 +41,14 @@ stmt    : SHOW DATABASES ';'
           { remove($Identifier.text, $whereClauses.icm, $whereClauses.ocm); }
         | UPDATE Identifier SET setClauses WHERE whereClauses[$Identifier.text] ';'
           { update($Identifier.text, $setClauses.result, $whereClauses.icm, $whereClauses.ocm); }
+        | SELECT '*' FROM Identifier WHERE whereClauses[$Identifier.text] ';'
+          { select(None(), {$Identifier.text}, $whereClauses.icm, $whereClauses.ocm); }
+        | SELECT '*' FROM tableList WHERE whereClauses[] ';'
+          { select(None(), $tableList.result, $whereClauses.icm, $whereClauses.ocm); }
+        | SELECT selector FROM Identifier WHERE whereClauses[$Identifier.text] ';'
+          { select($selector.result, {$Identifier.text}, $whereClauses.icm, $whereClauses.ocm); }
+        | SELECT selector FROM tableList WHERE whereClauses[] ';'
+          { select($selector.result, $tableList.result, $whereClauses.icm, $whereClauses.ocm); }
         ;
 
 fieldList returns [Cols cols, PriIdx priIdx, Fors fors]
@@ -81,6 +89,10 @@ columnList returns [Table::Index result]
         : Identifier {$result.push_back($Identifier.text);} (',' Identifier {$result.push_back($Identifier.text);})*
         ;
 
+tableList returns [std::vector<std::string> result]
+        : Identifier {$result.push_back($Identifier.text);} (',' Identifier {$result.push_back($Identifier.text);})*
+        ;
+
 valueLists returns [VLists result]
         : valueList {append($result, $valueList.result);} (',' valueList {append($result, $valueList.result);})*
         ;
@@ -99,7 +111,7 @@ value returns [Optional<std::string> result]
           { $result = None(); }
         ;
 
-whereClauses[std::string defaultTb] returns [ICM icm, OCM ocm]
+whereClauses[std::string defaultTb = ""] returns [ICM icm, OCM ocm]
         : whereClause[defaultTb, &$icm, &$ocm] (AND whereClause[defaultTb, &$icm, &$ocm])*
         ;
 
@@ -146,5 +158,9 @@ setClauses returns [Table::ColL result] // We treate SET a=1, a=2 as legal opera
 setClause returns [std::string k, Optional<std::string> v]
         : Identifier '=' value
           { $k = $Identifier.text, $v = $value.result; }
+        ;
+
+selector returns [Tgt result] // We match length >= 2 here, and discuss length = 1 above
+        : col[""] {$result[$col.tb].push_back($col.c);} (',' col[""] {$result[$col.tb].push_back($col.c);})+
         ;
 

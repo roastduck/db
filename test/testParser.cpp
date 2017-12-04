@@ -299,3 +299,80 @@ TEST_F(ParserTest, update)
     ASSERT_THAT(result[3]["tb.b"]->toString(), Eq("4"));
 }
 
+TEST_F(ParserTest, selectAllFrom1Table)
+{
+    input.parse("CREATE DATABASE db; USE db;");
+    input.parse("CREATE TABLE tb(PRIMARY KEY(a,b,c), a INT NOT NULL, b INT NOT NULL, c INT NOT NULL);");
+    input.parse("INSERT INTO tb VALUES (0,1,2), (2,2,1), (4,3,5);");
+    outStream.str("");
+    input.parse("SELECT * FROM tb WHERE a > 0;");
+    ASSERT_THAT(outStream.str(), Eq(
+        "+------+------+------+\n"
+        "| tb.a | tb.b | tb.c |\n"
+        "+------+------+------+\n"
+        "| 2    | 2    | 1    |\n"
+        "+------+------+------+\n"
+        "| 4    | 3    | 5    |\n"
+        "+------+------+------+\n"
+    ));
+}
+
+TEST_F(ParserTest, selectSomeFrom1Table)
+{
+    input.parse("CREATE DATABASE db; USE db;");
+    input.parse("CREATE TABLE tb(PRIMARY KEY(a,b,c), a INT NOT NULL, b INT NOT NULL, c INT NOT NULL);");
+    input.parse("INSERT INTO tb VALUES (0,1,2), (2,2,1), (4,3,5);");
+    outStream.str("");
+    input.parse("SELECT c, a FROM tb WHERE a > 0;");
+    ASSERT_THAT(outStream.str(), Eq(
+        "+------+------+\n"
+        "| tb.c | tb.a |\n"
+        "+------+------+\n"
+        "| 1    | 2    |\n"
+        "+------+------+\n"
+        "| 5    | 4    |\n"
+        "+------+------+\n"
+    ));
+}
+
+TEST_F(ParserTest, selectSomeFrom1TableWithExplicitTableName)
+{
+    input.parse("CREATE DATABASE db; USE db;");
+    input.parse("CREATE TABLE tb(PRIMARY KEY(a,b,c), a INT NOT NULL, b INT NOT NULL, c INT NOT NULL);");
+    input.parse("INSERT INTO tb VALUES (0,1,2), (2,2,1), (4,3,5);");
+    outStream.str("");
+    input.parse("SELECT tb.c, tb.a FROM tb WHERE tb.a > 0;");
+    ASSERT_THAT(outStream.str(), Eq(
+        "+------+------+\n"
+        "| tb.c | tb.a |\n"
+        "+------+------+\n"
+        "| 1    | 2    |\n"
+        "+------+------+\n"
+        "| 5    | 4    |\n"
+        "+------+------+\n"
+    ));
+}
+
+TEST_F(ParserTest, selectAllFromMultipleTables)
+{
+    input.parse("CREATE DATABASE db; USE db;");
+    input.parse("CREATE TABLE t1(PRIMARY KEY(a,b), a INT NOT NULL, b INT NOT NULL);");
+    input.parse("INSERT INTO t1 VALUES (0,1), (2,2), (7,8);");
+    input.parse("CREATE TABLE t2(PRIMARY KEY(x), x INT NOT NULL);");
+    input.parse("INSERT INTO t2 VALUES (5), (4), (6);");
+    outStream.str("");
+    input.parse("SELECT * FROM t1, t2 WHERE t1.a < 5 AND t2.x >= 5;");
+    ASSERT_THAT(outStream.str(), Eq(
+        "+------+------+------+\n"
+        "| t1.a | t1.b | t2.x |\n"
+        "+------+------+------+\n"
+        "| 0    | 1    | 5    |\n"
+        "+------+------+------+\n"
+        "| 0    | 1    | 6    |\n"
+        "+------+------+------+\n"
+        "| 2    | 2    | 5    |\n"
+        "+------+------+------+\n"
+        "| 2    | 2    | 6    |\n"
+        "+------+------+------+\n"
+    ));
+}

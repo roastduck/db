@@ -537,7 +537,7 @@ std::vector<Table::ColVal> TableMgr::select(
 
         // Query
         std::swap(feed, result);
-        for (auto &line : *feed)
+        for (const auto &line : *feed)
         {
             Table::ConsL cons = innerCons.count(tableList[i]) ? innerCons.at(tableList[i]) : Table::ConsL();
             Table::OuterCons oCons;
@@ -557,9 +557,12 @@ std::vector<Table::ColVal> TableMgr::select(
                 cons,
                 oCons
             );
-            for (auto &newLine : block) // Here we destruct `line` and `block`
+            for (auto &newLine : block) // Here we destruct `block`
             {
-                result->push_back(std::move(line));
+                // We can't std::move(line), because 1 line -> multiple newLine
+                result->push_back({});
+                for (const auto &col : line)
+                    result->back()[col.first] = Type::newFromCopy(col.second);
                 for (auto &col : newLine)
                     result->back()[tableList[i] + "." + col.first] = std::move(col.second);
             }
