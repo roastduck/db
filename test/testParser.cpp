@@ -376,3 +376,42 @@ TEST_F(ParserTest, selectAllFromMultipleTables)
         "+------+------+------+\n"
     ));
 }
+
+TEST_F(ParserTest, selectSomeFromMultipleTables)
+{
+    input.parse("CREATE DATABASE db; USE db;");
+    input.parse("CREATE TABLE t1(PRIMARY KEY(a,b), a INT NOT NULL, b INT NOT NULL);");
+    input.parse("INSERT INTO t1 VALUES (0,1), (2,2), (7,8), (10,11);");
+    input.parse("CREATE TABLE t2(PRIMARY KEY(x), x INT NOT NULL);");
+    input.parse("INSERT INTO t2 VALUES (2), (7), (10);");
+    outStream.str("");
+    input.parse("SELECT t1.b FROM t1, t2 WHERE t1.a = t2.x AND t1.a < t1.b;");
+    ASSERT_THAT(outStream.str(), Eq(
+        "+------+\n"
+        "| t1.b |\n"
+        "+------+\n"
+        "| 8    |\n"
+        "+------+\n"
+        "| 11   |\n"
+        "+------+\n"
+    ));
+}
+
+TEST_F(ParserTest, multiTableSelectionIllegalSelector)
+{
+    input.parse("CREATE DATABASE db; USE db;");
+    input.parse("CREATE TABLE t1(PRIMARY KEY(a,b), a INT NOT NULL, b INT NOT NULL);");
+    input.parse("CREATE TABLE t2(PRIMARY KEY(x), x INT NOT NULL);");
+    input.parse("SELECT b FROM t1, t2 WHERE t1.a = t2.x;");
+    ASSERT_THAT(errStream.str(), "Illegal field: b\n");
+}
+
+TEST_F(ParserTest, multiTableSelectionIllegalWhere)
+{
+    input.parse("CREATE DATABASE db; USE db;");
+    input.parse("CREATE TABLE t1(PRIMARY KEY(a,b), a INT NOT NULL, b INT NOT NULL);");
+    input.parse("CREATE TABLE t2(PRIMARY KEY(x), x INT NOT NULL);");
+    input.parse("SELECT tb.b FROM t1, t2 WHERE t1.a = x;");
+    ASSERT_THAT(errStream.str(), "Illegal field: x\n");
+}
+

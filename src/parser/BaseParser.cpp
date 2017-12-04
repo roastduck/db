@@ -95,9 +95,14 @@ void BaseParser::select(
         targets = _targets.ok();
         if (targets.count(""))
         {
-            for (const auto &tgt : targets.at(""))
-                targets[tableList[0]].push_back(tgt);
-            targets.erase("");
+            if (tableList.size() == 1)
+            {
+                for (const auto &tgt : targets.at(""))
+                    targets[tableList[0]].push_back(tgt);
+                targets.erase("");
+            } else
+                for (const auto &tgt : targets.at(""))
+                    throw IllegalFieldException("", tgt);
         }
     } else
         for (const auto &tb : tableList)

@@ -497,6 +497,11 @@ std::vector<Table::ColVal> TableMgr::select(
         if (!tables.count(name))
             throw NoSuchThingException(TABLE, name);
 
+    Table::Index headers; // What we want in the end
+    for (const auto &tb : targets)
+        for (const auto &col : tb.second)
+            headers.push_back(tb.first + "." + col);
+
     // TODO: optimize the order of `tableList`
 
     // Complement `targets`
@@ -568,6 +573,14 @@ std::vector<Table::ColVal> TableMgr::select(
             }
         }
         feed->clear();
+    }
+
+    for (auto &row : *result) // We only return what we want
+    {
+        Table::ColVal ret;
+        for (const auto &header : headers)
+            ret[header] = std::move(row.at(header));
+        row = std::move(ret);
     }
     return std::move(*result);
 }

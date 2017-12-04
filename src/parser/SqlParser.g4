@@ -89,8 +89,8 @@ columnList returns [Table::Index result]
         : Identifier {$result.push_back($Identifier.text);} (',' Identifier {$result.push_back($Identifier.text);})*
         ;
 
-tableList returns [std::vector<std::string> result]
-        : Identifier {$result.push_back($Identifier.text);} (',' Identifier {$result.push_back($Identifier.text);})*
+tableList returns [std::vector<std::string> result] // We match length >= 2 here, and discuss length = 1 above
+        : Identifier {$result.push_back($Identifier.text);} (',' Identifier {$result.push_back($Identifier.text);})+
         ;
 
 valueLists returns [VLists result]
@@ -160,7 +160,7 @@ setClause returns [std::string k, Optional<std::string> v]
           { $k = $Identifier.text, $v = $value.result; }
         ;
 
-selector returns [Tgt result] // We match length >= 2 here, and discuss length = 1 above
-        : col[""] {$result[$col.tb].push_back($col.c);} (',' col[""] {$result[$col.tb].push_back($col.c);})+
+selector returns [Tgt result]
+        : col[""] {$result[$col.tb].push_back($col.c);} (',' col[""] {$result[$col.tb].push_back($col.c);})*
         ;
 
