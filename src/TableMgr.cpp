@@ -305,16 +305,18 @@ void TableMgr::dropIndex(const std::string &tbName, const Table::Index &colName)
     if (!tables.count(tbName))
         throw NoSuchThingException(TABLE, tbName);
 
-    auto result = sysNonClusIdxes.select({"indexID"}, {
+    Table::ConsL constraints({
         std::make_pair(DB, std::vector<Table::ConLiteral>({{Table::EQ, curDb.ok()}})),
         std::make_pair(TABLE, std::vector<Table::ConLiteral>({{Table::EQ, tbName}})),
-        std::make_pair("column", std::vector<Table::ConLiteral>({{Table::EQ, commaJoin(colName)}}))
+        std::make_pair("columns", std::vector<Table::ConLiteral>({{Table::EQ, commaJoin(colName)}}))
     });
+    auto result = sysNonClusIdxes.select({"indexID"}, constraints);
     if (result.empty())
         throw NoSuchThingException("index", "(" + commaJoin(colName) + ")");
     assert(result.size() == 1);
-    auto indexID = dynamic_cast<IntType*>(result[0].at("column").get())->getVal();
+    auto indexID = dynamic_cast<IntType*>(result[0].at("indexID").get())->getVal();
     tables.at(tbName)->delIndex(indexID);
+    sysNonClusIdxes.remove(constraints);
 }
 
 /************************************/

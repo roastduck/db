@@ -39,10 +39,10 @@ private:
 
     bool nameExists(Table &table, const std::vector<std::string> &col, const std::vector<std::string> &name);
 
+public:
     static std::string commaJoin(const std::vector<std::string> &strs);
     static std::vector<std::string> commaSep(const std::string &str);
 
-public:
     TableMgr(PageCache &_cache);
 
     struct ForeignKey

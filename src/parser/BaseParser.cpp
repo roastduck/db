@@ -117,6 +117,18 @@ void BaseParser::select(
     output->addResult(tableMgr->select(targets, tableList, icm, ocm), order);
 }
 
+void BaseParser::createIndex(const std::string &tbName, const Table::Index &index)
+{
+    tableMgr->createIndex(tbName, index);
+    output->addInfo("Created index (" + TableMgr::commaJoin(index) + ") for table " + tbName);
+}
+
+void BaseParser::dropIndex(const std::string &tbName, const Table::Index &index)
+{
+    tableMgr->dropIndex(tbName, index);
+    output->addInfo("Deleted index (" + TableMgr::commaJoin(index) + ") from table " + tbName);
+}
+
 Table::ConsL BaseParser::getTableIC(const std::string &tbName, const BaseParser::ICM &icm)
 {
     for (const auto &i : icm)

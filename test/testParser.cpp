@@ -415,3 +415,17 @@ TEST_F(ParserTest, multiTableSelectionIllegalWhere)
     ASSERT_THAT(errStream.str(), "Illegal field: x\n");
 }
 
+TEST_F(ParserTest, createAndDropIndex)
+{
+    input.parse("CREATE DATABASE db; USE db;");
+    input.parse("CREATE TABLE t1(a FLOAT, b FLOAT, c FLOAT);");
+    outStream.str("");
+    input.parse("CREATE INDEX t1(a,b);");
+    ASSERT_THAT(outStream.str(), "Created index (a,b) for table t1\n");
+    outStream.str("");
+    input.parse("DROP INDEX t1(a,b);");
+    ASSERT_THAT(outStream.str(), "Deleted index (a,b) from table t1\n");
+    input.parse("DROP INDEX t1(a,b);");
+    ASSERT_THAT(errStream.str(), "No such index named (a,b)\n");
+}
+

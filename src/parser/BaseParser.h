@@ -48,6 +48,8 @@ protected:
     void update(const std::string &tbName, const Table::ColL &setClause, const ICM &icm, const OCM &ocm);
     /** @param _targets = None means SELECT * */
     void select(const Optional<Tgt> &_targets, const std::vector<std::string> &tableList, const ICM &icm, const OCM &ocm);
+    void createIndex(const std::string &tbName, const Table::Index &index);
+    void dropIndex(const std::string &tbName, const Table::Index &index);
 
 private:
     Table::ConsL getTableIC(const std::string &tbName, const ICM &icm);

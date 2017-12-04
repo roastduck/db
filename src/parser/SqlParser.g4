@@ -49,6 +49,10 @@ stmt    : SHOW DATABASES ';'
           { select($selector.result, {$Identifier.text}, $whereClauses.icm, $whereClauses.ocm); }
         | SELECT selector FROM tableList WHERE whereClauses[] ';'
           { select($selector.result, $tableList.result, $whereClauses.icm, $whereClauses.ocm); }
+        | CREATE INDEX Identifier '(' columnList ')' ';' // Modification: supporting multiple keys
+          { createIndex($Identifier.text, $columnList.result); }
+        | DROP INDEX Identifier '(' columnList ')' ';'
+          { dropIndex($Identifier.text, $columnList.result); }
         ;
 
 fieldList returns [Cols cols, PriIdx priIdx, Fors fors]
@@ -61,7 +65,7 @@ field[Cols *cols, PriIdx *priIdx, Fors *fors]
           { cols->push_back(std::make_pair($Identifier.text, (Column){$type.typeID, $type.length, false})); }
         | Identifier type NOT NULL_TOKEN
           { cols->push_back(std::make_pair($Identifier.text, (Column){$type.typeID, $type.length, true})); }
-        | PRIMARY KEY '(' columnList ')'
+        | PRIMARY KEY '(' columnList ')' // Modification: supporting multiple keys
           {
             if (priIdx->isOk()) throw MultiplePrimaryException();
             *priIdx = $columnList.result;
