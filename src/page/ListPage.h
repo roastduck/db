@@ -22,8 +22,6 @@ private:
     int nullCnt, nullBytes, fixedBytes, recBytes;
     std::unordered_map<std::string, OffsetColumn> cols;
 
-    static const int HEADER_SIZE = 12;
-
     PageCache::ConstByteIter accessConst(int rank) { return constByte + HEADER_SIZE + rank * recBytes; }
     PageCache::MutByteIter accessMut(int rank) { return mutByte + HEADER_SIZE + rank * recBytes; }
 
@@ -40,6 +38,8 @@ private:
     }
 
 public:
+    static const int HEADER_SIZE = 12;
+
     /** Construct with column definitions
      */
     ListPage(

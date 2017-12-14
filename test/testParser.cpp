@@ -1,4 +1,5 @@
 #include <sstream>
+#include "config.h"
 #include "io/Input.h"
 #include "io/Output.h"
 #include "TableMgr.h"
@@ -427,5 +428,14 @@ TEST_F(ParserTest, createAndDropIndex)
     ASSERT_THAT(outStream.str(), "Deleted index (a,b) from table t1\n");
     input.parse("DROP INDEX t1(a,b);");
     ASSERT_THAT(errStream.str(), "No such index named (a,b)\n");
+}
+
+TEST_F(ParserTest, identifierTooLong)
+{
+    input.parse("CREATE DATABASE " + std::string(1000, 'x') + ";");
+    ASSERT_THAT(errStream.str(), Eq(
+        "Identifier `" + std::string(1000, 'x') + "` is too long. The maximum length allowed is " +
+        std::to_string(MAX_IDENTIFIER_LEN) + " characters\n"
+    ));
 }
 

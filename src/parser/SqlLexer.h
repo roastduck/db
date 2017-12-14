@@ -8,6 +8,8 @@
 
 
 /* lexer postinclude section */
+#include "../config.h"
+#include "../exception/IdentifierTooLongException.h"
 #ifndef _WIN32
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #endif
@@ -43,6 +45,7 @@ public:
   virtual const std::vector<uint16_t> getSerializedATN() const override;
   virtual const antlr4::atn::ATN& getATN() const override;
 
+  virtual void action(antlr4::RuleContext *context, size_t ruleIndex, size_t actionIndex) override;
 private:
   static std::vector<antlr4::dfa::DFA> _decisionToDFA;
   static antlr4::atn::PredictionContextCache _sharedContextCache;
@@ -59,6 +62,7 @@ private:
 
 
   // Individual action functions triggered by action() above.
+  void IdentifierAction(antlr4::RuleContext *context, size_t actionIndex);
 
   // Individual semantic predicate functions triggered by sempred() above.
 

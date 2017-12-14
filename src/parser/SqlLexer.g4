@@ -3,6 +3,8 @@ lexer grammar SqlLexer;
 // Follows directly after the standard #includes in h + cpp files.
 @lexer::postinclude {
 /* lexer postinclude section */
+#include "../config.h"
+#include "../exception/IdentifierTooLongException.h"
 #ifndef _WIN32
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #endif
@@ -70,7 +72,9 @@ DATE:       D A T E;
 FLOAT:      F L O A T;
 FOREIGN:    F O R E I G N;
 
-Identifier: [A-Za-z][_0-9A-Za-z]*;
+Identifier: [A-Za-z][_0-9A-Za-z]*
+    { if (getText().length() > MAX_IDENTIFIER_LEN) throw IdentifierTooLongException(getText()); }
+;
 Int:        [0-9]+;
 String:     '\'' ~[']* '\'';
 
