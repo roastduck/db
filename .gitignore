@@ -17,3 +17,6 @@ Makefile
 
 # Executable
 /bin
+
+# DB files
+.db

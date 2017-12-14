@@ -10,6 +10,8 @@ class PageMgr
 public:
     static const int PAGE_SIZE = 8 * 1024; // bytes
 
+    virtual ~PageMgr() {}
+
     /** Read from page and write to buf
      */
     virtual void read(const std::string &filename, int pageID, unsigned char *buf) = 0;

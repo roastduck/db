@@ -10,13 +10,15 @@
 class FilePageMgr : public PageMgr
 {
 private:
+    const std::string baseDir;
     std::unordered_map<std::string, FILE*> openedFile;
-
-    ~FilePageMgr();
 
     FILE *openWithOffset(const std::string &filename, int offset);
 
 public:
+    FilePageMgr(const std::string &_baseDir);
+    ~FilePageMgr();
+
     void read(const std::string &filename, int pageID, unsigned char *buf) override;
     void write(const std::string &filename, int pageID, const unsigned char *buf) override;
 };

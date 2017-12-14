@@ -1,6 +1,7 @@
+#include <iostream>
 #include "Console.h"
 
-void Console::addCommand(const std::string &cmd)
+bool Console::addCommand(const std::string &cmd)
 {
     buf += cmd;
     if (!buf.empty() && buf.back() == ';')
@@ -11,7 +12,35 @@ void Console::addCommand(const std::string &cmd)
         // any way
         input.parse(buf);
         buf.clear();
+        return true;
     } else
+    {
         buf.push_back('\n');
+        return false;
+    }
+}
+
+void Console::mainLoop()
+{
+    std::cout << "Entering interactive mode" << std::endl;
+    std::cout << "Enter \"exit\" to exit" << std::endl;
+    std::string cmd;
+    while (true)
+    {
+        std::cout << std::endl;
+        std::cout << "SQL> ";
+        std::getline(std::cin, cmd);
+        trim(cmd);
+        if (cmd == "exit")
+        {
+            std::cout << "Bye" << std::endl;
+            break;
+        }
+        while (!addCommand(cmd))
+        {
+            std::cout << "---> ";
+            std::getline(std::cin, cmd);
+        }
+    }
 }
 

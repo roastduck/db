@@ -3,6 +3,10 @@
 #include "FilePageMgr.h"
 #include "../exception/FileError.h"
 
+FilePageMgr::FilePageMgr(const std::string &_baseDir)
+    : baseDir(_baseDir + "/")
+{}
+
 FilePageMgr::~FilePageMgr()
 {
     for (auto item : openedFile)
@@ -18,12 +22,12 @@ FILE *FilePageMgr::openWithOffset(const std::string &filename, int offset)
     else
     {
         errno = 0;
-        f = fopen(filename.c_str(), "r+b");
+        f = fopen((baseDir + filename).c_str(), "r+b");
         if (!f && errno == ENOENT)
         {
-            f = fopen(filename.c_str(), "w");
+            f = fopen((baseDir + filename).c_str(), "w");
             fclose(f);
-            f = fopen(filename.c_str(), "r+b");
+            f = fopen((baseDir + filename).c_str(), "r+b");
         }
         if (!f)
             throw FileError(filename);
