@@ -134,6 +134,7 @@ TEST_F(ParserTest, dropTable)
     outStream.str("");
     input.parse("DROP TABLE tb;");
     ASSERT_THAT(outStream.str(), Eq("Dropped table tb\n"));
+    ASSERT_THAT(errStream.str(), Eq(""));
     outStream.str("");
     input.parse("SHOW TABLES;");
     outStream.str("(Empty set)");

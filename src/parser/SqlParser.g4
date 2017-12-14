@@ -31,9 +31,9 @@ stmt    : SHOW DATABASES ';'
           { showTables(); }
         | CREATE TABLE Identifier '(' fieldList ')' ';'
           { createTable($Identifier.text, $fieldList.cols, $fieldList.priIdx, $fieldList.fors); }
-        | DROP TABLE Identifier
+        | DROP TABLE Identifier ';'
           { dropTable($Identifier.text); }
-        | DESC Identifier
+        | DESC Identifier ';'
           { desc($Identifier.text); }
         | INSERT INTO Identifier VALUES valueLists ';'
           { insert($Identifier.text, $valueLists.result); }
