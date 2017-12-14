@@ -439,3 +439,15 @@ TEST_F(ParserTest, identifierTooLong)
     ));
 }
 
+TEST_F(ParserTest, tooManyFields)
+{
+    input.parse("CREATE DATABASE db; USE db;");
+    std::string s;
+    for (int i = 0; i < 100; i++)
+        s += (i ? ",c" : "c") + std::to_string(i) + " INT";
+    input.parse("CREATE TABLE tb(" + s + ");");
+    ASSERT_THAT(errStream.str(), Eq(
+        "There are too many fields in the table (100 fields). The maximum is " + std::to_string(MAX_COLUMN_NUM) + "\n"
+    ));
+}
+
