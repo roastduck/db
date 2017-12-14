@@ -1,7 +1,6 @@
 #include <cassert>
 #include "BaseParser.h"
 #include "../type/CharType.h"
-#include "../exception/TooManyFieldsException.h"
 
 void BaseParser::showDbs()
 {
@@ -35,8 +34,6 @@ void BaseParser::createTable(
     const std::string &name, const BaseParser::Cols &cols, const BaseParser::PriIdx &priIdx, const BaseParser::Fors &fors
 )
 {
-    if (cols.size() > MAX_COLUMN_NUM)
-        throw TooManyFieldsException(cols.size());
     tableMgr->createTable(name, cols, priIdx, {}, fors);
     output->addInfo("Created table " + name);
 }

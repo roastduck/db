@@ -12,6 +12,7 @@
 #include "exception/NoDBInUseException.h"
 #include "exception/NoSuchThingException.h"
 #include "exception/IDAlreadyUsedException.h"
+#include "exception/TooManyFieldsException.h"
 #include "exception/TooManyIndexesException.h"
 #include "exception/RefereeNotPrimaryException.h"
 #include "exception/ForeignKeyViolatedException.h"
@@ -84,6 +85,7 @@ public:
     /** Create a table
      *  @throw : NoDBInUseException
      *  @throw : IDAlreadyUsedException
+     *  @throw : TooManyFieldsException
      *  @throw : RefereeNotPrimaryException
      */
     void createTable(
@@ -117,6 +119,7 @@ public:
 
     /** CREATE INDEX <tbName> '(' <colName> ')'
      *  @throw : NoSuchThingException
+     *  @throw : TooManyIndexesException
      */
     void createIndex(const std::string &tbName, const Table::Index &colName);
 

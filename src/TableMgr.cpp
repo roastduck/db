@@ -176,6 +176,9 @@ void TableMgr::createTable(
         throw NoDBInUseException();
     if (nameExists(sysTables, {DB, TABLE}, {curDb.ok(), name}))
         throw IDAlreadyUsedException(TABLE, name);
+    if (cols.size() > MAX_COLUMN_NUM)
+        throw TooManyFieldsException(cols.size());
+
     for (const auto &key : foreigns)
     {
         std::string refereeCols = commaJoin(key.refereeCols);
