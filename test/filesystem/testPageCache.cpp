@@ -29,6 +29,16 @@ TEST_F(PageCacheTest, dereference)
     ASSERT_THAT(iterR[1], Eq(2));
 }
 
+TEST_F(PageCacheTest, changeToDirty)
+{
+    EXPECT_CALL(pageMgr, read("a", 0, _));
+    EXPECT_CALL(pageMgr, write("a", 0, _));
+    auto iterW = pageCache.getPage("a", 0);
+    auto iterR = pageCache.getConstPage("a", 0);
+    *iterR; // Not dirty at first
+    *iterW; // Changed to dirty
+}
+
 TEST_F(PageCacheTest, replacement)
 {
     {

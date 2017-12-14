@@ -43,9 +43,12 @@ private:
     CacheValue &access(const CacheKey &key)
     {
         CacheValue *result = map.find(key);
-        // Still need to check this. Althogh original position is deleted, new one might have been in place
+        // Still need to check this. Althogh the original position is deleted, a new one might have been in place
         if (result)
+        {
+            result->dirty |= !isConst; // Mark it dirty once a mutable iterator connects the cache
             return *result;
+        }
 
         if (int(map.size()) == maxPages)
             evict();
