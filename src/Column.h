@@ -11,7 +11,7 @@
 struct Column
 {
     Type::TypeID typeID;
-    int length; // Currently only for CHAR
+    int length; // Data length for CHAR and VARCHAR. Display length for INT
     bool notNull;
 };
 
