@@ -1,3 +1,6 @@
+#ifndef MAKEPATH_H_
+#define MAKEPATH_H_
+
 #include <iostream>
 #include <string>
 #include <sys/stat.h> // stat
@@ -70,3 +73,4 @@ bool makePath(const std::string& path)
     }
 }
 
+#endif // MAKEPATH_H_
