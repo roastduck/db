@@ -11,7 +11,13 @@ Table::ConsVal Table::genConstraints(const Table::ConsL &literals)
             ConValue value;
             value.dir = literal.dir;
             if (literal.dir != IS_NULL && literal.dir != IS_NOT_NULL)
-                value.pivot = Type::newFromLiteral(literal.pivot, recCols.at(name).typeID, recCols.at(name).length);
+                try
+                {
+                    value.pivot = Type::newFromLiteral(literal.pivot, recCols.at(name).typeID, recCols.at(name).length);
+                } catch (const std::out_of_range &e)
+                {
+                    throw NoSuchThingException("field", name);
+                }
             ret[name].push_back(std::move(value));
         }
     }
@@ -23,9 +29,15 @@ Table::ColVal Table::genVals(const Table::ColL &literals)
     ColVal ret;
     for (const auto &pair : literals)
         if (pair.second.isOk())
-            ret[pair.first] = Type::newFromLiteral(
-                pair.second.ok(), recCols.at(pair.first).typeID, recCols.at(pair.first).length
-            );
+            try
+            {
+                ret[pair.first] = Type::newFromLiteral(
+                    pair.second.ok(), recCols.at(pair.first).typeID, recCols.at(pair.first).length
+                );
+            } catch (const std::out_of_range &e)
+            {
+                throw NoSuchThingException("field", pair.first);
+            }
         else
             ret[pair.first] = nullptr;
     return ret;

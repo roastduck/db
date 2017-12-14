@@ -1,4 +1,5 @@
 #include <cassert>
+#include <stdexcept>
 #include "ListPage.h"
 #include "../exception/NotNullException.h"
 
@@ -22,16 +23,22 @@ void ListPage::setCols(const std::unordered_map<std::string, Column> &_cols)
 
 std::unique_ptr<Type> ListPage::getValue(int rank, const std::string &name)
 {
-    assert(rank >= 0 && rank < getMaxSize());
-    const OffsetColumn &off = cols.at(name);
-    if (!off.col.notNull && getNull(rank, off.nullOffset))
-        return nullptr;
-    std::unique_ptr<Type> ret = Type::newType(off.col.typeID, off.col.length);
-    ret->fromBytes(std::vector<unsigned char>(
-        accessConst(rank) + nullBytes + off.posOffset,
-        accessConst(rank) + nullBytes + off.posOffset + ret->getFixedLength()
-    ));
-    return ret;
+    try
+    {
+        assert(rank >= 0 && rank < getMaxSize());
+        const OffsetColumn &off = cols.at(name);
+        if (!off.col.notNull && getNull(rank, off.nullOffset))
+            return nullptr;
+        std::unique_ptr<Type> ret = Type::newType(off.col.typeID, off.col.length);
+        ret->fromBytes(std::vector<unsigned char>(
+            accessConst(rank) + nullBytes + off.posOffset,
+            accessConst(rank) + nullBytes + off.posOffset + ret->getFixedLength()
+        ));
+        return ret;
+    } catch (const std::out_of_range &e)
+    {
+        throw NoSuchThingException("field", name);
+    }
 }
 
 std::unordered_map< std::string, std::unique_ptr<Type> > ListPage::getValues(int rank, const std::vector<std::string> &names)
@@ -45,20 +52,26 @@ std::unordered_map< std::string, std::unique_ptr<Type> > ListPage::getValues(int
 
 void ListPage::setValue(int rank, const std::string &name, const std::unique_ptr<Type> &value)
 {
-    assert(rank >= 0 && rank < getMaxSize());
-    const OffsetColumn &off = cols.at(name);
-    if (value == nullptr)
-        if (off.col.notNull)
-            throw NotNullException(name);
-        else
-            setNull(rank, off.nullOffset, true);
-    else
+    try
     {
-        assert(value->getTypeID() == off.col.typeID);
-        if (!off.col.notNull)
-            setNull(rank, off.nullOffset, false);
-        auto bytes = value->toBytes();
-        std::copy(bytes.begin(), bytes.end(), accessMut(rank) + nullBytes + off.posOffset);
+        assert(rank >= 0 && rank < getMaxSize());
+        const OffsetColumn &off = cols.at(name);
+        if (value == nullptr)
+            if (off.col.notNull)
+                throw NotNullException(name);
+            else
+                setNull(rank, off.nullOffset, true);
+        else
+        {
+            assert(value->getTypeID() == off.col.typeID);
+            if (!off.col.notNull)
+                setNull(rank, off.nullOffset, false);
+            auto bytes = value->toBytes();
+            std::copy(bytes.begin(), bytes.end(), accessMut(rank) + nullBytes + off.posOffset);
+        }
+    } catch (const std::out_of_range &e)
+    {
+        throw NoSuchThingException("field", name);
     }
 }
 

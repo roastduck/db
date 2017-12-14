@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include "../Column.h"
 #include "../BasePage.h"
+#include "../exception/NoSuchThingException.h"
 
 /** Page storing a list of records
  *  Header:

@@ -41,6 +41,8 @@ private:
 
     bool nameExists(Table &table, const std::vector<std::string> &col, const std::vector<std::string> &name);
 
+    void checkFieldInCons(const std::string &tbName, const Table::ConsL &cons, const Table::OuterCons &oCons);
+
 public:
     static std::string commaJoin(const std::vector<std::string> &strs);
     static std::vector<std::string> commaSep(const std::string &str);

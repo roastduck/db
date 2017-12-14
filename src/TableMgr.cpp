@@ -59,6 +59,20 @@ bool TableMgr::nameExists(Table &table, const std::vector<std::string> &col, con
     return !result.empty();
 }
 
+void TableMgr::checkFieldInCons(const std::string &tbName, const Table::ConsL &cons, const Table::OuterCons &oCons)
+{
+    for (const auto &con : cons)
+        if (!nameExists(sysCols, {TABLE, FIELD}, {tbName, con.first}))
+            throw NoSuchThingException(FIELD, con.first);
+    for (const auto &con : oCons)
+    {
+        if (!nameExists(sysCols, {TABLE, FIELD}, {tbName, con.col1}))
+            throw NoSuchThingException(FIELD, con.col1);
+        if (!nameExists(sysCols, {TABLE, FIELD}, {tbName, con.col2}))
+            throw NoSuchThingException(FIELD, con.col2);
+    }
+}
+
 std::string TableMgr::commaJoin(const std::vector<std::string> &strs)
 {
     std::string ret;
@@ -295,6 +309,9 @@ void TableMgr::createIndex(const std::string &tbName, const Table::Index &colNam
         throw NoSuchThingException(TABLE, tbName);
     if (tables.at(tbName)->getNonClusNum() >= MAX_INDEX_NUM)
         throw TooManyIndexesException();
+    for (const auto &col : colName)
+        if (!nameExists(sysCols, {TABLE, FIELD}, {tbName, col}))
+            throw NoSuchThingException(FIELD, col);
 
     int indexID = tables.at(tbName)->addIndex(colName);
     sysNonClusIdxes.insert({
@@ -383,6 +400,7 @@ void TableMgr::remove(const std::string &tbName, const Table::ConsL &cons, const
 {
     if (!tables.count(tbName))
         throw NoSuchThingException(TABLE, tbName);
+    checkFieldInCons(tbName, cons, oCons);
 
     // Check foreign key
     const auto &priIdxOpt = tables.at(tbName)->getPrimary();
@@ -417,6 +435,10 @@ void TableMgr::update(
 {
     if (!tables.count(tbName))
         throw NoSuchThingException(TABLE, tbName);
+    for (const auto &col : setClause)
+        if (!nameExists(sysCols, {TABLE, FIELD}, {tbName, col.first}))
+            throw NoSuchThingException(FIELD, col.first);
+    checkFieldInCons(tbName, cons, oCons);
 
     // Check not null
     for (const auto &col : sysCols.select({FIELD, NOT_NULL}, {

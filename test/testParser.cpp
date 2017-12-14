@@ -467,3 +467,64 @@ TEST_F(ParserTest, tooManyIndexes)
     ));
 }
 
+TEST_F(ParserTest, wrongFieldWhenCreateIndex)
+{
+    input.parse("CREATE DATABASE db; USE db;");
+    input.parse("CREATE TABLE tb(a INT);");
+    input.parse("CREATE INDEX tb(b);");
+    ASSERT_THAT(errStream.str(), Eq("No such field named b\n"));
+}
+
+TEST_F(ParserTest, wrongFieldWhenDelete)
+{
+    input.parse("CREATE DATABASE db; USE db;");
+    input.parse("CREATE TABLE tb(a INT);");
+    input.parse("INSERT INTO tb VALUES (1);");
+    input.parse("DELETE FROM tb WHERE x = 1;");
+    ASSERT_THAT(errStream.str(), Eq("No such field named x\n"));
+    errStream.str("");
+    input.parse("DELETE FROM tb WHERE a = y;");
+    ASSERT_THAT(errStream.str(), Eq("No such field named y\n"));
+    errStream.str("");
+    input.parse("DELETE FROM tb WHERE z = a;");
+    ASSERT_THAT(errStream.str(), Eq("No such field named z\n"));
+    ASSERT_THAT(mgr.select({}, {"tb"}, {}).size(), Eq(1));
+}
+
+TEST_F(ParserTest, wrongFieldWhenUpdate)
+{
+    input.parse("CREATE DATABASE db; USE db;");
+    input.parse("CREATE TABLE tb(a INT);");
+    input.parse("INSERT INTO tb VALUES (1);");
+    input.parse("UPDATE tb SET b = 1 WHERE a = 1;");
+    ASSERT_THAT(errStream.str(), Eq("No such field named b\n"));
+    errStream.str("");
+    input.parse("UPDATE tb SET a = 1 WHERE x = 1;");
+    ASSERT_THAT(errStream.str(), Eq("No such field named x\n"));
+    errStream.str("");
+    input.parse("UPDATE tb SET a = 1 WHERE a = y;");
+    ASSERT_THAT(errStream.str(), Eq("No such field named y\n"));
+    errStream.str("");
+    input.parse("UPDATE tb SET a = 1 WHERE z = a;");
+    ASSERT_THAT(errStream.str(), Eq("No such field named z\n"));
+    ASSERT_THAT(mgr.select({}, {"tb"}, {}).size(), Eq(1));
+}
+
+TEST_F(ParserTest, wrongFieldWhenSelect)
+{
+    input.parse("CREATE DATABASE db; USE db;");
+    input.parse("CREATE TABLE tb(a INT);");
+    input.parse("INSERT INTO tb VALUES (1);");
+    input.parse("SELECT b FROM tb WHERE a = 1;");
+    ASSERT_THAT(errStream.str(), Eq("No such field named b\n"));
+    errStream.str("");
+    input.parse("SELECT * FROM tb WHERE x = 1;");
+    ASSERT_THAT(errStream.str(), Eq("No such field named x\n"));
+    errStream.str("");
+    input.parse("SELECT * FROM tb WHERE a = y;");
+    ASSERT_THAT(errStream.str(), Eq("No such field named y\n"));
+    errStream.str("");
+    input.parse("SELECT * FROM tb WHERE z = a;");
+    ASSERT_THAT(errStream.str(), Eq("No such field named z\n"));
+}
+
