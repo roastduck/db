@@ -290,6 +290,8 @@ void TableMgr::createIndex(const std::string &tbName, const Table::Index &colNam
 {
     if (!tables.count(tbName))
         throw NoSuchThingException(TABLE, tbName);
+    if (tables.at(tbName)->getNonClusNum() >= MAX_INDEX_NUM)
+        throw TooManyIndexesException();
 
     int indexID = tables.at(tbName)->addIndex(colName);
     sysNonClusIdxes.insert({

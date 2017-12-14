@@ -170,6 +170,7 @@ protected:
 public:
     const Optional<Index> &getPrimary() const { return primary; }
     const Index &getAllColumns() const { return allColumns; }
+    int getNonClusNum() const { return nonClus.size(); }
 
     /** Add a non-cluster index
      *  @return : new index ID

@@ -1,4 +1,5 @@
 #include <sstream>
+#include <algorithm>
 #include "config.h"
 #include "io/Input.h"
 #include "io/Output.h"
@@ -448,6 +449,21 @@ TEST_F(ParserTest, tooManyFields)
     input.parse("CREATE TABLE tb(" + s + ");");
     ASSERT_THAT(errStream.str(), Eq(
         "There are too many fields in the table (100 fields). The maximum is " + std::to_string(MAX_COLUMN_NUM) + "\n"
+    ));
+}
+
+TEST_F(ParserTest, tooManyIndexes)
+{
+    input.parse("CREATE DATABASE db; USE db;");
+    input.parse("CREATE TABLE tb(a INT, b INT, c INT, d INT, e INT, f INT);");
+    std::vector<std::string> arr = {"a", "b", "c", "d", "e", "f"};
+    for (int i = 0; i < MAX_INDEX_NUM + 1; i++)
+    {
+        input.parse("CREATE INDEX tb(" + TableMgr::commaJoin(arr) + ");");
+        std::next_permutation(arr.begin(), arr.end());
+    }
+    ASSERT_THAT(errStream.str(), Eq(
+        "There can't be more indexes than " + std::to_string(MAX_INDEX_NUM) + "\n"
     ));
 }
 

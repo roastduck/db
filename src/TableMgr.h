@@ -12,6 +12,7 @@
 #include "exception/NoDBInUseException.h"
 #include "exception/NoSuchThingException.h"
 #include "exception/IDAlreadyUsedException.h"
+#include "exception/TooManyIndexesException.h"
 #include "exception/RefereeNotPrimaryException.h"
 #include "exception/ForeignKeyViolatedException.h"
 #include "exception/ValueListLengthNotMatchException.h"
