@@ -119,12 +119,19 @@ int TablePages::newDataPage(short ident, int indexID)
 void TablePages::destroyDataPage(int pageID)
 {
     ListPage &page = getDataPage(pageID);
+
+    // Unlink
     int nextID = page.getNext();
     int prevID = page.getPrev();
     if (nextID != -1)
         getDataPage(nextID).setPrev(prevID);
     if (prevID != -1)
         getDataPage(prevID).setNext(nextID);
+
+    // Reset all bits to 0
+    page.clear();
+
+    // Mark as free
     const int NUM_PER_LIST = PageMgr::PAGE_SIZE * 8;
     getFreeListPage(pageID / NUM_PER_LIST).reset(pageID % NUM_PER_LIST);
 }

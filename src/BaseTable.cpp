@@ -375,7 +375,10 @@ Optional<int> BaseTable::removeRecur(int pageID, const BaseTable::ColVal &vals, 
             c[name] = std::move(v); // move sementic is not supported in initializer_list
         }
         if (removeLinear(childID, std::move(c), {}, true))
+        {
+            destroyDataPage(childID);
             return removeAndMerge(pageID, offset);
+        }
         return None();
     }
 
@@ -383,7 +386,7 @@ Optional<int> BaseTable::removeRecur(int pageID, const BaseTable::ColVal &vals, 
     auto needRemove = removeRecur(childID, vals, index);
     if (needRemove.isOk())
         return removeAndMerge(pageID, offset + needRemove.ok());
-    updNode(pageID, offset, index); // Rotation will destory original data
+    updNode(pageID, offset, index); // Rotation will destroy original data
     if (offset + 1 < page.getSize())
         updNode(pageID, offset + 1, index);
     return None();
@@ -418,7 +421,8 @@ bool BaseTable::removeLinear(int pageID, const ConsVal &constraints, const Outer
                     std::swap(pageID, nextID);
                 }
             }
-            destroyDataPage(pageID);
+            if (!empty)
+                destroyDataPage(pageID);
         }
         if (!~nextID) return empty;
         pageID = nextID;
@@ -602,6 +606,8 @@ void BaseTable::removeRoot(int rootID)
     ListPage &root = getDataPage(rootID);
     int childID = dynamic_cast<IntType*>(root.getValue(0, "$child").get())->getVal();
     const short ident = root.getIdent();
+    if (ident == RECORD || getDataPage(childID).getIdent() == REF)
+        return;
     if (ident >= NON_CLUSTER)
         setNcEntry(ident - NON_CLUSTER, childID);
     else

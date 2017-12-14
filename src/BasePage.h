@@ -17,6 +17,8 @@ protected:
 
 public:
     BasePage(PageCache &_pageCache, const std::string &_filename, int _pageID);
+
+    void clear();
 };
 
 #endif // BASE_PAGE_H_

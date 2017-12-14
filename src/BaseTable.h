@@ -111,6 +111,7 @@ private:
     Optional<int> removeRecur(int pageID, const ColVal &vals, const Index &index);
 
     /** Remove record(s) in a O(n) manner
+     *  The header node will not be touched
      *  @param onlyOne : return after removing any record
      *  @return true if there is no records left
      */
