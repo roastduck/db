@@ -35,7 +35,7 @@ private:
 
     static constexpr argp_option options[] = {
         {
-            "db-path",   'd',    "PATH_TO_DB",  OPTION_ARG_OPTIONAL,
+            "db-path",   'd',    "PATH_TO_DB",  0 /* Options */,
             "Directory where all the DB files lie (default = " DEFAULT_DB_PATH ")",
             0 /* Group ID */
         },
