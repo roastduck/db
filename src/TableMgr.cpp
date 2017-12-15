@@ -48,6 +48,23 @@ TableMgr::TableMgr(PageCache &_cache)
       }, None(), {Table::Index({DB, "referrer"}), Table::Index({DB, "referee"})})
 {}
 
+std::pair< std::string, std::vector<Table::ConLiteral> > TableMgr::genEquCon(const std::string &col, const std::string &literal)
+{
+    return std::make_pair(col, std::vector<Table::ConLiteral>({{Table::EQ, literal}}));
+}
+
+Table::ConsL TableMgr::genEquConsL(const Table::ColL &row)
+{
+    Table::ConsL cons;
+    cons.reserve(row.size());
+    for (const auto &col : row)
+        if (col.second.isOk())
+            cons[col.first] = {(Table::ConLiteral){Table::EQ, col.second.ok()}};
+        else
+            cons[col.first] = {(Table::ConLiteral){Table::IS_NULL, ""}};
+    return cons;
+}
+
 bool TableMgr::nameExists(Table &table, const std::vector<std::string> &col, const std::vector<std::string> &name)
 {
     assert(col.size() == name.size());
@@ -117,17 +134,14 @@ void TableMgr::use(const std::string &name)
     curDb = name;
 
     tables.clear();
-    for (const auto &tableRec : sysTables.select({TABLE}, {
-        std::make_pair(DB, std::vector<Table::ConLiteral>({{Table::EQ, name}}))
-    }))
+    for (const auto &tableRec : sysTables.select({TABLE}, {genEquCon(DB, name)}))
     {
         // getVal returns reference
         const std::string &table = dynamic_cast<CharType*>(tableRec.at(TABLE).get())->getVal();
 
         Table::Cols cols;
         for (const auto &colRec : sysCols.select({FIELD, TYPE, LENGTH, NOT_NULL}, {
-            std::make_pair(DB, std::vector<Table::ConLiteral>({{Table::EQ, name}})),
-            std::make_pair(TABLE, std::vector<Table::ConLiteral>({{Table::EQ, table}}))
+            genEquCon(DB, name), genEquCon(TABLE, table)
         }))
         {
             const std::string &colName = dynamic_cast<CharType*>(colRec.at(FIELD).get())->getVal();
@@ -140,15 +154,13 @@ void TableMgr::use(const std::string &name)
 
         Optional<Table::Index> primary = None();
         for (const auto &priRec : sysPriIdxes.select({"columns"}, {
-            std::make_pair(DB, std::vector<Table::ConLiteral>({{Table::EQ, name}})),
-            std::make_pair(TABLE, std::vector<Table::ConLiteral>({{Table::EQ, table}}))
+            genEquCon(DB, name), genEquCon(TABLE, table)
         }))
             primary = commaSep(dynamic_cast<CharType*>(priRec.at("columns").get())->getVal());
 
         std::vector<Table::Index> nonClus;
         for (const auto &nonClusRec : sysNonClusIdxes.select({"columns"}, {
-            std::make_pair(DB, std::vector<Table::ConLiteral>({{Table::EQ, name}})),
-            std::make_pair(TABLE, std::vector<Table::ConLiteral>({{Table::EQ, table}}))
+            genEquCon(DB, name), genEquCon(TABLE, table)
         }))
             nonClus.push_back(commaSep(dynamic_cast<CharType*>(nonClusRec.at("columns").get())->getVal()));
 
@@ -162,9 +174,7 @@ void TableMgr::dropDb(const std::string &name)
 {
     if (!nameExists(sysDbs, {DB}, {name}))
         throw NoSuchThingException("database", name);
-    sysDbs.remove({std::make_pair(DB, std::vector<Table::ConLiteral>({
-        {Table::EQ, name}
-    }))});
+    sysDbs.remove({genEquCon(DB, name)});
     if (curDb.isOk() && name == curDb.ok())
         curDb = None();
 }
@@ -198,8 +208,7 @@ void TableMgr::createTable(
         std::string refereeCols = commaJoin(key.refereeCols);
         std::string primary = "";
         auto result = sysPriIdxes.select({"columns"}, {
-            std::make_pair(DB, std::vector<Table::ConLiteral>({(Table::ConLiteral){Table::EQ, curDb.ok()}})),
-            std::make_pair(TABLE, std::vector<Table::ConLiteral>({(Table::ConLiteral){Table::EQ, key.referee}}))
+            genEquCon(DB, curDb.ok()), genEquCon(TABLE, key.referee)
         });
         if (!result.empty())
             primary = result[0]["columns"]->toString();
@@ -258,8 +267,7 @@ void TableMgr::dropTable(const std::string &name)
         throw NoSuchThingException(TABLE, name);
     for (Table *table : {&sysForeigns, &sysNonClusIdxes, &sysPriIdxes, &sysCols, &sysTables})
         table->remove({
-            std::make_pair(DB, std::vector<Table::ConLiteral>({{Table::EQ, curDb.ok()}})),
-            std::make_pair(table == &sysForeigns ? "referrer" : TABLE, std::vector<Table::ConLiteral>({{Table::EQ, name}}))
+            genEquCon(DB, curDb.ok()), genEquCon(table == &sysForeigns ? "referrer" : TABLE, name)
         });
     tables.erase(name);
 }
@@ -268,9 +276,7 @@ std::vector<Table::ColVal> TableMgr::showTables()
 {
     if (!curDb.isOk())
         throw NoDBInUseException();
-    return sysTables.select({TABLE}, {
-        std::make_pair(DB, std::vector<Table::ConLiteral>({(Table::ConLiteral){Table::EQ, curDb.ok()}})),
-    });
+    return sysTables.select({TABLE}, {genEquCon(DB, curDb.ok())});
 }
 
 std::vector<Table::ColVal> TableMgr::desc(const std::string &name)
@@ -278,8 +284,7 @@ std::vector<Table::ColVal> TableMgr::desc(const std::string &name)
     if (!tables.count(name))
         throw NoSuchThingException(TABLE, name);
     auto result = sysCols.select({FIELD, TYPE, LENGTH, NOT_NULL}, {
-        std::make_pair(DB, std::vector<Table::ConLiteral>({(Table::ConLiteral){Table::EQ, curDb.ok()}})),
-        std::make_pair(TABLE, std::vector<Table::ConLiteral>({(Table::ConLiteral){Table::EQ, name}}))
+        genEquCon(DB, curDb.ok()), genEquCon(TABLE, name)
     });
     const auto &priIdx = tables.at(name)->getPrimary();
     for (auto &row : result)
@@ -328,9 +333,7 @@ void TableMgr::dropIndex(const std::string &tbName, const Table::Index &colName)
         throw NoSuchThingException(TABLE, tbName);
 
     Table::ConsL constraints({
-        std::make_pair(DB, std::vector<Table::ConLiteral>({{Table::EQ, curDb.ok()}})),
-        std::make_pair(TABLE, std::vector<Table::ConLiteral>({{Table::EQ, tbName}})),
-        std::make_pair("columns", std::vector<Table::ConLiteral>({{Table::EQ, commaJoin(colName)}}))
+        genEquCon(DB, curDb.ok()), genEquCon(TABLE, tbName), genEquCon("columns", commaJoin(colName))
     });
     auto result = sysNonClusIdxes.select({"indexID"}, constraints);
     if (result.empty())
@@ -352,8 +355,7 @@ void TableMgr::insert(const std::string &tbName, const std::vector< std::vector<
 
     // DO NOT use BaseTable.allColumns because it's out of order
     const auto allColumns = sysCols.select({FIELD, NOT_NULL}, {
-        std::make_pair(DB, std::vector<Table::ConLiteral>({{Table::EQ, curDb.ok()}})),
-        std::make_pair(TABLE, std::vector<Table::ConLiteral>({{Table::EQ, tbName}}))
+        genEquCon(DB, curDb.ok()), genEquCon(TABLE, tbName)
     });
 
     std::vector<Table::ColL> valueMaps;
@@ -376,8 +378,7 @@ void TableMgr::insert(const std::string &tbName, const std::vector< std::vector<
     for (const auto &valueMap : valueMaps)
     {
         for (const auto &foreign : sysForeigns.select({"referrerCols", "referee"}, {
-            std::make_pair(DB, std::vector<Table::ConLiteral>({{Table::EQ, curDb.ok()}})),
-            std::make_pair("referrer", std::vector<Table::ConLiteral>({{Table::EQ, tbName}}))
+            genEquCon(DB, curDb.ok()), genEquCon("referrer", tbName)
         }))
         {
             std::vector<std::string> keys;
@@ -392,8 +393,17 @@ void TableMgr::insert(const std::string &tbName, const std::vector< std::vector<
     }
 
     // Insert
-    for (const auto &valueMap : valueMaps)
-        tables.at(tbName)->insert(valueMap);
+    for (int i = 0; i < int(valueMaps.size()); i++)
+        try
+        {
+            tables.at(tbName)->insert(valueMaps[i]);
+        } catch (const NotUniqueException &e)
+        {
+            // Handling NotUniqueException, don't worring about duplicate deletion
+            for (int j = 0; j < i; j++)
+                tables.at(tbName)->remove(genEquConsL(valueMaps[j]));
+            throw e;
+        }
 }
 
 void TableMgr::remove(const std::string &tbName, const Table::ConsL &cons, const Table::OuterCons &oCons)
@@ -413,8 +423,7 @@ void TableMgr::remove(const std::string &tbName, const Table::ConsL &cons, const
             for (const auto &col : priIdx)
                 keys.push_back(row.at(col)->toString());
             for (const auto &foreign : sysForeigns.select({"referrerCols", "referrer"}, {
-                std::make_pair(DB, std::vector<Table::ConLiteral>({{Table::EQ, curDb.ok()}})),
-                std::make_pair("referee", std::vector<Table::ConLiteral>({{Table::EQ, tbName}}))
+                genEquCon(DB, curDb.ok()), genEquCon("referee", tbName)
             }))
             {
                 const std::string &referrer = dynamic_cast<CharType*>(foreign.at("referrer").get())->getVal();
@@ -442,8 +451,7 @@ void TableMgr::update(
 
     // Check not null
     for (const auto &col : sysCols.select({FIELD, NOT_NULL}, {
-        std::make_pair(DB, std::vector<Table::ConLiteral>({{Table::EQ, curDb.ok()}})),
-        std::make_pair(TABLE, std::vector<Table::ConLiteral>({{Table::EQ, tbName}}))
+        genEquCon(DB, curDb.ok()), genEquCon(TABLE, tbName)
     }))
     {
         const std::string &colName = dynamic_cast<CharType*>(col.at(FIELD).get())->getVal();
@@ -473,8 +481,7 @@ void TableMgr::update(
 
         // As a referrer
         for (const auto &foreign : sysForeigns.select({"referrerCols", "referee"}, {
-            std::make_pair(DB, std::vector<Table::ConLiteral>({{Table::EQ, curDb.ok()}})),
-            std::make_pair("referrer", std::vector<Table::ConLiteral>({{Table::EQ, tbName}}))
+            genEquCon(DB, curDb.ok()), genEquCon("referrer", tbName)
         }))
         {
             std::vector<std::string> keys;
@@ -498,8 +505,7 @@ void TableMgr::update(
         }
         if (!priChanged) continue;
         for (const auto &foreign : sysForeigns.select({"referrerCols", "referrer"}, {
-            std::make_pair(DB, std::vector<Table::ConLiteral>({{Table::EQ, curDb.ok()}})),
-            std::make_pair("referee", std::vector<Table::ConLiteral>({{Table::EQ, tbName}}))
+            genEquCon(DB, curDb.ok()), genEquCon("referee", tbName)
         }))
         {
             const std::string &referrer = dynamic_cast<CharType*>(foreign.at("referrer").get())->getVal();
@@ -511,8 +517,25 @@ void TableMgr::update(
 
     // Update
     tables.at(tbName)->remove(cons, oCons);
-    for (const auto &row: freshRows)
-        tables.at(tbName)->insert(row);
+    for (int i = 0; i < int(freshRows.size()); i++)
+        try
+        {
+            tables.at(tbName)->insert(freshRows[i]);
+        } catch (const NotUniqueException &e)
+        {
+            // Handling NotUniqueException, don't worring about duplicate deletion
+            for (int j = 0; j < i; j++)
+                tables.at(tbName)->remove(genEquConsL(freshRows[j]));
+            for (const auto &row: oriRows)
+            {
+                // This is error recovery, so don't worry about effeciency
+                Table::ColL _row;
+                for (const auto &col : row)
+                    _row[col.first] = col.second == nullptr ? None() : Optional<std::string>(col.second->toString());
+                tables.at(tbName)->insert(_row);
+            }
+            throw e;
+        }
 }
 
 std::vector<Table::ColVal> TableMgr::select(

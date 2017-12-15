@@ -529,3 +529,43 @@ TEST_F(ParserTest, wrongFieldWhenSelect)
     ASSERT_THAT(errStream.str(), Eq("No such field named z\n"));
 }
 
+TEST_F(ParserTest, primaryNotUnique)
+{
+    // Init
+    input.parse("CREATE DATABASE db; USE db;");
+    input.parse("CREATE TABLE tb(a INT, PRIMARY KEY (a));");
+    input.parse("INSERT INTO tb VALUES (1), (2), (3);");
+
+    // Error insertion
+    input.parse("INSERT INTO tb VALUES (0), (2), (5);");
+    ASSERT_THAT(errStream.str(), Eq("Column(s) (a) should be unique\n"));
+
+    // Error update
+    errStream.str("");
+    input.parse("UPDATE tb SET a = 1 WHERE a = 3;");
+    ASSERT_THAT(errStream.str(), Eq("Column(s) (a) should be unique\n"));
+    errStream.str("");
+    input.parse("UPDATE tb SET a = 4 WHERE a >= 2;");
+    ASSERT_THAT(errStream.str(), Eq("Column(s) (a) should be unique\n"));
+
+    // This update is OK
+    errStream.str("");
+    input.parse("UPDATE tb SET a = 1 WHERE a = 1;");
+    ASSERT_THAT(errStream.str(), Eq(""));
+
+    // Error commands should make no effect
+    outStream.str("");
+    input.parse("SELECT * FROM tb WHERE a IS NOT NULL;");
+    ASSERT_THAT(outStream.str(), Eq(
+        "+------+\n"
+        "| tb.a |\n"
+        "+------+\n"
+        "| 1    |\n"
+        "+------+\n"
+        "| 2    |\n"
+        "+------+\n"
+        "| 3    |\n"
+        "+------+\n"
+    ));
+}
+

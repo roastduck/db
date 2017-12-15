@@ -39,6 +39,9 @@ private:
     Optional<std::string> curDb; /// Current DB in "use"
     std::unordered_map< std::string, std::unique_ptr<Table> > tables; /// All tables in `curDb`
 
+    std::pair< std::string, std::vector<Table::ConLiteral> > genEquCon(const std::string &col, const std::string &literal);
+    Table::ConsL genEquConsL(const Table::ColL &row);
+
     bool nameExists(Table &table, const std::vector<std::string> &col, const std::vector<std::string> &name);
 
     void checkFieldInCons(const std::string &tbName, const Table::ConsL &cons, const Table::OuterCons &oCons);
