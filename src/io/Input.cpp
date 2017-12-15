@@ -32,3 +32,9 @@ void Input::parse(const std::string &text)
     parse(charStream);
 }
 
+void Input::parse(std::istream &is)
+{
+    antlr4::ANTLRInputStream charStream(is);
+    parse(charStream);
+}
+

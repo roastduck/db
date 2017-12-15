@@ -26,7 +26,7 @@ public:
     ParserTest()
         : cache(pageMgr),
           mgr(cache),
-          output(outStream, errStream),
+          output(outStream, outStream, errStream),
           input(mgr, output)
     {}
 };

@@ -2,6 +2,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <argp.h>
+#include <unistd.h>
 #include "TableMgr.h"
 #include "io/Input.h"
 #include "io/Output.h"
@@ -12,9 +13,26 @@
 
 #define DEFAULT_DB_PATH "./.db"
 
+class NullStream : public std::ostream
+{
+private:
+    class NullBuffer : public std::streambuf
+    {
+    public:
+        int overflow(int c) { return c; }
+    } m_nb;
+public:
+    NullStream() : std::ostream(&m_nb) {}
+} nullStream;
+
 class CmdArg
 {
 private:
+    static constexpr const char *doc =
+        "Run `db` directly to enter a human friendly interactive interface.\n"
+        "Run `db < input.sql > output.csv` to input command from a SQL file, "
+        "and output results to a CSV file.";
+
     static constexpr argp_option options[] = {
         {
             "db-path",   'd',    "PATH_TO_DB",  OPTION_ARG_OPTIONAL,
@@ -53,7 +71,7 @@ public:
             options,
             parseOpt,
             NULL /* Arg doc */,
-            NULL /* Doc */,
+            doc,
             NULL /* Children */,
             NULL /* Help filter */,
             NULL /* Domain */
@@ -61,31 +79,41 @@ public:
         argp_parse(&argpConf, argc, argv, ARGP_NO_ARGS, NULL, NULL);
     }
 };
+constexpr const char *CmdArg::doc;
 constexpr argp_option CmdArg::options[];
 std::string CmdArg::dbPath;
 
 int main(int argc, char **argv)
 {
     CmdArg::parse(argc, argv);
-    std::cout << "Welcome to DB" << std::endl;
+    std::clog << "Welcome to DB" << std::endl;
 
     if (makePath(CmdArg::dbPath))
-        std::cout << "Using DB files in " << CmdArg::dbPath << std::endl;
+        std::clog << "Using DB files in " << CmdArg::dbPath << std::endl;
     else
     {
         std::cerr << "ERROR: Cannot access or create DB directory " << CmdArg::dbPath << std::endl;
         return -1;
     }
 
-    std::cout << std::endl;
+    std::clog << std::endl;
 
     PageMgr *pageMgr = new FilePageMgr(CmdArg::dbPath);
     PageCache *cache = new PageCache(*pageMgr);
     TableMgr mgr(*cache);
-    Output output(std::cout, std::cerr);
-    Input input(mgr, output);
-    Console console(input);
-    console.mainLoop();
+    if (isatty(fileno(stdin)))
+    {
+        Output output(std::cout, std::clog, std::cerr);
+        Input input(mgr, output);
+        Console console(input);
+        console.mainLoop();
+    } else
+    {
+        Output output(std::cout, nullStream, std::cerr);
+        output.setCsvMode(true);
+        Input input(mgr, output);
+        input.parse(std::cin);
+    }
     delete cache; // Write cache into files (should before `delete pageMgr`)
     delete pageMgr; // Close files
     return 0;

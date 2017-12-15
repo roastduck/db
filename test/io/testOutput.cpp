@@ -14,7 +14,7 @@ public:
     std::ostringstream out, err;
     Output output;
 
-    OutputTest() : output(out, err) {}
+    OutputTest() : output(out, out, err) {}
 };
 
 TEST_F(OutputTest, addExcept)
@@ -59,6 +59,22 @@ TEST_F(OutputTest, lengthOptionInIntType)
         "+-------+\n"
         "| 0     |\n" // length 5 + 2 padding
         "+-------+\n"
+    ));
+}
+
+TEST_F(OutputTest, csvMode)
+{
+    output.setCsvMode(true);
+    std::vector<Table::ColVal> result(2);
+    result[0]["col2"] = Type::newFromLiteral("x", Type::CHAR, 10);
+    result[1]["col1"] = Type::newFromLiteral("1", Type::INT);
+    result[1]["col2"] = Type::newFromLiteral("foobar", Type::CHAR, 10);
+    output.addResult(result, {"col1", "col2"});
+    ASSERT_THAT(out.str(), Eq(
+        "col1,col2\n"
+        ",x\n"
+        "1,foobar\n"
+        "\n"
     ));
 }
 

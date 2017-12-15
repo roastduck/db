@@ -2,6 +2,7 @@
 #define INPUT_H_
 
 #include <string>
+#include <iostream>
 #include "Output.h"
 #include "../TableMgr.h"
 #include "antlr4-runtime.h"
@@ -26,6 +27,11 @@ public:
      *  This string must have a complete sytax
      */
     void parse(const std::string &text);
+
+    /** Parse a input stream
+     *  This stream must contain complete sytax
+     */
+    void parse(std::istream &is);
 };
 
 #endif // INPUT_H_
