@@ -90,28 +90,6 @@ void TableMgr::checkFieldInCons(const std::string &tbName, const Table::ConsL &c
     }
 }
 
-std::string TableMgr::commaJoin(const std::vector<std::string> &strs)
-{
-    std::string ret;
-    for (const std::string &s : strs)
-    {
-        if (!ret.empty()) ret.push_back(',');
-        ret.append(s);
-    }
-    return ret;
-}
-
-std::vector<std::string> TableMgr::commaSep(const std::string &str)
-{
-    std::vector<std::string> ret = {""};
-    for (char c : str)
-        if (c == ',')
-            ret.push_back("");
-        else
-            ret.back().push_back(c);
-    return ret;
-}
-
 /************************************/
 /* DB Managements                   */
 /************************************/
@@ -314,6 +292,9 @@ void TableMgr::createIndex(const std::string &tbName, const Table::Index &colNam
         throw NoSuchThingException(TABLE, tbName);
     if (tables.at(tbName)->getNonClusNum() >= MAX_INDEX_NUM)
         throw TooManyIndexesException();
+    auto joined = commaJoin(colName);
+    if (nameExists(sysNonClusIdxes, {DB, TABLE, "columns"}, {curDb.ok(), tbName, joined}))
+        throw DuplicateIndexException(tbName, joined);
     for (const auto &col : colName)
         if (!nameExists(sysCols, {TABLE, FIELD}, {tbName, col}))
             throw NoSuchThingException(FIELD, col);
@@ -322,7 +303,7 @@ void TableMgr::createIndex(const std::string &tbName, const Table::Index &colNam
     sysNonClusIdxes.insert({
         std::make_pair(DB, curDb.ok()),
         std::make_pair(TABLE, tbName),
-        std::make_pair("columns", commaJoin(colName)),
+        std::make_pair("columns", joined),
         std::make_pair("indexID", std::to_string(indexID))
     });
 }

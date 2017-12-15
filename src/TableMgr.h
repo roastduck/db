@@ -14,6 +14,7 @@
 #include "exception/IDAlreadyUsedException.h"
 #include "exception/TooManyFieldsException.h"
 #include "exception/TooManyIndexesException.h"
+#include "exception/DuplicateIndexException.h"
 #include "exception/RefereeNotPrimaryException.h"
 #include "exception/ForeignKeyViolatedException.h"
 #include "exception/ValueListLengthNotMatchException.h"
@@ -47,9 +48,6 @@ private:
     void checkFieldInCons(const std::string &tbName, const Table::ConsL &cons, const Table::OuterCons &oCons);
 
 public:
-    static std::string commaJoin(const std::vector<std::string> &strs);
-    static std::vector<std::string> commaSep(const std::string &str);
-
     TableMgr(PageCache &_cache);
 
     struct ForeignKey

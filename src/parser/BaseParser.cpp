@@ -1,4 +1,5 @@
 #include <cassert>
+#include "../utils.h"
 #include "BaseParser.h"
 #include "../type/CharType.h"
 
@@ -120,13 +121,13 @@ void BaseParser::select(
 void BaseParser::createIndex(const std::string &tbName, const Table::Index &index)
 {
     tableMgr->createIndex(tbName, index);
-    output->addInfo("Created index (" + TableMgr::commaJoin(index) + ") for table " + tbName);
+    output->addInfo("Created index (" + commaJoin(index) + ") for table " + tbName);
 }
 
 void BaseParser::dropIndex(const std::string &tbName, const Table::Index &index)
 {
     tableMgr->dropIndex(tbName, index);
-    output->addInfo("Deleted index (" + TableMgr::commaJoin(index) + ") from table " + tbName);
+    output->addInfo("Deleted index (" + commaJoin(index) + ") from table " + tbName);
 }
 
 Table::ConsL BaseParser::getTableIC(const std::string &tbName, const BaseParser::ICM &icm)

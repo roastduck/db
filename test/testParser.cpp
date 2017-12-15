@@ -1,5 +1,6 @@
 #include <sstream>
 #include <algorithm>
+#include "utils.h"
 #include "config.h"
 #include "io/Input.h"
 #include "io/Output.h"
@@ -460,7 +461,7 @@ TEST_F(ParserTest, tooManyIndexes)
     std::vector<std::string> arr = {"a", "b", "c", "d", "e", "f"};
     for (int i = 0; i < MAX_INDEX_NUM + 1; i++)
     {
-        input.parse("CREATE INDEX tb(" + TableMgr::commaJoin(arr) + ");");
+        input.parse("CREATE INDEX tb(" + commaJoin(arr) + ");");
         std::next_permutation(arr.begin(), arr.end());
     }
     ASSERT_THAT(errStream.str(), Eq(
@@ -567,5 +568,15 @@ TEST_F(ParserTest, primaryNotUnique)
         "| 3    |\n"
         "+------+\n"
     ));
+}
+
+TEST_F(ParserTest, duplicateIndex)
+{
+    input.parse("CREATE DATABASE db; USE db;");
+    input.parse("CREATE TABLE tb (a INT, b INT);");
+    input.parse("CREATE INDEX tb(a, b);");
+    input.parse("CREATE INDEX tb(b, a);"); // This is OK
+    input.parse("CREATE INDEX tb(a, b);");
+    ASSERT_THAT(errStream.str(), Eq("Index tb(a,b) already exists\n"));
 }
 

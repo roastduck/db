@@ -4,27 +4,15 @@
 #include <string>
 #include <vector>
 #include <stdexcept>
+#include "../utils.h"
 
 class NotUniqueException : public std::runtime_error
 {
-private:
-    std::string toString(const std::vector<std::string> &vec)
-    {
-        std::string ret;
-        for (const auto &item : vec)
-        {
-            if (!ret.empty())
-                ret += ",";
-            ret += item;
-        }
-        return ret;
-    }
-
 public:
     std::vector<std::string> cols;
 
     NotUniqueException(const std::vector<std::string> &_cols)
-        : std::runtime_error("Column(s) (" + toString(_cols) + ") should be unique"),
+        : std::runtime_error("Column(s) (" + commaJoin(_cols) + ") should be unique"),
           cols(_cols)
         {}
 };
