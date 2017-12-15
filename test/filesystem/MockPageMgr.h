@@ -2,6 +2,7 @@
 #define MOCK_PAGE_MGR_H_
 
 #include <array>
+#include <vector>
 #include <utility>
 #include <algorithm>
 #include <unordered_map>
@@ -35,14 +36,26 @@ private:
         auto &page = map[std::make_pair(filename, pageID)];
         std::copy(buf, buf + PAGE_SIZE, page.begin());
     }
+
+    void fakeDestroy(const std::string &filename)
+    {
+        std::vector<int> pages;
+        for (const auto &item : map)
+            if (item.first.first == filename)
+                pages.push_back(item.first.second);
+        for (int page : pages)
+            map.erase(std::make_pair(filename, page));
+    }
 public:
     MOCK_METHOD3(read, void(const std::string &filename, int pageID, unsigned char *buf));
     MOCK_METHOD3(write, void(const std::string &filename, int pageID, const unsigned char *buf));
+    MOCK_METHOD1(destroy, void(const std::string &filename));
 
     MockPageMgr()
     {
         ON_CALL(*this, read(_, _, _)).WillByDefault(Invoke(this, &MockPageMgr::fakeRead));
         ON_CALL(*this, write(_, _, _)).WillByDefault(Invoke(this, &MockPageMgr::fakeWrite));
+        ON_CALL(*this, destroy(_)).WillByDefault(Invoke(this, &MockPageMgr::fakeDestroy));
     }
 };
 

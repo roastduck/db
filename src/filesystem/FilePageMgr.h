@@ -21,6 +21,7 @@ public:
 
     void read(const std::string &filename, int pageID, unsigned char *buf) override;
     void write(const std::string &filename, int pageID, const unsigned char *buf) override;
+    void destroy(const std::string &filename) override;
 };
 
 #endif // FILE_PAGE_MGR_H_

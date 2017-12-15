@@ -183,6 +183,17 @@ public:
     {
         return ConstByteIter(this, CacheKey(filename, pageID), 0);
     }
+
+    /** Drop all cache about a file and delete that file
+     */
+    void destroy(const std::string &filename)
+    {
+        for (const CacheKey &k : map.getKeys())
+            if (k.first == filename)
+                *(map.staticLookup(k).deleted) = true;
+        map.removeIf([&filename](const CacheKey &k){return k.first == filename;});
+        pageMgr.destroy(filename);
+    }
 };
 
 #endif // PAGE_CACHE_H_

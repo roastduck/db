@@ -79,6 +79,13 @@ protected:
     /** Mark a page back to unused
      */
     void destroyDataPage(int pageID);
+
+public:
+    void destroy()
+    {
+        cache.destroy(dataFile);
+        cache.destroy(freeListFile);
+    }
 };
 
 #endif // TABLE_PAGES_H_

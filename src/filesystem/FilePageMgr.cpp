@@ -30,7 +30,7 @@ FILE *FilePageMgr::openWithOffset(const std::string &filename, int offset)
             f = fopen((baseDir + filename).c_str(), "r+b");
         }
         if (!f)
-            throw FileError(filename);
+            throw FileError(baseDir + filename);
         openedFile[filename] = f;
     }
     fseek(f, offset, SEEK_SET);
@@ -49,5 +49,11 @@ void FilePageMgr::write(const std::string &filename, int pageID, const unsigned 
     assert(pageID >= 0);
     FILE *f = openWithOffset(filename, pageID * PAGE_SIZE);
     fwrite(buf, 1, PAGE_SIZE, f);
+}
+
+void FilePageMgr::destroy(const std::string &filename)
+{
+    if (remove((baseDir + filename).c_str()))
+        throw FileError(baseDir + filename);
 }
 

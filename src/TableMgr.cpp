@@ -247,6 +247,7 @@ void TableMgr::dropTable(const std::string &name)
         table->remove({
             genEquCon(DB, curDb.ok()), genEquCon(table == &sysForeigns ? "referrer" : TABLE, name)
         });
+    tables.at(name)->destroy();
     tables.erase(name);
 }
 

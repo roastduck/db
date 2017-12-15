@@ -18,6 +18,8 @@ protected:
 public:
     BasePage(PageCache &_pageCache, const std::string &_filename, int _pageID);
 
+    /** Reset all bits to 0
+     */
     void clear();
 };
 

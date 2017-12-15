@@ -138,7 +138,19 @@ TEST_F(ParserTest, dropTable)
     ASSERT_THAT(errStream.str(), Eq(""));
     outStream.str("");
     input.parse("SHOW TABLES;");
-    outStream.str("(Empty set)");
+    ASSERT_THAT(outStream.str(), Eq("(Empty set)\n"));
+}
+
+TEST_F(ParserTest, dropShouldDeleteData)
+{
+    input.parse("CREATE DATABASE db; USE db;");
+    input.parse("CREATE TABLE tb(a INT);");
+    input.parse("INSERT INTO tb VALUES (1);");
+    input.parse("DROP TABLE tb;");
+    input.parse("CREATE TABLE tb(a INT);");
+    outStream.str("");
+    input.parse("SELECT * FROM tb WHERE a IS NOT NULL;");
+    ASSERT_THAT(outStream.str(), Eq("(Empty set)\n"));
 }
 
 TEST_F(ParserTest, desc)

@@ -19,6 +19,9 @@ public:
     /** Read from buf and write to page
      */
     virtual void write(const std::string &filename, int pageID, const unsigned char *buf) = 0;
+
+    /** Delete a file */
+    virtual void destroy(const std::string &filename) = 0;
 };
 
 #endif // PAGE_MRG_H_

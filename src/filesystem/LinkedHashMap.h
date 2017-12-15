@@ -90,6 +90,38 @@ public:
         list.pop_back();
         return ret;
     }
+
+    /** Remove item(s) if its/their key meets the condition
+     */
+    template <class Callback>
+    void removeIf(const Callback &condition)
+    {
+        for (auto i = list.begin(); i != list.end();)
+        {
+            auto _i = i;
+            _i++;
+            if (condition(*i))
+            {
+                map.erase(*i);
+                list.erase(i);
+            }
+            i = _i;
+        }
+    }
+
+    /** Return a linked list of keys
+     */
+    const std::list<K> &getKeys() const
+    {
+        return list;
+    }
+
+    /** Look up the map but not to update the "recent used" priority
+     */
+    const V &staticLookup(const K &key) const
+    {
+        return map.at(key).value;
+    }
 };
 
 #endif // LINKED_HASH_MAP_H_

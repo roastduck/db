@@ -7,7 +7,7 @@ class FileError : public std::runtime_error
 {
 public:
     FileError(const std::string &filename)
-        : std::runtime_error("Cannot open file \"" + filename + "\"")
+        : std::runtime_error("Cannot perform operations on file \"" + filename + "\"")
         {}
 };
 
