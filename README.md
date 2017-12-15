@@ -1,33 +1,47 @@
 # DB
 
-## Build
+## Dependencies
 
 This project only works on Linux.
 
-You need to install CMake first. e.g. `apt-get install cmake`.
+You need to install the two dependencies listed below manually:
 
-For debug mode:
+- CMake. This is a compile script generator. If you are on a Ubuntu, install it via `apt-get install cmake`.
+- uuid-dev. This required by ANTLR parser generator. Likewise, install it via `apt-get install uuid-dev`.
+
+Other dependencies listed below can be downloaded automatically, that you DON'T have to install manually:
+
+- ANTLR4. This is used to generate SQL parser (just like LEX/YACC). Usually you don't have to re-generate the parser, and in this situation only the runtime library of ANTLR4 is used.
+- Java Runtime (OPTIONAL). If you want to re-generate the parser code, Java Runtime is required by ANTLR4.
+- Google Test + Google Mock (OPTIONAL). This is a unit test framework, which we use to preform unit tests.
+
+## Build
+
+Quick build:
 
 ```
-cmake -DCMAKE_BUILD_TYPE=Debug .
+cmake .
 make
 ```
 
-For release mode
+Advanced options (NOT mandatory):
 
-```
-cmake -DCMAKE_BUILD_TYPE=Release .
-make
-```
+- Append `-DCMAKE_BUILD_TYPE=Debug` to `cmake` to enable debug mode.
+- Append `-DREBUILD_PARSER=YES` to re-generate to SQL parser.
+- Append `-DBUILD_TEST=YES` to compile unit tests.
 
 Executables will be generated to `bin/`.
 
-NOTE1: Remember to `make clean` before switching to the other mode.
+NOTE: Remember to `make clean` before changing CMake options.
 
-NOTE2: You need to re-run CMake if new files are added.
+## Run
 
-## Test
+Run `bin/db` to enter a human friendly interative SQL console.
 
-Unit tests are written with Google Test framework (will be installed automatically by CMake). See `test/` directory for how to write them.
+Run `bin/db < input.sql > output.csv` to input commands from a SQL file and output results to a CSV file.
 
-Run `bin/db_test` to perform a unit test.
+Run `bin/db` with `-dPATH_TO_DB` or `--db-path=PATH_TO_DB` to specify a directory where DB files are stored in (will automatically create one if not exists).
+
+Run `bin/db --help` for further help information.
+
+Run `bin/db_test` to perform a unit test (if compiled).
