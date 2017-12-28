@@ -1,7 +1,9 @@
 #include <cassert>
 #include <stdexcept>
 #include "ListPage.h"
+#include "../config.h"
 #include "../exception/NotNullException.h"
+#include "../exception/RecordTooLargeException.h"
 
 void ListPage::setCols(const std::unordered_map<std::string, Column> &_cols)
 {
@@ -19,6 +21,8 @@ void ListPage::setCols(const std::unordered_map<std::string, Column> &_cols)
     }
     nullBytes = ((nullCnt + 7) >> 3);
     recBytes = fixedBytes + nullBytes;
+    if (recBytes > MAX_RECORD_BYTES)
+        throw RecordTooLargeException(recBytes);
 }
 
 std::unique_ptr<Type> ListPage::getValue(int rank, const std::string &name)

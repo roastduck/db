@@ -2,6 +2,7 @@
 #include "TableMgr.h"
 
 #include "filesystem/MockPageMgr.h"
+#include "exception/RecordTooLargeException.h"
 
 #include "gmock/gmock.h"
 
@@ -63,6 +64,18 @@ TEST_F(TableMgrTest, manageTables)
     ASSERT_THAT(tables.size(), Eq(2));
     ASSERT_THAT(tables[0][TableMgr::TABLE]->toString(), Eq("table1"));
     ASSERT_THAT(tables[1][TableMgr::TABLE]->toString(), Eq("table3"));
+}
+
+TEST_F(TableMgrTest, recordTooLarge)
+{
+    mgr.createDb("db");
+    mgr.use("db");
+    ASSERT_THROW(mgr.createTable(
+        "table",
+        { std::make_pair("c", (Column){ Type::CHAR, 5000, false }) }
+    ), RecordTooLargeException);
+    auto tables = mgr.showTables();
+    ASSERT_THAT(tables.size(), Eq(0));
 }
 
 TEST_F(TableMgrTest, noDbInUse)

@@ -229,6 +229,9 @@ void TableMgr::createTable(
             throw RefereeNotPrimaryException(refereeCols, key.referee, primary);
     }
 
+    // This may throw
+    tables[name] = std::unique_ptr<Table>(new Table(cache, curDb.ok() + "." + name, colsMap, primary, nonClus));
+
     sysTables.insert({
         std::make_pair(DB, curDb.ok()),
         std::make_pair(TABLE, name)
@@ -266,8 +269,6 @@ void TableMgr::createTable(
             std::make_pair("referee", key.referee),
             std::make_pair("referrerCols", commaJoin(key.referrerCols))
         });
-
-    tables[name] = std::unique_ptr<Table>(new Table(cache, curDb.ok() + "." + name, colsMap, primary, nonClus));
 }
 
 void TableMgr::dropTable(const std::string &name)

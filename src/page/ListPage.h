@@ -42,6 +42,7 @@ public:
     static const int HEADER_SIZE = 12;
 
     /** Construct with column definitions
+     *  @throw RecordTooLargeException
      */
     ListPage(
         PageCache &_pageCache, const std::string &_filename, int _pageID,
@@ -59,6 +60,7 @@ public:
     {}
 
     /** Set column list for every record
+     *  @throw RecordTooLargeException
      */
     void setCols(const std::unordered_map<std::string, Column> &_cols);
 
