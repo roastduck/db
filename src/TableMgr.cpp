@@ -568,7 +568,7 @@ std::vector<Table::ColVal> TableMgr::select(
     std::vector<Table::ColVal> buf1, buf2;
     auto *feed = &buf1, *result = &buf2;
     result->push_back({});
-    for (int i = 0; i < int(tables.size()); i++)
+    for (int i = 0; i < int(tableList.size()); i++)
     {
         // Gather constraints
         std::vector< std::pair<Table::OuterCon, std::string> > outs; // [(constrints, table)]
