@@ -172,6 +172,42 @@ TEST_F(ParserTest, desc)
     ));
 }
 
+TEST_F(ParserTest, primaryNull)
+{
+    input.parse("CREATE DATABASE db; USE db;");
+    errStream.str("");
+    input.parse("CREATE TABLE tb(a INT, PRIMARY KEY (a));");
+    ASSERT_THAT(errStream.str(), Eq("Column \"a\" cannot be NULL\n"));
+}
+
+TEST_F(ParserTest, primaryNotExists)
+{
+    input.parse("CREATE DATABASE db; USE db;");
+    errStream.str("");
+    input.parse("CREATE TABLE tb(a INT, PRIMARY KEY (b));");
+    ASSERT_THAT(errStream.str(), Eq("No such field named b\n"));
+}
+
+TEST_F(ParserTest, foreign)
+{
+    input.parse("CREATE DATABASE db; USE db;");
+    input.parse("CREATE TABLE master (a INT NOT NULL, PRIMARY KEY (a));");
+    input.parse("CREATE TABLE slave (b INT NOT NULL, FOREIGN KEY (b) REFERENCES master(a));");
+    errStream.str("");
+    input.parse("INSERT INTO slave VALUES (1);");
+    ASSERT_THAT(errStream.str(), Eq("Foreign key constraint below is violated: slave (b) => master (a)\n"));
+}
+
+TEST_F(ParserTest, duplicateIndex)
+{
+    input.parse("CREATE DATABASE db; USE db;");
+    input.parse("CREATE TABLE tb (a INT, b INT);");
+    input.parse("CREATE INDEX tb(a, b);");
+    input.parse("CREATE INDEX tb(b, a);"); // This is OK
+    input.parse("CREATE INDEX tb(a, b);");
+    ASSERT_THAT(errStream.str(), Eq("Index tb(a,b) already exists\n"));
+}
+
 /************************************/
 /* Queries                          */
 /************************************/
@@ -580,31 +616,5 @@ TEST_F(ParserTest, primaryNotUnique)
         "| 3    |\n"
         "+------+\n"
     ));
-}
-
-TEST_F(ParserTest, primaryNull)
-{
-    input.parse("CREATE DATABASE db; USE db;");
-    errStream.str("");
-    input.parse("CREATE TABLE tb(a INT, PRIMARY KEY (a));");
-    ASSERT_THAT(errStream.str(), Eq("Column \"a\" cannot be NULL\n"));
-}
-
-TEST_F(ParserTest, primaryNotExists)
-{
-    input.parse("CREATE DATABASE db; USE db;");
-    errStream.str("");
-    input.parse("CREATE TABLE tb(a INT, PRIMARY KEY (b));");
-    ASSERT_THAT(errStream.str(), Eq("No such field named b\n"));
-}
-
-TEST_F(ParserTest, duplicateIndex)
-{
-    input.parse("CREATE DATABASE db; USE db;");
-    input.parse("CREATE TABLE tb (a INT, b INT);");
-    input.parse("CREATE INDEX tb(a, b);");
-    input.parse("CREATE INDEX tb(b, a);"); // This is OK
-    input.parse("CREATE INDEX tb(a, b);");
-    ASSERT_THAT(errStream.str(), Eq("Index tb(a,b) already exists\n"));
 }
 
