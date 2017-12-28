@@ -1,5 +1,6 @@
 #include <algorithm>
 #include "TableMgr.h"
+#include "Optimizer.h"
 #include "type/IntType.h"
 #include "type/CharType.h"
 #include "exception/NotUniqueException.h"
@@ -112,6 +113,16 @@ void TableMgr::checkForeignAsMaster(const std::string &tbName, const Table::Cons
             }
         }
     }
+}
+
+bool TableMgr::isIndex(const std::string &tbName, const Table::Index &cols) const
+{
+    if (tables.at(tbName)->getPrimary().isOk() && tables.at(tbName)->getPrimary().ok() == cols)
+        return true;
+    for (const auto &idx : tables.at(tbName)->getNonClus())
+        if (idx == cols)
+            return true;
+    return false;
 }
 
 /************************************/
@@ -325,7 +336,7 @@ void TableMgr::createIndex(const std::string &tbName, const Table::Index &colNam
 {
     if (!tables.count(tbName))
         throw NoSuchThingException(TABLE, tbName);
-    if (tables.at(tbName)->getNonClusNum() >= MAX_INDEX_NUM)
+    if (int(tables.at(tbName)->getNonClus().size()) >= MAX_INDEX_NUM)
         throw TooManyIndexesException();
     auto joined = commaJoin(colName);
     if (nameExists(sysNonClusIdxes, {DB, TABLE, "columns"}, {curDb.ok(), tbName, joined}))
@@ -535,12 +546,12 @@ void TableMgr::update(
 
 std::vector<Table::ColVal> TableMgr::select(
     std::unordered_map< std::string, Table::Index > targets, /// table -> columns
-    const std::vector< std::string > &tableList,
+    const std::vector< std::string > &_tableList,
     const std::unordered_map< std::string, Table::ConsL > &innerCons, /// table -> constraints
     const OuterConsMap &outterCons
 )
 {
-    for (const auto &name : tableList)
+    for (const auto &name : _tableList)
         if (!tables.count(name))
             throw NoSuchThingException(TABLE, name);
 
@@ -548,8 +559,6 @@ std::vector<Table::ColVal> TableMgr::select(
     for (const auto &tb : targets)
         for (const auto &col : tb.second)
             headers.push_back(tb.first + "." + col);
-
-    // TODO: optimize the order of `tableList`
 
     // Complement `targets`
     for (const auto &item : outterCons)
@@ -565,13 +574,15 @@ std::vector<Table::ColVal> TableMgr::select(
         }
     }
 
+    auto tableList = Optimizer::optSelectTableList(*this, _tableList, outterCons);
+
     std::vector<Table::ColVal> buf1, buf2;
     auto *feed = &buf1, *result = &buf2;
     result->push_back({});
     for (int i = 0; i < int(tableList.size()); i++)
     {
         // Gather constraints
-        std::vector< std::pair<Table::OuterCon, std::string> > outs; // [(constrints, table)]
+        std::vector< std::pair<Table::OuterCon, std::string> > outs; // [(constraints, table)]
         for (int j = 0; j < i; j++)
             for (const auto &pair : {std::make_pair(tableList[i], tableList[j]), std::make_pair(tableList[j], tableList[i])})
                 for (auto out : outterCons.count(pair) ? outterCons.at(pair) : Table::OuterCons())

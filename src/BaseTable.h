@@ -170,8 +170,8 @@ protected:
 
 public:
     const Optional<Index> &getPrimary() const { return primary; }
+    const std::vector<Index> &getNonClus() const { return nonClus; }
     const Index &getAllColumns() const { return allColumns; }
-    int getNonClusNum() const { return nonClus.size(); }
 
     /** Add a non-cluster index
      *  @return : new index ID

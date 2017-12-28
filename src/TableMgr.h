@@ -61,6 +61,10 @@ public:
 
     typedef std::unordered_map< std::pair<std::string, std::string>, Table::OuterCons, PairHash<std::string, std::string> > OuterConsMap;
 
+    /** Determine whether a group of columns is one of the indexes of a table
+     */
+    bool isIndex(const std::string &tbName, const Table::Index &cols) const;
+
     /************************************/
     /* DB Managements                   */
     /************************************/
@@ -170,7 +174,7 @@ public:
      */
     std::vector<Table::ColVal> select(
         std::unordered_map< std::string, Table::Index > targets, /// table -> columns
-        const std::vector< std::string > &tableList,
+        const std::vector< std::string > &_tableList,
         const std::unordered_map< std::string, Table::ConsL > &innerCons, /// table -> constraints
         const OuterConsMap &outterCons = {}
     );

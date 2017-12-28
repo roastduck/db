@@ -1,4 +1,5 @@
 #include <string>
+#include <algorithm>
 #include "TableMgr.h"
 
 #include "filesystem/MockPageMgr.h"
@@ -369,7 +370,6 @@ TEST_F(TableMgrTest, insertOrder)
     ASSERT_THAT(result[0]["table.r"]->toString(), Eq("5"));
 }
 
-
 TEST_F(TableMgrTest, twoTablesConnection)
 {
     mgr.createDb("db");
@@ -418,5 +418,43 @@ TEST_F(TableMgrTest, twoTablesConnection)
     ASSERT_THAT(result[0]["t2.d"]->toString(), Eq("X"));
     ASSERT_THAT(result[1]["t1.a"]->toString(), Eq("c"));
     ASSERT_THAT(result[1]["t2.d"]->toString(), Eq("Y"));
+}
+
+TEST_F(TableMgrTest, fourLargeTablesConnection)
+{
+    mgr.createDb("db");
+    mgr.use("db");
+    for (const auto &tb : {"t1", "t2", "t3", "t4"})
+        mgr.createTable(tb, {
+            std::make_pair("a", (Column){ Type::INT, 0, true }),
+            std::make_pair("b", (Column){ Type::INT, 0, false }),
+            std::make_pair("c", (Column){ Type::INT, 0, false }),
+            std::make_pair("d", (Column){ Type::INT, 0, false })
+        }, Table::Index({"a"}));
+
+    constexpr int n = 1000000;
+    std::vector<int> input[4];
+    for (int j = 0; j < 4; j++)
+        input[j].resize(n);
+    for (int i = 0; i < n; i++)
+        for (int j = 0; j < 4; j++)
+            input[j][i] = i;
+    for (const auto &tb : {"t1", "t2", "t3", "t4"})
+    {
+        for (int j = 0; j < 4; j++)
+            std::random_shuffle(input[j].begin(), input[j].end());
+        for (int i = 0; i < n; i++)
+            mgr.insert(tb, {{
+                std::to_string(input[0][i]), std::to_string(input[1][i]),
+                std::to_string(input[2][i]), std::to_string(input[3][i])
+            }});
+    }
+
+    TableMgr::OuterConsMap outMap;
+    outMap[std::pair<std::string, std::string>("t1", "t2")] = {{Table::EQ, "a", "b"}};
+    outMap[std::pair<std::string, std::string>("t2", "t3")] = {{Table::EQ, "a", "b"}};
+    outMap[std::pair<std::string, std::string>("t2", "t4")] = {{Table::EQ, "d", "a"}};
+    auto result = mgr.select({}, {"t1", "t2", "t3", "t4"}, {}, outMap);
+    ASSERT_THAT(result.size(), Eq(n));
 }
 
