@@ -86,7 +86,9 @@ public:
     /************************************/
 
     /** Create a table
+     *  @throw : NotNullException
      *  @throw : NoDBInUseException
+     *  @throw : NoSuchThingException
      *  @throw : IDAlreadyUsedException
      *  @throw : TooManyFieldsException
      *  @throw : RefereeNotPrimaryException

@@ -181,6 +181,17 @@ void TableMgr::createTable(
     if (cols.size() > MAX_COLUMN_NUM)
         throw TooManyFieldsException(cols.size());
 
+    Table::Cols colsMap;
+    for (const auto &col : cols)
+        colsMap[col.first] = col.second;
+    if (primary.isOk())
+        for (const auto &col : primary.ok()) {
+            if (!colsMap.count(col))
+                throw NoSuchThingException(FIELD, col);
+            if (!colsMap.at(col).notNull)
+                throw NotNullException(col);
+        }
+
     for (const auto &key : foreigns)
     {
         std::string refereeCols = commaJoin(key.refereeCols);
@@ -198,9 +209,7 @@ void TableMgr::createTable(
         std::make_pair(DB, curDb.ok()),
         std::make_pair(TABLE, name)
     });
-    Table::Cols colsMap;
     for (const auto &col : cols)
-    {
         sysCols.insert({
             std::make_pair(DB, curDb.ok()),
             std::make_pair(TABLE, name),
@@ -209,8 +218,6 @@ void TableMgr::createTable(
             std::make_pair(LENGTH, std::to_string(col.second.length)),
             std::make_pair(NOT_NULL, std::to_string((int)col.second.notNull))
         });
-        colsMap[col.first] = col.second;
-    }
     if (primary.isOk())
         sysPriIdxes.insert({
             std::make_pair(DB, curDb.ok()),

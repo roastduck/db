@@ -156,7 +156,7 @@ TEST_F(ParserTest, dropShouldDeleteData)
 TEST_F(ParserTest, desc)
 {
     input.parse("CREATE DATABASE db; USE db;");
-    input.parse("CREATE TABLE tb(a INT NOT NULL, b VARCHAR(5), c DATE, PRIMARY KEY (a,b));");
+    input.parse("CREATE TABLE tb(a INT NOT NULL, b VARCHAR(5) NOT NULL, c DATE, PRIMARY KEY (a,b));");
     outStream.str("");
     input.parse("DESC tb;");
     ASSERT_THAT(outStream.str(), Eq(
@@ -165,7 +165,7 @@ TEST_F(ParserTest, desc)
         "+-------+------------+----------+-------------+\n"
         "| a     | INT        | YES      | YES         |\n"
         "+-------+------------+----------+-------------+\n"
-        "| b     | VARCHAR(5) | NO       | YES         |\n"
+        "| b     | VARCHAR(5) | YES      | YES         |\n"
         "+-------+------------+----------+-------------+\n"
         "| c     | DATE       | NO       | NO          |\n"
         "+-------+------------+----------+-------------+\n"
@@ -294,7 +294,7 @@ TEST_F(ParserTest, removeEqualsNull)
 TEST_F(ParserTest, update)
 {
     input.parse("CREATE DATABASE db; USE db;");
-    input.parse("CREATE TABLE tb(PRIMARY KEY(b), a INT, b INT);");
+    input.parse("CREATE TABLE tb(PRIMARY KEY(b), a INT, b INT NOT NULL);");
     input.parse("INSERT INTO tb VALUES (0,1), (2,2), (3,3), (4,4);");
     outStream.str("");
     input.parse("UPDATE tb SET a = 5 WHERE a < 4 AND a = b;");
@@ -546,7 +546,7 @@ TEST_F(ParserTest, primaryNotUnique)
 {
     // Init
     input.parse("CREATE DATABASE db; USE db;");
-    input.parse("CREATE TABLE tb(a INT, PRIMARY KEY (a));");
+    input.parse("CREATE TABLE tb(a INT NOT NULL, PRIMARY KEY (a));");
     input.parse("INSERT INTO tb VALUES (1), (2), (3);");
 
     // Error insertion
@@ -580,6 +580,22 @@ TEST_F(ParserTest, primaryNotUnique)
         "| 3    |\n"
         "+------+\n"
     ));
+}
+
+TEST_F(ParserTest, primaryNull)
+{
+    input.parse("CREATE DATABASE db; USE db;");
+    errStream.str("");
+    input.parse("CREATE TABLE tb(a INT, PRIMARY KEY (a));");
+    ASSERT_THAT(errStream.str(), Eq("Column \"a\" cannot be NULL\n"));
+}
+
+TEST_F(ParserTest, primaryNotExists)
+{
+    input.parse("CREATE DATABASE db; USE db;");
+    errStream.str("");
+    input.parse("CREATE TABLE tb(a INT, PRIMARY KEY (b));");
+    ASSERT_THAT(errStream.str(), Eq("No such field named b\n"));
 }
 
 TEST_F(ParserTest, duplicateIndex)
