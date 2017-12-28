@@ -141,6 +141,26 @@ TEST_F(ParserTest, dropTable)
     ASSERT_THAT(outStream.str(), Eq("(Empty set)\n"));
 }
 
+TEST_F(ParserTest, dropTableAsReferee)
+{
+    input.parse("CREATE DATABASE db; USE db;");
+    input.parse("CREATE TABLE master(a INT NOT NULL, PRIMARY KEY(a));");
+    input.parse("CREATE TABLE slave(b INT, FOREIGN KEY (b) REFERENCES master(a));");
+    input.parse("INSERT INTO master VALUES (1);");
+    input.parse("INSERT INTO slave VALUES (1);");
+
+    errStream.str("");
+    input.parse("DROP TABLE master;");
+    ASSERT_THAT(errStream.str(), Eq("Foreign key constraint below is violated: slave (b) => master (a)\n"));
+
+    input.parse("DELETE FROM slave WHERE b = 1;");
+    errStream.str("");
+    outStream.str("");
+    input.parse("DROP TABLE master;");
+    ASSERT_THAT(errStream.str(), Eq(""));
+    ASSERT_THAT(outStream.str(), Eq("Dropped table master\n"));
+}
+
 TEST_F(ParserTest, dropShouldDeleteData)
 {
     input.parse("CREATE DATABASE db; USE db;");

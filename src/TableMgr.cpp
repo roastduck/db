@@ -90,6 +90,30 @@ void TableMgr::checkFieldInCons(const std::string &tbName, const Table::ConsL &c
     }
 }
 
+void TableMgr::checkForeignAsMaster(const std::string &tbName, const Table::ConsL &cons, const Table::OuterCons &oCons)
+{
+    const auto &priIdxOpt = tables.at(tbName)->getPrimary();
+    if (priIdxOpt.isOk())
+    {
+        const auto &priIdx = priIdxOpt.ok();
+        for (const auto &row : tables.at(tbName)->select(priIdx, cons, oCons))
+        {
+            std::vector<std::string> keys;
+            for (const auto &col : priIdx)
+                keys.push_back(row.at(col)->toString());
+            for (const auto &foreign : sysForeigns.select({"referrerCols", "referrer"}, {
+                genEquCon(DB, curDb.ok()), genEquCon("referee", tbName)
+            }))
+            {
+                const std::string &referrer = dynamic_cast<CharType*>(foreign.at("referrer").get())->getVal();
+                const std::string &referrerCols = dynamic_cast<CharType*>(foreign.at("referrerCols").get())->getVal();
+                if (nameExists(*tables.at(referrer), commaSep(referrerCols), keys))
+                    throw ForeignKeyViolatedException(referrer, referrerCols, tbName, commaJoin(priIdx));
+            }
+        }
+    }
+}
+
 /************************************/
 /* DB Managements                   */
 /************************************/
@@ -250,6 +274,8 @@ void TableMgr::dropTable(const std::string &name)
 {
     if (!tables.count(name))
         throw NoSuchThingException(TABLE, name);
+    checkForeignAsMaster(name, {}, {});
+
     for (Table *table : {&sysForeigns, &sysNonClusIdxes, &sysPriIdxes, &sysCols, &sysTables})
         table->remove({
             genEquCon(DB, curDb.ok()), genEquCon(table == &sysForeigns ? "referrer" : TABLE, name)
@@ -400,28 +426,7 @@ void TableMgr::remove(const std::string &tbName, const Table::ConsL &cons, const
     if (!tables.count(tbName))
         throw NoSuchThingException(TABLE, tbName);
     checkFieldInCons(tbName, cons, oCons);
-
-    // Check foreign key
-    const auto &priIdxOpt = tables.at(tbName)->getPrimary();
-    if (priIdxOpt.isOk())
-    {
-        const auto &priIdx = priIdxOpt.ok();
-        for (const auto &row : tables.at(tbName)->select(priIdx, cons, oCons))
-        {
-            std::vector<std::string> keys;
-            for (const auto &col : priIdx)
-                keys.push_back(row.at(col)->toString());
-            for (const auto &foreign : sysForeigns.select({"referrerCols", "referrer"}, {
-                genEquCon(DB, curDb.ok()), genEquCon("referee", tbName)
-            }))
-            {
-                const std::string &referrer = dynamic_cast<CharType*>(foreign.at("referrer").get())->getVal();
-                const std::string &referrerCols = dynamic_cast<CharType*>(foreign.at("referrerCols").get())->getVal();
-                if (nameExists(*tables.at(referrer), commaSep(referrerCols), keys))
-                    throw ForeignKeyViolatedException(referrer, referrerCols, tbName, commaJoin(priIdx));
-            }
-        }
-    }
+    checkForeignAsMaster(tbName, cons, oCons);
 
     // Delete
     tables.at(tbName)->remove(cons, oCons);

@@ -47,6 +47,9 @@ private:
 
     void checkFieldInCons(const std::string &tbName, const Table::ConsL &cons, const Table::OuterCons &oCons);
 
+    /// @throw ForeignKeyViolatedException
+    void checkForeignAsMaster(const std::string &tbName, const Table::ConsL &cons, const Table::OuterCons &oCons);
+
 public:
     TableMgr(PageCache &_cache);
 
