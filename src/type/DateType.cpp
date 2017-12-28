@@ -47,14 +47,21 @@ std::string DateType::toString() const
 
 void DateType::fromString(const std::string &s)
 {
-    struct tm timeInfo;
+    struct tm timeInfo, _timeInfo;
     memset(&timeInfo, 0, sizeof(struct tm));
     char *en = strptime(s.c_str(), "%Y-%m-%d", &timeInfo);
     if (!en || *en != '\0')
         throw InvalidLiteralException(s, DATE);
     if (timeInfo.tm_year + 1900 < 1970)
         throw InvalidLiteralException(s, DATE);
-    val = mktime(&timeInfo);
+    memcpy(&_timeInfo, &timeInfo, sizeof(struct tm));
+    val = mktime(&timeInfo); // Will modify timeInfo if illegal
+    if (
+        timeInfo.tm_year != _timeInfo.tm_year ||
+        timeInfo.tm_mon != _timeInfo.tm_mon ||
+        timeInfo.tm_mday != _timeInfo.tm_mday
+    )
+        throw InvalidLiteralException(s, DATE);
     if (val > today())
         throw InvalidLiteralException(s, DATE);
 }

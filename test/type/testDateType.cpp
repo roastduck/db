@@ -48,12 +48,32 @@ TEST_F(DateTypeTest, fromStringTooEarly)
     ASSERT_THROW(dateType.fromString("1969-12-31"), InvalidLiteralException);
 }
 
+TEST_F(DateTypeTest, fromStringTooLate)
+{
+    ASSERT_THROW(dateType.fromString("2100-1-1"), InvalidLiteralException);
+}
+
+TEST_F(DateTypeTest, fromStringNextMonth)
+{
+    ASSERT_THROW(dateType.fromString("2017-2-29"), InvalidLiteralException);
+}
+
+TEST_F(DateTypeTest, fromStringLeapYear)
+{
+    dateType.fromString("2012-2-29");
+    int year, month, day;
+    DateType::parseDate(dateType.getVal(), year, month, day);
+    ASSERT_THAT(year, Eq(2012));
+    ASSERT_THAT(month, Eq(2));
+    ASSERT_THAT(day, Eq(29));
+}
+
 TEST_F(DateTypeTest, fromStringTailing)
 {
     ASSERT_THROW(dateType.fromString("2010-02-15-"), InvalidLiteralException);
 }
 
-TEST_F(DateTypeTest, fromStringDate)
+TEST_F(DateTypeTest, fromStringNotDate)
 {
     ASSERT_THROW(dateType.fromString("abc"), InvalidLiteralException);
 }
