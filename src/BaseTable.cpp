@@ -1,5 +1,6 @@
 #include <cassert>
 #include <set>
+#include "utils.h"
 #include "BaseTable.h"
 #include "type/IntType.h"
 #include "exception/NotUniqueException.h"
@@ -213,9 +214,9 @@ int BaseTable::insertRecur(int pageID, const BaseTable::ColVal &vals, const Base
 {
     ListPage &page = getDataPage(pageID);
     int size = page.getSize();
-    int offset = -1;
-    while (offset + 1 < size && !less(vals, page.getValues(offset + 1, index), index))
-        offset++;
+    int offset = binSearch(0, size, [&vals, &page, &index](int id) {
+        return !less(vals, page.getValues(id, index), index);
+    }) - 1;
     // `offset` is the last that <= `vals`
 
     if (page.getIdent() == RECORD) // leaf node of primary index
@@ -351,9 +352,9 @@ Optional<int> BaseTable::removeRecur(int pageID, const BaseTable::ColVal &vals, 
 {
     ListPage &page = getDataPage(pageID);
     int size = page.getSize();
-    int offset = -1;
-    while (offset + 1 < size && !less(vals, page.getValues(offset + 1, index), index))
-        offset++;
+    int offset = binSearch(0, size, [&vals, &page, &index](int id) {
+        return !less(vals, page.getValues(id, index), index);
+    }) - 1;
     // `offset` is the last that <= `vals`
     if (!~offset) return None();
 
@@ -436,13 +437,14 @@ BaseTable::Pos BaseTable::findFirst(int pageID, const BaseTable::ColVal &vals, c
     {
         ListPage &page = getDataPage(pageID);
         int size = page.getSize();
-        int offset = 0;
-        if (equal)
-            while (offset + 1 < size && less(page.getValues(offset + 1, index), vals, index))
-                offset++;
-        else
-            while (offset + 1 < size && !less(vals, page.getValues(offset + 1, index), index))
-                offset++;
+        int offset = equal ?
+                binSearch(1, size, [&vals, &page, &index](int id) {
+                    return less(page.getValues(id, index), vals, index);
+                }) - 1 // Yes, -1 here because we will recurse
+            :
+                binSearch(1, size, [&vals, &page, &index](int id) {
+                    return !less(vals, page.getValues(id, index), index);
+                }) - 1;
         if (page.getIdent() == RECORD)
         {
             ret = Pos(pageID, offset);
