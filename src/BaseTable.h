@@ -44,6 +44,18 @@ protected:
     typedef std::pair< int, int > Pos; // (pageId, slotID)
     typedef std::pair< std::pair<ColVal, bool /* open interval */>, std::pair<ColVal, bool> > Bound;
 
+    /** Compare two batches of columns in lexicological order specified in `order`
+     *  This function treats null as negative infinity
+     *  @return true for `lhs` < `rhs`
+     */
+    static bool less(const ColVal &lhs, const ColVal &rhs, const Index &order);
+
+    /** Compare two batches of columns in lexicological order specified in `order`
+     *  This function treats null as negative infinity
+     *  @return true for `lhs` == `rhs`
+     */
+    static bool equal(const ColVal &lhs, const ColVal &rhs, const Index &order);
+
 private:
     const int ENTRY_PAGE = 0;
 
@@ -65,18 +77,6 @@ private:
     /** Check if a record meets ALL the constraints in `cons`, i.e. items in cons are ANDed together
      */
     bool meetCons(ListPage &page, int rank, const ConsVal &cons, const OuterCons &oCons) const;
-
-    /** Compare two batches of columns in lexicological order specified in `order`
-     *  This function treats null as negative infinity
-     *  @return true for `lhs` < `rhs`
-     */
-    static bool less(const ColVal &lhs, const ColVal &rhs, const Index &order);
-
-    /** Compare two batches of columns in lexicological order specified in `order`
-     *  This function treats null as negative infinity
-     *  @return true for `lhs` == `rhs`
-     */
-    static bool equal(const ColVal &lhs, const ColVal &rhs, const Index &order);
 
     /** Update node from its children
      */

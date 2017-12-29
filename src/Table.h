@@ -21,11 +21,11 @@ public:
 private:
     /** Convert constraint represented by literals to by values
      */
-    ConsVal genConstraints(const ConsL &literals);
+    ConsVal genConstraints(const ConsL &literals) const;
 
     /** Convert columns (or record) represented by literals to by values
      */
-    ColVal genVals(const ColL &literals);
+    ColVal genVals(const ColL &literals) const;
 
 public:
     Table(
@@ -58,6 +58,15 @@ public:
     std::vector<ColVal> select(const std::vector<std::string> &targets, const ConsL &constraints, const OuterCons &oCons = {})
     {
         return BaseTable::select(targets, genConstraints(constraints), oCons);
+    }
+
+    /** Compare two batches of columns in lexicological order specified in `order`
+     *  This function treats null as negative infinity
+     *  @return true for `lhs` < `rhs`
+     */
+    bool less(const ColL &lhs, const ColL &rhs, const Index &order) const
+    {
+        return BaseTable::less(genVals(lhs), genVals(rhs), order);
     }
 };
 

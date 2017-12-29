@@ -419,6 +419,16 @@ void TableMgr::insert(const std::string &tbName, const std::vector< std::vector<
         }
     }
 
+    // Pre-sort
+    if (tables.at(tbName)->getPrimary().isOk())
+    {
+        const Table &tb = *tables.at(tbName);
+        const auto &pri = tb.getPrimary().ok();
+        std::sort(valueMaps.begin(), valueMaps.end(), [&tb,&pri](const Table::ColL &lhs, const Table::ColL &rhs) {
+            return tb.less(lhs, rhs, pri);
+        });
+    }
+
     // Insert
     for (int i = 0; i < int(valueMaps.size()); i++)
         try

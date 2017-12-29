@@ -443,11 +443,14 @@ TEST_F(TableMgrTest, fourLargeTablesConnection)
     {
         for (int j = 0; j < 4; j++)
             std::random_shuffle(input[j].begin(), input[j].end());
+        std::vector< std::vector< Optional<std::string> > > vals;
+        vals.reserve(n);
         for (int i = 0; i < n; i++)
-            mgr.insert(tb, {{
+            vals.push_back({
                 std::to_string(input[0][i]), std::to_string(input[1][i]),
                 std::to_string(input[2][i]), std::to_string(input[3][i])
-            }});
+            });
+        mgr.insert(tb, vals);
     }
 
     TableMgr::OuterConsMap outMap;

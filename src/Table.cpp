@@ -1,6 +1,6 @@
 #include "Table.h"
 
-Table::ConsVal Table::genConstraints(const Table::ConsL &literals)
+Table::ConsVal Table::genConstraints(const Table::ConsL &literals) const
 {
     ConsVal ret;
     for (const auto &pair : literals)
@@ -24,7 +24,7 @@ Table::ConsVal Table::genConstraints(const Table::ConsL &literals)
     return ret;
 }
 
-Table::ColVal Table::genVals(const Table::ColL &literals)
+Table::ColVal Table::genVals(const Table::ColL &literals) const
 {
     ColVal ret;
     for (const auto &pair : literals)
