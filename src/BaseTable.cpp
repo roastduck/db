@@ -213,9 +213,11 @@ int BaseTable::insertRecur(int pageID, const BaseTable::ColVal &vals, const Base
 {
     ListPage &page = getDataPage(pageID);
     int size = page.getSize();
-    int offset = binSearch(0, size, [&vals, &page, &index](int id) {
-        return !less(vals, page.getValues(id, index), index);
-    }) - 1;
+    int offset = page.getSize() - 1; // In most cases, the latest data has the largest ID
+    if (offset >= 0 && less(vals, page.getValues(offset, index), index))
+        offset = binSearch(0, size, [&vals, &page, &index](int id) {
+            return !less(vals, page.getValues(id, index), index);
+        }) - 1;
     // `offset` is the last that <= `vals`
 
     if (page.getIdent() == RECORD) // leaf node of primary index
