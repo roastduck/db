@@ -50,13 +50,10 @@ TEST_F(PageCacheTest, replacement)
         EXPECT_CALL(pageMgr, read("a", 2, _)); // 0 is const, so no need to write
         EXPECT_CALL(pageMgr, write("a", 2, _)); // during destruction
     }
-    auto iterR0 = pageCache.getConstPage("a", 0);
-    auto iterR1 = pageCache.getConstPage("a", 1);
     auto iterW2 = pageCache.getPage("a", 2);
+    auto iterR1 = pageCache.getConstPage("a", 1);
+    auto iterR0 = pageCache.getConstPage("a", 0);
     *iterW2 = 'x';
-    *iterR1;
-    *iterR0;
-    ASSERT_THAT(*iterW2, Eq('x'));
 }
 
 TEST_F(PageCacheTest, relational)

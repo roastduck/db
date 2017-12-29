@@ -2,7 +2,6 @@
 #define PAGE_CACHE_H_
 
 #include <cassert>
-#include <array>
 #include <memory>
 #include <string>
 #include <utility>
@@ -19,12 +18,12 @@ private:
 
     struct CacheValue
     {
-        std::array<unsigned char, PageMgr::PAGE_SIZE> buf;
+        CacheKey key;
+        unsigned char *buf;
         bool dirty;
-        std::shared_ptr<bool> deleted; // This indicates you must to re-read from file
     };
 
-    LinkedHashMap< CacheKey, CacheValue, PairHash<std::string, int> > map;
+    LinkedHashMap< CacheKey, std::shared_ptr<CacheValue>, PairHash<std::string, int> > map;
 
     PageMgr &pageMgr;
 
@@ -34,29 +33,43 @@ private:
     void evict()
     {
         auto popped = map.pop();
-        *(popped.second.deleted) = true;
-        if (popped.second.dirty)
-            pageMgr.write(popped.first.first, popped.first.second, popped.second.buf.begin());
+        assert(popped.second->buf != NULL);
+        if (popped.second->dirty)
+            pageMgr.write(popped.first.first, popped.first.second, popped.second->buf);
+        delete[] popped.second->buf;
+        popped.second->buf = NULL;
     }
 
     template <bool isConst>
-    CacheValue &access(const CacheKey &key)
+    std::shared_ptr<CacheValue> create(const CacheKey &key)
     {
-        CacheValue *result = map.find(key);
-        // Still need to check this. Althogh the original position is deleted, a new one might have been in place
+        std::shared_ptr<CacheValue> *result = map.find(key);
         if (result)
         {
-            result->dirty |= !isConst; // Mark it dirty once a mutable iterator connects the cache
+            (*result)->dirty |= !isConst;
             return *result;
         }
-
         if (int(map.size()) == maxPages)
             evict();
-        CacheValue val;
-        pageMgr.read(key.first, key.second, val.buf.begin());
-        val.dirty = !isConst;
-        val.deleted = std::shared_ptr<bool>(new bool(false));
-        return map[key] = std::move(val);
+        std::shared_ptr<CacheValue> ptr(new CacheValue());
+        ptr->key = key;
+        ptr->buf = new unsigned char[PageMgr::PAGE_SIZE];
+        pageMgr.read(ptr->key.first, ptr->key.second, ptr->buf);
+        ptr->dirty = !isConst;
+        return map[ptr->key] = std::move(ptr);
+    }
+
+    template <bool isConst>
+    std::shared_ptr<CacheValue> access(const std::shared_ptr<CacheValue> &ptr)
+    {
+        assert(!map.find(ptr->key));
+        if (int(map.size()) == maxPages)
+            evict();
+        assert(ptr != nullptr && ptr->buf == NULL);
+        ptr->buf = new unsigned char[PageMgr::PAGE_SIZE];
+        pageMgr.read(ptr->key.first, ptr->key.second, ptr->buf);
+        ptr->dirty |= !isConst;
+        return map[ptr->key] = std::move(ptr);
     }
 
     template <typename T, bool isConst>
@@ -66,84 +79,47 @@ private:
         using value_t = std::conditional<isConst, const T, T>;
 
         PageCache *mgr;
-        CacheKey key;
         int offset;
-        typename value_t::type *buf;
-        std::shared_ptr<bool> deleted;
+        std::shared_ptr<CacheValue> val;
 
     public:
         template <typename, bool> friend class IterT;
 
-        IterT() : mgr(NULL), buf(NULL), deleted(nullptr) {} // Uninitialized, required to meet STD Standard
-        IterT(PageCache *_mgr, const CacheKey &_key, int _offset) : mgr(_mgr), key(_key), offset(_offset) {}
-
+        IterT() : mgr(NULL), val(nullptr) {} // Uninitialized, required to meet STD Standard
+        IterT(PageCache *_mgr, const CacheKey &_key, int _offset)
+            : mgr(_mgr), offset(_offset), val(mgr->create<isConst>(_key))
+        {}
+        IterT(PageCache *_mgr, int _offset, const std::shared_ptr<CacheValue> &_val)
+            : mgr(_mgr), offset(_offset), val(_val)
+        {}
         template <typename T2, bool c2>
         IterT(const IterT<T2, c2> &other)
-            : mgr(other.mgr), key(other.key), offset(other.offset * sizeof(T2) / sizeof(T)),
-              buf((typename value_t::type*)other.buf), deleted(other.deleted)
-            {}
+            : mgr(other.mgr), offset(other.offset * sizeof(T2) / sizeof(T)), val(other.val)
+        {}
 
         typename value_t::type &operator*()
         {
             assert(offset >= 0 && offset * sizeof(T) < PageMgr::PAGE_SIZE);
-            if (deleted == nullptr || *deleted)
-            {
-                CacheValue &ret = mgr->access<isConst>(key);
-                deleted = ret.deleted;
-                buf = (typename value_t::type*)ret.buf.begin();
-            }
-            return *(buf + offset);
+            assert(val != nullptr);
+            if (!val->buf)
+                val = mgr->access<isConst>(val);
+            return *((typename value_t::type*)val->buf + offset);
         }
 
         typename value_t::type &operator[](int inc) { return *(*this + inc); }
 
         // Functions with template parameters can't be simply defined as friends
         // Or it will cause re-definition
-        template <bool c2>
-        bool operator==(const IterT<T, c2> &rhs)
-        {
-            assert(this->key == rhs.key);
-            return this->offset == rhs.offset;
-        }
-        template <bool c2>
-        bool operator!=(const IterT<T, c2> &rhs)
-        {
-            assert(this->key == rhs.key);
-            return this->offset != rhs.offset;
-        }
-        template <bool c2>
-        bool operator<(const IterT<T, c2> &rhs)
-        {
-            assert(this->key == rhs.key);
-            return this->offset < rhs.offset;
-        }
-        template <bool c2>
-        bool operator>(const IterT<T, c2> &rhs)
-        {
-            assert(this->key == rhs.key);
-            return this->offset > rhs.offset;
-        }
-        template <bool c2>
-        bool operator<=(const IterT<T, c2> &rhs)
-        {
-            assert(this->key == rhs.key);
-            return this->offset <= rhs.offset;
-        }
-        template <bool c2>
-        bool operator>=(const IterT<T, c2> &rhs)
-        {
-            assert(this->key == rhs.key);
-            return this->offset >= rhs.offset;
-        }
-        friend IterT operator+(const IterT &iter, int inc) { return IterT(iter.mgr, iter.key, iter.offset + inc); }
-        friend IterT operator+(int inc, const IterT &iter) { return IterT(iter.mgr, iter.key, iter.offset + inc); }
-        friend IterT operator-(const IterT &iter, int dec) { return IterT(iter.mgr, iter.key, iter.offset - dec); }
-        template <bool c2>
-        int operator-(const IterT<T, c2> &rhs)
-        {
-            assert(this->key == rhs.key);
-            return this->offset - rhs.offset;
-        }
+        template <bool c2> bool operator==(const IterT<T, c2> &rhs) { return this->offset == rhs.offset; }
+        template <bool c2> bool operator!=(const IterT<T, c2> &rhs) { return this->offset != rhs.offset; }
+        template <bool c2> bool operator<(const IterT<T, c2> &rhs) { return this->offset < rhs.offset; }
+        template <bool c2> bool operator>(const IterT<T, c2> &rhs) { return this->offset > rhs.offset; }
+        template <bool c2> bool operator<=(const IterT<T, c2> &rhs) { return this->offset <= rhs.offset; }
+        template <bool c2> bool operator>=(const IterT<T, c2> &rhs) { return this->offset >= rhs.offset; }
+        friend IterT operator+(const IterT &iter, int inc) { return IterT(iter.mgr, iter.offset + inc, iter.val); }
+        friend IterT operator+(int inc, const IterT &iter) { return IterT(iter.mgr, iter.offset + inc, iter.val); }
+        friend IterT operator-(const IterT &iter, int dec) { return IterT(iter.mgr, iter.offset - dec, iter.val); }
+        template <bool c2> int operator-(const IterT<T, c2> &rhs) { return this->offset - rhs.offset; }
         IterT &operator+=(int inc) { offset += inc; return *this; }
         IterT &operator-=(int dec) { offset -= dec; return *this; }
         IterT &operator++() { offset++; return *this; }
@@ -190,7 +166,14 @@ public:
     {
         for (const CacheKey &k : map.getKeys())
             if (k.first == filename)
-                *(map.staticLookup(k).deleted) = true;
+            {
+                unsigned char *&buf = map.staticLookup(k)->buf;
+                if (buf)
+                {
+                    delete[] buf;
+                    buf = NULL;
+                }
+            }
         map.removeIf([&filename](const CacheKey &k){return k.first == filename;});
         pageMgr.destroy(filename);
     }
