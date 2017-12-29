@@ -402,11 +402,10 @@ void TableMgr::insert(const std::string &tbName, const std::vector< std::vector<
     }
 
     // Check foreign key
-    for (const auto &valueMap : valueMaps)
-    {
-        for (const auto &foreign : sysForeigns.select({"referrerCols", "referee"}, {
-            genEquCon(DB, curDb.ok()), genEquCon("referrer", tbName)
-        }))
+    for (const auto &foreign : sysForeigns.select({"referrerCols", "referee"}, {
+        genEquCon(DB, curDb.ok()), genEquCon("referrer", tbName)
+    }))
+        for (const auto &valueMap : valueMaps)
         {
             std::vector<std::string> keys;
             const std::string &referrerCols = dynamic_cast<CharType*>(foreign.at("referrerCols").get())->getVal();
@@ -417,7 +416,6 @@ void TableMgr::insert(const std::string &tbName, const std::vector< std::vector<
             if (!nameExists(*tables.at(referee), refereeCols, keys))
                 throw ForeignKeyViolatedException(tbName, referrerCols, referee, commaJoin(refereeCols));
         }
-    }
 
     // Insert (throws NotUniqueException)
     tables.at(tbName)->insert(valueMaps);
