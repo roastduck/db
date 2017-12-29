@@ -41,12 +41,12 @@ public:
     {
         if (id < 0 || id >= count)
             throw std::out_of_range("VectorRef::at out of range");
-        return iterType == BARE ? *(begin.bare + id) : *(*begin.cached + id);
+        return iterType == BARE ? begin.bare[id] : (*begin.cached)[id];
     }
 
     const unsigned char &operator[](int id) const
     {
-        return iterType == BARE ? *(begin.bare + id) : *(*begin.cached + id);
+        return iterType == BARE ? begin.bare[id] : (*begin.cached)[id];
     }
 
     size_t size() const { return count; }

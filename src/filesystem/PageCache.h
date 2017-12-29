@@ -60,7 +60,7 @@ private:
     }
 
     template <bool isConst>
-    std::shared_ptr<CacheValue> access(const std::shared_ptr<CacheValue> &ptr)
+    void access(const std::shared_ptr<CacheValue> &ptr)
     {
         assert(!map.find(ptr->key));
         if (int(map.size()) == maxPages)
@@ -69,7 +69,7 @@ private:
         ptr->buf = new unsigned char[PageMgr::PAGE_SIZE];
         pageMgr.read(ptr->key.first, ptr->key.second, ptr->buf);
         ptr->dirty |= !isConst;
-        return map[ptr->key] = std::move(ptr);
+        map[ptr->key] = ptr;
     }
 
     template <typename T, bool isConst>
@@ -97,16 +97,23 @@ private:
             : mgr(other.mgr), offset(other.offset * sizeof(T2) / sizeof(T)), val(other.val)
         {}
 
-        typename value_t::type &operator*()
+        typename value_t::type &operator*() const
         {
             assert(offset >= 0 && offset * sizeof(T) < PageMgr::PAGE_SIZE);
             assert(val != nullptr);
             if (!val->buf)
-                val = mgr->access<isConst>(val);
+                mgr->access<isConst>(val);
             return *((typename value_t::type*)val->buf + offset);
         }
 
-        typename value_t::type &operator[](int inc) { return *(*this + inc); }
+        typename value_t::type &operator[](int inc) const
+        {
+            assert(offset + inc >= 0 && (offset + inc) * sizeof(T) < PageMgr::PAGE_SIZE);
+            assert(val != nullptr);
+            if (!val->buf)
+                mgr->access<isConst>(val);
+            return *((typename value_t::type*)val->buf + offset + inc);
+        }
 
         // Functions with template parameters can't be simply defined as friends
         // Or it will cause re-definition
