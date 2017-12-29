@@ -419,28 +419,8 @@ void TableMgr::insert(const std::string &tbName, const std::vector< std::vector<
         }
     }
 
-    // Pre-sort
-    if (tables.at(tbName)->getPrimary().isOk())
-    {
-        const Table &tb = *tables.at(tbName);
-        const auto &pri = tb.getPrimary().ok();
-        std::sort(valueMaps.begin(), valueMaps.end(), [&tb,&pri](const Table::ColL &lhs, const Table::ColL &rhs) {
-            return tb.less(lhs, rhs, pri);
-        });
-    }
-
-    // Insert
-    for (int i = 0; i < int(valueMaps.size()); i++)
-        try
-        {
-            tables.at(tbName)->insert(valueMaps[i]);
-        } catch (const NotUniqueException &e)
-        {
-            // Handling NotUniqueException, don't worring about duplicate deletion
-            for (int j = 0; j < i; j++)
-                tables.at(tbName)->remove(genEquConsL(valueMaps[j]));
-            throw e;
-        }
+    // Insert (throws NotUniqueException)
+    tables.at(tbName)->insert(valueMaps);
 }
 
 void TableMgr::remove(const std::string &tbName, const Table::ConsL &cons, const Table::OuterCons &oCons)

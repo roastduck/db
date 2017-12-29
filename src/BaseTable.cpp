@@ -3,7 +3,6 @@
 #include "utils.h"
 #include "BaseTable.h"
 #include "type/IntType.h"
-#include "exception/NotUniqueException.h"
 
 BaseTable::BaseTable
 (

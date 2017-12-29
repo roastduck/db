@@ -35,16 +35,13 @@ public:
         : BaseTable(_cache, _tableName, _cols, _primary, _nonClus)
     {}
 
+    /** Insert a batch of maps of (column name, literal) into the table
+     */
+    void insert(const std::vector<ColL> &literals);
+
     /** Insert a map of (column name, literal) into the table
      */
-    void insert(const ColL &literals)
-    {
-        auto vals = genVals(literals);
-        for (const auto &col : recCols)
-            if (!vals.count(col.first))
-                vals[col.first] = nullptr;
-        BaseTable::insert(vals);
-    }
+    void insert(const ColL &literals);
 
     /** Delete records that meet the constraint
      */
@@ -58,15 +55,6 @@ public:
     std::vector<ColVal> select(const std::vector<std::string> &targets, const ConsL &constraints, const OuterCons &oCons = {})
     {
         return BaseTable::select(targets, genConstraints(constraints), oCons);
-    }
-
-    /** Compare two batches of columns in lexicological order specified in `order`
-     *  This function treats null as negative infinity
-     *  @return true for `lhs` < `rhs`
-     */
-    bool less(const ColL &lhs, const ColL &rhs, const Index &order) const
-    {
-        return BaseTable::less(genVals(lhs), genVals(rhs), order);
     }
 };
 

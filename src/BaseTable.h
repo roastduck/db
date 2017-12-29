@@ -7,6 +7,7 @@
 #include "Type.h"
 #include "Column.h"
 #include "TablePages.h"
+#include "exception/NotUniqueException.h"
 
 /** All the operations on a table
  */
