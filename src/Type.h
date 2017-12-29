@@ -4,6 +4,7 @@
 #include <string>
 #include <memory>
 #include <vector>
+#include "VectorRef.h"
 
 class Value;
 
@@ -42,7 +43,7 @@ public:
 
     /** Load from bytes
      */
-    virtual void fromBytes(const std::vector<unsigned char> &bytes) = 0;
+    virtual void fromBytes(const VectorRef<unsigned char> &bytes) = 0;
 
     /** Print to string
      */

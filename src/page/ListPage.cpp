@@ -2,6 +2,7 @@
 #include <stdexcept>
 #include "ListPage.h"
 #include "../config.h"
+#include "../VectorRef.h"
 #include "../exception/NotNullException.h"
 #include "../exception/RecordTooLargeException.h"
 
@@ -34,9 +35,8 @@ std::unique_ptr<Type> ListPage::getValue(int rank, const std::string &name)
         if (!off.col.notNull && getNull(rank, off.nullOffset))
             return nullptr;
         std::unique_ptr<Type> ret = Type::newType(off.col.typeID, off.col.length);
-        ret->fromBytes(std::vector<unsigned char>(
-            accessConst(rank) + nullBytes + off.posOffset,
-            accessConst(rank) + nullBytes + off.posOffset + ret->getFixedLength()
+        ret->fromBytes(VectorRef<unsigned char>(
+            accessConst(rank) + nullBytes + off.posOffset, ret->getFixedLength()
         ));
         return ret;
     } catch (const std::out_of_range &e)

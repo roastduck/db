@@ -27,7 +27,7 @@ std::vector<unsigned char> DateType::toBytes() const
     return ret;
 }
 
-void DateType::fromBytes(const std::vector<unsigned char> &bytes)
+void DateType::fromBytes(const VectorRef<unsigned char> &bytes)
 {
     assert(bytes.size() == 8);
     for (int i = 0; i < 8; i++)

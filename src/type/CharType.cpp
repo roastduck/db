@@ -10,7 +10,7 @@ std::vector<unsigned char> CharType::toBytes() const
     return ret;
 }
 
-void CharType::fromBytes(const std::vector<unsigned char> &bytes)
+void CharType::fromBytes(const VectorRef<unsigned char> &bytes)
 {
     assert(int(bytes.size()) == length);
     val.clear();

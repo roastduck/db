@@ -22,7 +22,7 @@ public:
     void setVal(double _val) { val = _val; }
 
     std::vector<unsigned char> toBytes() const override;
-    void fromBytes(const std::vector<unsigned char> &bytes) override;
+    void fromBytes(const VectorRef<unsigned char> &bytes) override;
 
     std::string toString() const override;
     void fromString(const std::string &s) override;

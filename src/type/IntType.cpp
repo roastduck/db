@@ -14,7 +14,7 @@ std::vector<unsigned char> IntType::toBytes() const
     return ret;
 }
 
-void IntType::fromBytes(const std::vector<unsigned char> &bytes)
+void IntType::fromBytes(const VectorRef<unsigned char> &bytes)
 {
     assert(bytes.size() == 4);
     for (int i = 0; i < 4; i++)

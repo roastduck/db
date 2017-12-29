@@ -24,7 +24,7 @@ public:
     void setVal(const std::string &_val) { assert(int(_val.length()) <= length); val = _val; }
 
     std::vector<unsigned char> toBytes() const override;
-    void fromBytes(const std::vector<unsigned char> &bytes) override;
+    void fromBytes(const VectorRef<unsigned char> &bytes) override;
 
     std::string toString() const override { return val; }
     void fromString(const std::string &s) override;

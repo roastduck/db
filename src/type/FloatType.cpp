@@ -10,7 +10,7 @@ std::vector<unsigned char> FloatType::toBytes() const
     return ret;
 }
 
-void FloatType::fromBytes(const std::vector<unsigned char> &bytes)
+void FloatType::fromBytes(const VectorRef<unsigned char> &bytes)
 {
     assert(bytes.size() == 8);
     for (int i = 0; i < 8; i++)
