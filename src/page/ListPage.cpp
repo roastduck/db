@@ -49,6 +49,8 @@ std::unordered_map< std::string, std::unique_ptr<Type> > ListPage::getValues(int
 {
     assert(rank >= 0 && rank < getMaxSize());
     std::unordered_map< std::string, std::unique_ptr<Type> > ret;
+    ret.max_load_factor(0.33);
+    ret.reserve(names.size());
     for (const std::string &name : names)
         ret[name] = getValue(rank, name);
     return ret;
