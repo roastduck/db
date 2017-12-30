@@ -432,7 +432,7 @@ TEST_F(TableMgrTest, fourLargeTablesConnection)
             std::make_pair("d", (Column){ Type::INT, 0, false })
         }, Table::Index({"a"}));
 
-    constexpr int n = 1000000;
+    constexpr int n = 5000;
     std::vector<int> input[4];
     for (int j = 0; j < 4; j++)
         input[j].resize(n);
@@ -457,7 +457,9 @@ TEST_F(TableMgrTest, fourLargeTablesConnection)
     outMap[std::pair<std::string, std::string>("t1", "t2")] = {{Table::EQ, "a", "b"}};
     outMap[std::pair<std::string, std::string>("t2", "t3")] = {{Table::EQ, "a", "b"}};
     outMap[std::pair<std::string, std::string>("t2", "t4")] = {{Table::EQ, "d", "a"}};
-    auto result = mgr.select({}, {"t1", "t2", "t3", "t4"}, {}, outMap);
-    ASSERT_THAT(result.size(), Eq(n));
+    std::unordered_map< std::string, Table::ConsL > inMap;
+    inMap["t2"]["a"] = std::vector<Table::ConLiteral>({{Table::GT, "1000"}, {Table::LE, "2000"}});
+    auto result = mgr.select({}, {"t1", "t2", "t3", "t4"}, inMap, outMap);
+    ASSERT_THAT(result.size(), Eq(1000));
 }
 
