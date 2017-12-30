@@ -53,7 +53,7 @@ protected:
     /** @param _targets = None means SELECT * */
     void select(
         const Optional<Tgt> &_targets, const std::vector<std::string> &tableList, const ICM &icm, const OCM &ocm,
-        const Tgt &orderBy, Agg _agg = {}
+        const Tgt &_orderBy, const Tgt &_groupBy, Agg _agg = {}
     );
     void createIndex(const std::string &tbName, const Table::Index &index);
     void dropIndex(const std::string &tbName, const Table::Index &index);

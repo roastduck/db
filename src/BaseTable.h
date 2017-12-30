@@ -67,6 +67,9 @@ public:
     template <class Iter>
     static void sort(Iter begin, Iter end, const Index &pivot);
 
+    template <class Iter>
+    static void stableSort(Iter begin, Iter end, const Index &pivot);
+
 private:
     const int ENTRY_PAGE = 0;
 
@@ -238,6 +241,22 @@ void BaseTable::sort(Iter begin, Iter end, const BaseTable::Index &pivot)
     try
     {
         std::sort(begin, end, [&pivot](const ColVal &lhs, const ColVal &rhs) {
+            return BaseTable::less(lhs, rhs, pivot);
+        });
+    } catch (const std::out_of_range &e)
+    {
+        for (const auto &col : pivot)
+            if (!begin->count(col))
+                throw NoSuchThingException("field", col);
+    }
+}
+
+template <class Iter>
+void BaseTable::stableSort(Iter begin, Iter end, const BaseTable::Index &pivot)
+{
+    try
+    {
+        std::stable_sort(begin, end, [&pivot](const ColVal &lhs, const ColVal &rhs) {
             return BaseTable::less(lhs, rhs, pivot);
         });
     } catch (const std::out_of_range &e)

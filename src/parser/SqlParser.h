@@ -37,7 +37,7 @@ public:
     RuleColumnList = 5, RuleTableList = 6, RuleValueLists = 7, RuleValueList = 8, 
     RuleValue = 9, RuleWhereClauses = 10, RuleWhereClause = 11, RuleCol = 12, 
     RuleColAgg = 13, RuleOp = 14, RuleSetClauses = 15, RuleSetClause = 16, 
-    RuleSelector = 17, RuleSelAgg = 18, RuleOrderClause = 19
+    RuleSelector = 17, RuleSelAgg = 18, RuleOrderClause = 19, RuleGroupClause = 20
   };
 
   SqlParser(antlr4::TokenStream *input);
@@ -69,7 +69,8 @@ public:
   class SetClauseContext;
   class SelectorContext;
   class SelAggContext;
-  class OrderClauseContext; 
+  class OrderClauseContext;
+  class GroupClauseContext; 
 
   class  ProgramContext : public antlr4::ParserRuleContext {
   public:
@@ -91,6 +92,7 @@ public:
     SqlParser::ValueListsContext *valueListsContext = nullptr;;
     SqlParser::WhereClausesContext *whereClausesContext = nullptr;;
     SqlParser::SetClausesContext *setClausesContext = nullptr;;
+    SqlParser::GroupClauseContext *groupClauseContext = nullptr;;
     SqlParser::OrderClauseContext *orderClauseContext = nullptr;;
     SqlParser::TableListContext *tableListContext = nullptr;;
     SqlParser::SelAggContext *selAggContext = nullptr;;
@@ -120,6 +122,7 @@ public:
     antlr4::tree::TerminalNode *SET();
     SetClausesContext *setClauses();
     antlr4::tree::TerminalNode *SELECT();
+    GroupClauseContext *groupClause();
     OrderClauseContext *orderClause();
     TableListContext *tableList();
     SelAggContext *selAgg();
@@ -438,6 +441,21 @@ public:
   };
 
   OrderClauseContext* orderClause();
+
+  class  GroupClauseContext : public antlr4::ParserRuleContext {
+  public:
+    Tgt result;
+    SqlParser::SelectorContext *selectorContext = nullptr;;
+    GroupClauseContext(antlr4::ParserRuleContext *parent, size_t invokingState);
+    virtual size_t getRuleIndex() const override;
+    antlr4::tree::TerminalNode *GROUP();
+    antlr4::tree::TerminalNode *BY();
+    SelectorContext *selector();
+
+   
+  };
+
+  GroupClauseContext* groupClause();
 
 
 private:

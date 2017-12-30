@@ -41,14 +41,34 @@ stmt    : SHOW DATABASES ';'
           { remove($Identifier.text, $whereClauses.icm, $whereClauses.ocm); }
         | UPDATE Identifier SET setClauses WHERE whereClauses[$Identifier.text] ';'
           { update($Identifier.text, $setClauses.result, $whereClauses.icm, $whereClauses.ocm); }
-        | SELECT '*' FROM Identifier WHERE whereClauses[$Identifier.text] orderClause ';'
-          { select(None(), {$Identifier.text}, $whereClauses.icm, $whereClauses.ocm, $orderClause.result); }
-        | SELECT '*' FROM tableList WHERE whereClauses[] orderClause ';'
-          { select(None(), $tableList.result, $whereClauses.icm, $whereClauses.ocm, $orderClause.result); }
-        | SELECT selAgg FROM Identifier WHERE whereClauses[$Identifier.text] orderClause ';'
-          { select($selAgg.result, {$Identifier.text}, $whereClauses.icm, $whereClauses.ocm, $orderClause.result, $selAgg.agg); }
-        | SELECT selAgg FROM tableList WHERE whereClauses[] orderClause ';'
-          { select($selAgg.result, $tableList.result, $whereClauses.icm, $whereClauses.ocm, $orderClause.result, $selAgg.agg); }
+        | SELECT '*' FROM Identifier WHERE whereClauses[$Identifier.text] groupClause orderClause ';'
+          {
+            select(
+                None(), {$Identifier.text}, $whereClauses.icm, $whereClauses.ocm,
+                $orderClause.result, $groupClause.result
+            );
+          }
+        | SELECT '*' FROM tableList WHERE whereClauses[] groupClause orderClause ';'
+          {
+            select(
+                None(), $tableList.result, $whereClauses.icm, $whereClauses.ocm,
+                $orderClause.result, $groupClause.result
+            );
+          }
+        | SELECT selAgg FROM Identifier WHERE whereClauses[$Identifier.text] groupClause orderClause ';'
+          {
+            select(
+                $selAgg.result, {$Identifier.text}, $whereClauses.icm, $whereClauses.ocm,
+                $orderClause.result, $groupClause.result, $selAgg.agg
+            );
+          }
+        | SELECT selAgg FROM tableList WHERE whereClauses[] groupClause orderClause ';'
+          {
+            select(
+                $selAgg.result, $tableList.result, $whereClauses.icm, $whereClauses.ocm,
+                $orderClause.result, $groupClause.result, $selAgg.agg
+            );
+          }
         | CREATE INDEX Identifier '(' columnList ')' ';' // Modification: supporting multiple keys
           { createIndex($Identifier.text, $columnList.result); }
         | DROP INDEX Identifier '(' columnList ')' ';'
@@ -203,6 +223,13 @@ orderClause returns [Tgt result]
         : /* empty */
           { $result = {}; }
         | ORDER BY selector
+          { $result = $selector.result; }
+        ;
+
+groupClause returns [Tgt result]
+        : /* empty */
+          { $result = {}; }
+        | GROUP BY selector
           { $result = $selector.result; }
         ;
 

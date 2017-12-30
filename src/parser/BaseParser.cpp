@@ -74,7 +74,7 @@ void BaseParser::update(
 void BaseParser::select(
     const Optional<BaseParser::Tgt> &_targets, const std::vector<std::string> &tableList,
     const BaseParser::ICM &icm, const BaseParser::OCM &ocm,
-    const BaseParser::Tgt &orderBy, BaseParser::Agg _agg
+    const BaseParser::Tgt &_orderBy, const Tgt &_groupBy, BaseParser::Agg _agg
 )
 {
     for (const auto &i : icm)
@@ -100,30 +100,52 @@ void BaseParser::select(
             for (const auto &col : tableMgr->desc(tb))
                 targets[tb].push_back(dynamic_cast<CharType*>(col.at(TableMgr::FIELD).get())->getVal());
 
-    getFullAgg(_agg, tableList);
-    auto agg = getPlainAgg(_agg);
-
     auto result = tableMgr->select(targets, tableList, icm, ocm);
 
-    if (!orderBy.empty())
-        Table::sort(result.begin(), result.end(), getPlainTgt(getFullTgt(orderBy, tableList), tableList));
+    if (!_orderBy.empty())
+        Table::sort(result.begin(), result.end(), getPlainTgt(getFullTgt(_orderBy, tableList), tableList));
 
-    if (!agg.empty() && !result.empty())
+    if ((!_agg.empty() || !_groupBy.empty()) && !result.empty())
     {
-        const int n = result.size();
+        getFullAgg(_agg, tableList);
+        auto agg = getPlainAgg(_agg);
+
+        auto groupBy = getPlainTgt(getFullTgt(_groupBy, tableList), tableList);
+        if (!groupBy.empty())
+            Table::stableSort(result.begin(), result.end(), groupBy);
+
         std::vector<Table::ColVal> newResult;
+        std::unordered_map<std::string, int> n;
         Table::ColVal cur;
         for (const auto &col : result[0])
-            cur[col.first] = nullptr;
-        for (auto &row : result) // result will be destoryed
-            for (auto &col : row)
+            cur[col.first] = nullptr, n[col.first] = 0;
+        for (int i = 0; i < int(result.size()); i++) // Items of result will be destoryed
+        {
+            bool restart = (i + 1 == int(result.size()));
+            for (auto j = groupBy.begin(); !restart && j != groupBy.end(); j++)
+                if (!Type::equal(result[i + 1].at(*j), result[i].at(*j)))
+                    restart = true;
+
+            for (auto &col : result[i])
+            {
+                if (col.second != nullptr)
+                    n.at(col.first)++;
                 if (!agg.count(col.first))
                     cur.at(col.first) = std::move(col.second);
                 else
                     Aggregate::add(agg.at(col.first), cur.at(col.first), std::move(col.second));
-        for (const auto &item : agg)
-            Aggregate::fin(item.second, cur.at(item.first), n);
-        newResult.push_back(std::move(cur));
+            }
+            // NOTE: Can't use `result[i]` under here
+
+            if (restart)
+            {
+                for (const auto &item : agg)
+                    Aggregate::fin(item.second, cur.at(item.first), n.at(item.first));
+                newResult.push_back(std::move(cur)), cur.clear();
+                for (const auto &col : result[0])
+                    cur[col.first] = nullptr, n[col.first] = 0;
+            }
+        }
         result = std::move(newResult);
     }
 

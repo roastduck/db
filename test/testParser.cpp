@@ -750,6 +750,23 @@ TEST_F(ParserTest, aggregate)
     ));
 }
 
+TEST_F(ParserTest, aggregateNull)
+{
+    input.parse("CREATE DATABASE db; USE db;");
+    input.parse("CREATE TABLE tb(a INT, b INT, c INT);");
+    input.parse("INSERT INTO tb VALUES (1, NULL, NULL), (NULL, 3, NULL), (2, 5, NULL);");
+
+    outStream.str("");
+    input.parse("SELECT SUM(a), AVG(b) FROM tb WHERE c IS NULL;");
+    ASSERT_THAT(outStream.str(), Eq(
+        "+------+------+\n"
+        "| tb.a | tb.b |\n"
+        "+------+------+\n"
+        "| 3    | 4    |\n"
+        "+------+------+\n"
+    ));
+}
+
 TEST_F(ParserTest, aggregateMoreTypes)
 {
     input.parse("CREATE DATABASE db; USE db;");
@@ -769,5 +786,26 @@ TEST_F(ParserTest, aggregateMoreTypes)
     errStream.str("");
     input.parse("SELECT SUM(d) FROM tb WHERE d IS NOT NULL;");
     ASSERT_THAT(errStream.str(), Eq("Invalid type DATE for SUM or AVG\n"));
+}
+
+TEST_F(ParserTest, groupBy)
+{
+    input.parse("CREATE DATABASE db; USE db;");
+    input.parse("CREATE TABLE tb(a INT, b INT, c INT);");
+    input.parse("INSERT INTO tb VALUES (3,2,1), (1,3,1), (1,5,3), (1,4,7), (2,1,3);");
+    outStream.str("");
+    input.parse("SELECT SUM(a), AVG(b), c FROM tb WHERE c IS NOT NULL GROUP BY c ORDER BY c;");
+    ASSERT_THAT(errStream.str(), Eq(""));
+    ASSERT_THAT(outStream.str(), Eq(
+        "+------+------+------+\n"
+        "| tb.a | tb.b | tb.c |\n"
+        "+------+------+------+\n"
+        "| 4    | 2.5  | 1    |\n"
+        "+------+------+------+\n"
+        "| 3    | 3    | 3    |\n"
+        "+------+------+------+\n"
+        "| 1    | 4    | 7    |\n"
+        "+------+------+------+\n"
+    ));
 }
 
