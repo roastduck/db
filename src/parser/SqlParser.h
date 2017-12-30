@@ -25,10 +25,10 @@ public:
     NULL_TOKEN = 13, INSERT = 14, INTO = 15, VALUES = 16, DELETE = 17, FROM = 18, 
     WHERE = 19, UPDATE = 20, SET = 21, SELECT = 22, IS = 23, INT = 24, CHAR = 25, 
     VARCHAR = 26, DESC = 27, REFERENCES = 28, INDEX = 29, AND = 30, DATE = 31, 
-    FLOAT = 32, FOREIGN = 33, Identifier = 34, Int = 35, String = 36, SEMICOLON = 37, 
-    LEFT_PARENTHESIS = 38, RIGHT_PARENTHESIS = 39, COMMA = 40, DOT = 41, 
-    STAR = 42, LESS_THAN = 43, LESS_EQUAL = 44, GREATER_THAN = 45, GREATER_EQUAL = 46, 
-    EQUAL = 47, NOT_EQUAL = 48
+    FLOAT = 32, FOREIGN = 33, CHECK = 34, IN = 35, Identifier = 36, Int = 37, 
+    String = 38, SEMICOLON = 39, LEFT_PARENTHESIS = 40, RIGHT_PARENTHESIS = 41, 
+    COMMA = 42, DOT = 43, STAR = 44, LESS_THAN = 45, LESS_EQUAL = 46, GREATER_THAN = 47, 
+    GREATER_EQUAL = 48, EQUAL = 49, NOT_EQUAL = 50
   };
 
   enum {
@@ -129,6 +129,7 @@ public:
     Cols cols;
     PriIdx priIdx;
     Fors fors;
+    Chk chk;
     FieldListContext(antlr4::ParserRuleContext *parent, size_t invokingState);
     virtual size_t getRuleIndex() const override;
     std::vector<FieldContext *> field();
@@ -144,13 +145,15 @@ public:
     Cols * cols;
     PriIdx * priIdx;
     Fors * fors;
+    Chk * chk;
     antlr4::Token *identifierToken = nullptr;;
     SqlParser::TypeContext *typeContext = nullptr;;
     SqlParser::ColumnListContext *columnListContext = nullptr;;
     SqlParser::ColumnListContext *referrer = nullptr;;
     SqlParser::ColumnListContext *referee = nullptr;;
+    SqlParser::ValueListContext *valueListContext = nullptr;;
     FieldContext(antlr4::ParserRuleContext *parent, size_t invokingState);
-    FieldContext(antlr4::ParserRuleContext *parent, size_t invokingState, Cols * cols, PriIdx * priIdx, Fors * fors);
+    FieldContext(antlr4::ParserRuleContext *parent, size_t invokingState, Cols * cols, PriIdx * priIdx, Fors * fors, Chk * chk);
     virtual size_t getRuleIndex() const override;
     antlr4::tree::TerminalNode *Identifier();
     TypeContext *type();
@@ -162,11 +165,14 @@ public:
     ColumnListContext* columnList(size_t i);
     antlr4::tree::TerminalNode *FOREIGN();
     antlr4::tree::TerminalNode *REFERENCES();
+    antlr4::tree::TerminalNode *CHECK();
+    antlr4::tree::TerminalNode *IN();
+    ValueListContext *valueList();
 
    
   };
 
-  FieldContext* field(Cols * cols,PriIdx * priIdx,Fors * fors);
+  FieldContext* field(Cols * cols,PriIdx * priIdx,Fors * fors,Chk * chk);
 
   class  TypeContext : public antlr4::ParserRuleContext {
   public:

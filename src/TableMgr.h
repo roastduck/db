@@ -10,7 +10,10 @@
 #include "filesystem/PairHash.h"
 #include "exception/NotNullException.h"
 #include "exception/NoDBInUseException.h"
+#include "exception/CheckNullException.h"
 #include "exception/NoSuchThingException.h"
+#include "exception/CheckTooLongException.h"
+#include "exception/CheckViolatedException.h"
 #include "exception/IDAlreadyUsedException.h"
 #include "exception/TooManyFieldsException.h"
 #include "exception/TooManyIndexesException.h"
@@ -35,7 +38,7 @@ public:
 private:
     // Field names in system tables
     PageCache &cache;
-    Table sysDbs, sysTables, sysCols, sysPriIdxes, sysNonClusIdxes, sysForeigns;
+    Table sysDbs, sysTables, sysCols, sysPriIdxes, sysNonClusIdxes, sysForeigns, sysCheckEnable, sysCheck;
 
     Optional<std::string> curDb; /// Current DB in "use"
     std::unordered_map< std::string, std::unique_ptr<Table> > tables; /// All tables in `curDb`
@@ -95,7 +98,9 @@ public:
     /** Create a table
      *  @throw : NotNullException
      *  @throw : NoDBInUseException
+     *  @throw : CheckNullException
      *  @throw : NoSuchThingException
+     *  @throw : CheckTooLongException
      *  @throw : IDAlreadyUsedException
      *  @throw : TooManyFieldsException
      *  @throw : RefereeNotPrimaryException
@@ -105,7 +110,8 @@ public:
         const std::vector< std::pair<std::string, Column> > &cols,
         const Optional<Table::Index> &primary = None(),
         const std::vector<Table::Index> &nonClus = {},
-        const std::vector<ForeignKey> foreigns = {}
+        const std::vector<ForeignKey> foreigns = {},
+        const std::unordered_map<std::string, std::vector<Optional<std::string>>> chk = {}
     );
 
     /** Drop a table
@@ -151,6 +157,7 @@ public:
      *  @throw : NotNullException
      *  @throw : ValueListLengthNotMatchException
      *  @throw : ForeignKeyViolatedException
+     *  @throw : CheckViolatedException
      */
     void insert(const std::string &tbName, const std::vector< std::vector< Optional<std::string> > > &valueLists);
 
@@ -163,6 +170,7 @@ public:
     /** UPDATE <tbName> SET <setClause> WHERE <whereClause>
      *  @throw : NoSuchThingException
      *  @throw : ForeignKeyViolatedException
+     *  @throw : CheckViolatedException
      *  @throw : NotNullException
      */
     void update(

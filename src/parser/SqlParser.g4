@@ -1,7 +1,7 @@
 parser grammar SqlParser;
 
 options {
-	tokenVocab = SqlLexer;
+    tokenVocab = SqlLexer;
     superClass = BaseParser;
 }
 
@@ -30,7 +30,7 @@ stmt    : SHOW DATABASES ';'
         | SHOW TABLES ';'
           { showTables(); }
         | CREATE TABLE Identifier '(' fieldList ')' ';'
-          { createTable($Identifier.text, $fieldList.cols, $fieldList.priIdx, $fieldList.fors); }
+          { createTable($Identifier.text, $fieldList.cols, $fieldList.priIdx, $fieldList.fors, $fieldList.chk); }
         | DROP TABLE Identifier ';'
           { dropTable($Identifier.text); }
         | DESC Identifier ';'
@@ -55,12 +55,12 @@ stmt    : SHOW DATABASES ';'
           { dropIndex($Identifier.text, $columnList.result); }
         ;
 
-fieldList returns [Cols cols, PriIdx priIdx, Fors fors]
+fieldList returns [Cols cols, PriIdx priIdx, Fors fors, Chk chk]
         : /* empty */ // Modification: we allow empty set
-        | field[&$cols, &$priIdx, &$fors] (',' field[&$cols, &$priIdx, &$fors])*
+        | field[&$cols, &$priIdx, &$fors, &$chk] (',' field[&$cols, &$priIdx, &$fors, &$chk])*
         ;
 
-field[Cols *cols, PriIdx *priIdx, Fors *fors]
+field[Cols *cols, PriIdx *priIdx, Fors *fors, Chk *chk]
         : Identifier type
           { cols->push_back(std::make_pair($Identifier.text, (Column){$type.typeID, $type.length, false})); }
         | Identifier type NOT NULL_TOKEN
@@ -72,6 +72,8 @@ field[Cols *cols, PriIdx *priIdx, Fors *fors]
           }
         | FOREIGN KEY '(' referrer=columnList ')' REFERENCES Identifier '(' referee=columnList ')'
           { fors->push_back((TableMgr::ForeignKey){$Identifier.text, std::move($referrer.result), std::move($referee.result)}); }
+        | CHECK '(' Identifier IN valueList ')'
+          { (*chk)[$Identifier.text] = $valueList.result; }
         ;
 
 type returns [Type::TypeID typeID, int length = 0]

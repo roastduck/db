@@ -30,6 +30,7 @@ protected:
     typedef std::unordered_map< std::string, Table::ConsL > ICM;
     typedef TableMgr::OuterConsMap OCM;
     typedef std::unordered_map< std::string, Table::Index > Tgt;
+    typedef std::unordered_map< std::string, VList > Chk;
 
     // Short helper functions
     template <class T>
@@ -40,7 +41,7 @@ protected:
     void dropDb(const std::string &name);
     void use(const std::string &name);
     void showTables();
-    void createTable(const std::string &name, const Cols &cols, const PriIdx &priIdx, const Fors &fors);
+    void createTable(const std::string &name, const Cols &cols, const PriIdx &priIdx, const Fors &fors, const Chk &chk);
     void dropTable(const std::string &name);
     void desc(const std::string &name);
     void insert(const std::string &tbName, const VLists &valueLists);

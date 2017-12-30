@@ -32,10 +32,11 @@ void BaseParser::showTables()
 }
 
 void BaseParser::createTable(
-    const std::string &name, const BaseParser::Cols &cols, const BaseParser::PriIdx &priIdx, const BaseParser::Fors &fors
+    const std::string &name, const BaseParser::Cols &cols, const BaseParser::PriIdx &priIdx,
+    const BaseParser::Fors &fors, const BaseParser::Chk &chk
 )
 {
-    tableMgr->createTable(name, cols, priIdx, {}, fors);
+    tableMgr->createTable(name, cols, priIdx, {}, fors, chk);
     output->addInfo("Created table " + name);
 }
 

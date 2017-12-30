@@ -46,7 +46,18 @@ TableMgr::TableMgr(PageCache &_cache)
             std::make_pair("referrer", (Column){ Type::CHAR, MAX_IDENTIFIER_LEN, true }),
             std::make_pair("referee", (Column){ Type::CHAR, MAX_IDENTIFIER_LEN, true }),
             std::make_pair("referrerCols", (Column){ Type::CHAR, (MAX_IDENTIFIER_LEN + 1) * MAX_COLUMN_NUM, true })
-      }, None(), {Table::Index({DB, "referrer"}), Table::Index({DB, "referee"})})
+      }, None(), {Table::Index({DB, "referrer"}), Table::Index({DB, "referee"})}),
+      sysCheckEnable(cache, "$system.checkEnable", {
+            std::make_pair(DB, (Column){ Type::CHAR, MAX_IDENTIFIER_LEN, true }),
+            std::make_pair(TABLE, (Column){ Type::CHAR, MAX_IDENTIFIER_LEN, true }),
+            std::make_pair(FIELD, (Column){ Type::CHAR, MAX_IDENTIFIER_LEN, true })
+      }, None(), {Table::Index({DB, TABLE})}),
+      sysCheck(cache, "$system.check", {
+            std::make_pair(DB, (Column){ Type::CHAR, MAX_IDENTIFIER_LEN, true }),
+            std::make_pair(TABLE, (Column){ Type::CHAR, MAX_IDENTIFIER_LEN, true }),
+            std::make_pair(FIELD, (Column){ Type::CHAR, MAX_IDENTIFIER_LEN, true }),
+            std::make_pair("candidate", (Column){ Type::CHAR, MAX_CHECK_LEN, true })
+      }, None(), {Table::Index({DB, TABLE})})
 {}
 
 std::pair< std::string, std::vector<Table::ConLiteral> > TableMgr::genEquCon(const std::string &col, const std::string &literal)
@@ -206,7 +217,8 @@ void TableMgr::createTable(
     const std::vector< std::pair<std::string, Column> > &cols,
     const Optional<Table::Index> &primary,
     const std::vector<Table::Index> &nonClus,
-    const std::vector<TableMgr::ForeignKey> foreigns
+    const std::vector<TableMgr::ForeignKey> foreigns,
+    const std::unordered_map<std::string, std::vector<Optional<std::string>>> chk
 )
 {
     if (!curDb.isOk())
@@ -225,6 +237,15 @@ void TableMgr::createTable(
                 throw NoSuchThingException(FIELD, col);
             if (!colsMap.at(col).notNull)
                 throw NotNullException(col);
+        }
+
+    for (const auto &item : chk)
+        for (const auto &candidate : item.second)
+        {
+            if (!candidate.isOk())
+                throw CheckNullException();
+            if (candidate.ok().length() > MAX_CHECK_LEN)
+                throw CheckTooLongException();
         }
 
     for (const auto &key : foreigns)
@@ -280,6 +301,21 @@ void TableMgr::createTable(
             std::make_pair("referee", key.referee),
             std::make_pair("referrerCols", commaJoin(key.referrerCols))
         });
+    for (const auto &item : chk)
+    {
+        sysCheckEnable.insert({
+            std::make_pair(DB, curDb.ok()),
+            std::make_pair(TABLE, name),
+            std::make_pair(FIELD, item.first)
+        });
+        for (const auto &candidate : item.second)
+            sysCheck.insert({
+                std::make_pair(DB, curDb.ok()),
+                std::make_pair(TABLE, name),
+                std::make_pair(FIELD, item.first),
+                std::make_pair("candidate", candidate.ok())
+            });
+    }
 }
 
 void TableMgr::dropTable(const std::string &name)
@@ -401,6 +437,20 @@ void TableMgr::insert(const std::string &tbName, const std::vector< std::vector<
         valueMaps.push_back(std::move(valueMap));
     }
 
+    // Check CHECK constraint
+    for (const auto &colRaw : sysCheckEnable.select({FIELD}, {
+        genEquCon(DB, curDb.ok()), genEquCon(TABLE, tbName)
+    }))
+    {
+        const std::string &col = dynamic_cast<CharType*>(colRaw.at(FIELD).get())->getVal();
+        for (const auto &row : valueMaps)
+            if (
+                !row.at(col).isOk() ||
+                !nameExists(sysCheck, {DB, TABLE, FIELD, "candidate"}, {curDb.ok(), tbName, col, row.at(col).ok()})
+            )
+                throw CheckViolatedException(tbName, col);
+    }
+
     // Check foreign key
     for (const auto &foreign : sysForeigns.select({"referrerCols", "referee"}, {
         genEquCon(DB, curDb.ok()), genEquCon("referrer", tbName)
@@ -452,6 +502,19 @@ void TableMgr::update(
         bool notNull = dynamic_cast<IntType*>(col.at(NOT_NULL).get())->getVal();
         if (setClause.count(colName) && !setClause.at(colName).isOk() && notNull)
             throw NotNullException(colName);
+    }
+
+    // Check CHECK constraint
+    for (const auto &colRaw : sysCheckEnable.select({FIELD}, {
+        genEquCon(DB, curDb.ok()), genEquCon(TABLE, tbName)
+    }))
+    {
+        const std::string &col = dynamic_cast<CharType*>(colRaw.at(FIELD).get())->getVal();
+        if (
+            !setClause.at(col).isOk() ||
+            !nameExists(sysCheck, {DB, TABLE, FIELD, "candidate"}, {curDb.ok(), tbName, col, setClause.at(col).ok()})
+        )
+            throw CheckViolatedException(tbName, col);
     }
 
     // Check foreign key

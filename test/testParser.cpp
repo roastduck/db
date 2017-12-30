@@ -638,3 +638,54 @@ TEST_F(ParserTest, primaryNotUnique)
     ));
 }
 
+TEST_F(ParserTest, checkConstraint)
+{
+    input.parse("CREATE DATABASE db; USE db;");
+    input.parse("CREATE TABLE tb(a INT, b INT, CHECK (b IN (1, '2')));");
+
+    input.parse("INSERT INTO tb VALUES (0, 1), ('-1', 2);"); // OK
+    ASSERT_THAT(errStream.str(), Eq(""));
+
+    input.parse("INSERT INTO tb VALUES (0, 3);");
+    ASSERT_THAT(errStream.str(), Eq("CHECK constraint for tb(b) is violated\n"));
+
+    errStream.str("");
+    input.parse("UPDATE tb SET b = 4 WHERE a = 0;");
+    ASSERT_THAT(errStream.str(), Eq("CHECK constraint for tb(b) is violated\n"));
+
+    outStream.str("");
+    input.parse("SELECT * FROM tb WHERE a IS NOT NULL;");
+    ASSERT_THAT(outStream.str(), Eq(
+        "+------+------+\n"
+        "| tb.a | tb.b |\n"
+        "+------+------+\n"
+        "| 0    | 1    |\n"
+        "+------+------+\n"
+        "| -1   | 2    |\n"
+        "+------+------+\n"
+    ));
+}
+
+TEST_F(ParserTest, checkConstraintNull)
+{
+    input.parse("CREATE DATABASE db; USE db;");
+    input.parse("CREATE TABLE tb(a INT, CHECK (a IN (1, NULL)));");
+    ASSERT_THAT(errStream.str(), Eq("NULL in a CHECK constraint is currently not supported\n"));
+    outStream.str("");
+    input.parse("SHOW TABLES;");
+    ASSERT_THAT(outStream.str(), Eq("(Empty set)\n"));
+}
+
+TEST_F(ParserTest, checkConstraintTooLong)
+{
+    input.parse("CREATE DATABASE db; USE db;");
+    input.parse("CREATE TABLE tb(a CHAR(100), CHECK (a IN ('a', '" + std::string('x', 100) + "')));");
+    ASSERT_THAT(errStream.str(), Eq(
+        "CHECK candidate longer than " + std::to_string(MAX_CHECK_LEN) +
+        " characters is currently not supported\n")
+    );
+    outStream.str("");
+    input.parse("SHOW TABLES;");
+    ASSERT_THAT(outStream.str(), Eq("(Empty set)\n"));
+}
+
