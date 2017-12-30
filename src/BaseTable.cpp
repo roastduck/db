@@ -34,9 +34,9 @@ int BaseTable::priEntry()
 
 void BaseTable::setPriEntry(int e)
 {
-    ColVal newItem;
-    newItem["$page"] = Type::newType(Type::INT);
-    dynamic_cast<IntType*>(newItem["$page"].get())->setVal(e);
+    std::vector<std::pair<std::string, std::unique_ptr<Type>>> newItem;
+    newItem.emplace_back("$page", Type::newType(Type::INT));
+    dynamic_cast<IntType*>(newItem.back().second.get())->setVal(e);
     getDataPage(ENTRY_PAGE).setValues(0, std::move(newItem));
 }
 
@@ -49,9 +49,9 @@ int BaseTable::ncEntry(int indexID)
 void BaseTable::setNcEntry(int indexID, int e)
 {
     assert(indexID + 1 >= 1 && indexID + 1 < getDataPage(ENTRY_PAGE).getSize());
-    ColVal newItem;
-    newItem["$page"] = Type::newType(Type::INT);
-    dynamic_cast<IntType*>(newItem["$page"].get())->setVal(e);
+    std::vector<std::pair<std::string, std::unique_ptr<Type>>> newItem;
+    newItem.emplace_back("$page", Type::newType(Type::INT));
+    dynamic_cast<IntType*>(newItem.back().second.get())->setVal(e);
     getDataPage(ENTRY_PAGE).setValues(indexID + 1, std::move(newItem));
 }
 
@@ -139,7 +139,7 @@ void BaseTable::updNode(int pageID, int offset, const BaseTable::Index &index)
 {
     ListPage &page = getDataPage(pageID);
     int childID = dynamic_cast<IntType*>(page.getValue(offset, "$child").get())->getVal();
-    page.setValues(offset, getDataPage(childID).getValuesNow(0, index));
+    page.setValues(offset, getDataPage(childID).getValuesLst(0, index));
 }
 
 int BaseTable::insertAndSplit(int pageID, const BaseTable::ColVal &vals, int off)
@@ -226,7 +226,7 @@ int BaseTable::insertRecur(int pageID, const BaseTable::ColVal &vals, const Base
     if (offset < 0) offset = 0;
     int childID = dynamic_cast<IntType*>(page.getValue(offset, "$child").get())->getVal();
     if (!offset)
-        page.setValues(0, getDataPage(childID).getValuesNow(0, index));
+        page.setValues(0, getDataPage(childID).getValuesLst(0, index));
     int newChildID = insertRecur(childID, vals, index);
     if (!~newChildID)
         return -1;
@@ -552,14 +552,14 @@ void BaseTable::rotateRoot(int newChildLID, int newChildRID, const Index &index,
     else
         setPriEntry(rootID);
 
-    ColVal newItemL = newChildL.getValuesNow(0, index);
-    newItemL["$child"] = Type::newType(Type::INT);
-    dynamic_cast<IntType*>(newItemL["$child"].get())->setVal(newChildLID);
+    auto newItemL = newChildL.getValuesLst(0, index);
+    newItemL.emplace_back("$child", Type::newType(Type::INT));
+    dynamic_cast<IntType*>(newItemL.back().second.get())->setVal(newChildLID);
     root.setValues(0, newItemL);
 
-    ColVal newItemR = newChildR.getValuesNow(0, index);
-    newItemR["$child"] = Type::newType(Type::INT);
-    dynamic_cast<IntType*>(newItemR["$child"].get())->setVal(newChildRID);
+    auto newItemR = newChildR.getValuesLst(0, index);
+    newItemR.emplace_back("$child", Type::newType(Type::INT));
+    dynamic_cast<IntType*>(newItemR.back().second.get())->setVal(newChildRID);
     root.setValues(1, newItemR);
 
     newChildL.setPrev(-1), newChildL.setNext(newChildRID);

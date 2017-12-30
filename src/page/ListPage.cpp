@@ -56,6 +56,16 @@ std::unordered_map< std::string, std::unique_ptr<Type> > ListPage::getValuesNow(
     return ret;
 }
 
+std::vector<std::pair<std::string, std::unique_ptr<Type>>> ListPage::getValuesLst(int rank, const std::vector<std::string> &names)
+{
+    assert(rank >= 0 && rank < getMaxSize());
+    std::vector<std::pair<std::string, std::unique_ptr<Type>>> ret;
+    ret.reserve(names.size());
+    for (const std::string &name : names)
+        ret.emplace_back(name, getValue(rank, name));
+    return ret;
+}
+
 LazyMap<std::string, std::unique_ptr<Type>> ListPage::getValues(int rank)
 {
     assert(rank >= 0 && rank < getMaxSize());
@@ -87,12 +97,6 @@ void ListPage::setValue(int rank, const std::string &name, const std::unique_ptr
     {
         throw NoSuchThingException("field", name);
     }
-}
-
-void ListPage::setValues(int rank, const std::unordered_map< std::string, std::unique_ptr<Type> > &values)
-{
-    for (const auto &pair : values)
-        setValue(rank, pair.first, pair.second);
 }
 
 void ListPage::copy(int rank1, int rank2)

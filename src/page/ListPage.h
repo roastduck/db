@@ -99,6 +99,7 @@ public:
     std::unique_ptr<Type> getValue(int rank, const std::string &name);
 
     std::unordered_map< std::string, std::unique_ptr<Type> > getValuesNow(int rank, const std::vector<std::string> &names);
+    std::vector<std::pair<std::string, std::unique_ptr<Type>>> getValuesLst(int rank, const std::vector<std::string> &names);
     LazyMap<std::string, std::unique_ptr<Type>> getValues(int rank); /// Lazy version of getValuesNow
 
     /** Set a column to record #rank
@@ -109,7 +110,8 @@ public:
      */
     void setValue(int rank, const std::string &name, const std::unique_ptr<Type> &value);
 
-    void setValues(int rank, const std::unordered_map< std::string, std::unique_ptr<Type> > &values);
+    template <class Pairs>
+    void setValues(int rank, const Pairs &values);
 
     /** Copy a record from rank1 to rank2
      */
@@ -124,5 +126,12 @@ public:
      */
     static void copy(ListPage *page1, ListPage *page2);
 };
+
+template <class Pairs>
+void ListPage::setValues(int rank, const Pairs &values)
+{
+    for (const auto &pair : values)
+        setValue(rank, pair.first, pair.second);
+}
 
 #endif // LIST_PAGE_H_
