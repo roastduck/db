@@ -49,13 +49,15 @@ protected:
      *  This function treats null as negative infinity
      *  @return true for `lhs` < `rhs`
      */
-    static bool less(const ColVal &lhs, const ColVal &rhs, const Index &order);
+    template <class Map1, class Map2>
+    static bool less(const Map1 &lhs, const Map2 &rhs, const Index &order);
 
     /** Compare two batches of columns in lexicological order specified in `order`
      *  This function treats null as negative infinity
      *  @return true for `lhs` == `rhs`
      */
-    static bool equal(const ColVal &lhs, const ColVal &rhs, const Index &order);
+    template <class Map1, class Map2>
+    static bool equal(const Map1 &lhs, const Map2 &rhs, const Index &order);
 
 private:
     const int ENTRY_PAGE = 0;
@@ -183,5 +185,43 @@ public:
      */
     void delIndex(int indexID);
 };
+
+template <class Map1, class Map2>
+bool BaseTable::less(const Map1 &lhs, const Map2 &rhs, const BaseTable::Index &order)
+{
+    for (const std::string &name : order)
+    {
+        const std::unique_ptr<Type> &l = lhs.at(name), &r = rhs.at(name);
+        if (l == nullptr && r == nullptr)
+            continue;
+        if (l == nullptr)
+            return true;
+        if (r == nullptr)
+            return false;
+        if (*l < *r)
+            return true;
+        if (*l > *r)
+            return false;
+    }
+    return false;
+}
+
+template <class Map1, class Map2>
+bool BaseTable::equal(const Map1 &lhs, const Map2 &rhs, const BaseTable::Index &order)
+{
+    for (const std::string &name : order)
+    {
+        const std::unique_ptr<Type> &l = lhs.at(name), &r = rhs.at(name);
+        if (l == nullptr && r == nullptr)
+            continue;
+        if (l == nullptr)
+            return false;
+        if (r == nullptr)
+            return false;
+        if (*l != *r)
+            return false;
+    }
+    return true;
+}
 
 #endif // BASE_TABLE_H_

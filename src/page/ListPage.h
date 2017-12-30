@@ -3,6 +3,7 @@
 
 #include <unordered_map>
 #include "../Column.h"
+#include "../LazyMap.h"
 #include "../BasePage.h"
 #include "../exception/NoSuchThingException.h"
 
@@ -97,7 +98,8 @@ public:
      */
     std::unique_ptr<Type> getValue(int rank, const std::string &name);
 
-    std::unordered_map< std::string, std::unique_ptr<Type> > getValues(int rank, const std::vector<std::string> &names);
+    std::unordered_map< std::string, std::unique_ptr<Type> > getValuesNow(int rank, const std::vector<std::string> &names);
+    LazyMap<std::string, std::unique_ptr<Type>> getValues(int rank); /// Lazy version of getValuesNow
 
     /** Set a column to record #rank
      *  @param rank : Record position

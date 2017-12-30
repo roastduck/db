@@ -135,47 +135,11 @@ bool BaseTable::meetCons(ListPage &page, int rank, const BaseTable::ConsVal &con
     return true;
 }
 
-bool BaseTable::less(const BaseTable::ColVal &lhs, const BaseTable::ColVal &rhs, const BaseTable::Index &order)
-{
-    for (const std::string &name : order)
-    {
-        const std::unique_ptr<Type> &l = lhs.at(name), &r = rhs.at(name);
-        if (l == nullptr && r == nullptr)
-            continue;
-        if (l == nullptr)
-            return true;
-        if (r == nullptr)
-            return false;
-        if (*l < *r)
-            return true;
-        if (*l > *r)
-            return false;
-    }
-    return false;
-}
-
-bool BaseTable::equal(const BaseTable::ColVal &lhs, const BaseTable::ColVal &rhs, const BaseTable::Index &order)
-{
-    for (const std::string &name : order)
-    {
-        const std::unique_ptr<Type> &l = lhs.at(name), &r = rhs.at(name);
-        if (l == nullptr && r == nullptr)
-            continue;
-        if (l == nullptr)
-            return false;
-        if (r == nullptr)
-            return false;
-        if (*l != *r)
-            return false;
-    }
-    return true;
-}
-
 void BaseTable::updNode(int pageID, int offset, const BaseTable::Index &index)
 {
     ListPage &page = getDataPage(pageID);
     int childID = dynamic_cast<IntType*>(page.getValue(offset, "$child").get())->getVal();
-    page.setValues(offset, getDataPage(childID).getValues(0, index));
+    page.setValues(offset, getDataPage(childID).getValuesNow(0, index));
 }
 
 int BaseTable::insertAndSplit(int pageID, const BaseTable::ColVal &vals, int off)
@@ -214,15 +178,15 @@ int BaseTable::insertRecur(int pageID, const BaseTable::ColVal &vals, const Base
     ListPage &page = getDataPage(pageID);
     int size = page.getSize();
     int offset = page.getSize() - 1; // In most cases, the latest data has the largest ID
-    if (offset >= 0 && less(vals, page.getValues(offset, index), index))
+    if (offset >= 0 && less(vals, page.getValues(offset), index))
         offset = binSearch(0, size, [&vals, &page, &index](int id) {
-            return !less(vals, page.getValues(id, index), index);
+            return !less(vals, page.getValues(id), index);
         }) - 1;
     // `offset` is the last that <= `vals`
 
     if (page.getIdent() == RECORD) // leaf node of primary index
     {
-        if (offset >= 0 && equal(page.getValues(offset, index), vals, index))
+        if (offset >= 0 && equal(page.getValues(offset), vals, index))
             throw NotUniqueException(index);
         return insertAndSplit(pageID, vals, offset + 1);
     }
@@ -238,7 +202,7 @@ int BaseTable::insertRecur(int pageID, const BaseTable::ColVal &vals, const Base
                 newRef[name] = Type::newFromCopy(vals.at(name));
         else
             newRef["$page"] = Type::newFromCopy(vals.at("$page"));
-        if (offset >= 0 && equal(page.getValues(offset, index), vals, index))
+        if (offset >= 0 && equal(page.getValues(offset), vals, index))
         {
             // insert into the ref page
             int childID = dynamic_cast<IntType*>(page.getValue(offset, "$child").get())->getVal();
@@ -262,11 +226,11 @@ int BaseTable::insertRecur(int pageID, const BaseTable::ColVal &vals, const Base
     if (offset < 0) offset = 0;
     int childID = dynamic_cast<IntType*>(page.getValue(offset, "$child").get())->getVal();
     if (!offset)
-        page.setValues(0, getDataPage(childID).getValues(0, index));
+        page.setValues(0, getDataPage(childID).getValuesNow(0, index));
     int newChildID = insertRecur(childID, vals, index);
     if (!~newChildID)
         return -1;
-    ColVal newItem = getDataPage(newChildID).getValues(0, index);
+    ColVal newItem = getDataPage(newChildID).getValuesNow(0, index);
     newItem["$child"] = Type::newType(Type::INT);
     dynamic_cast<IntType*>(newItem["$child"].get())->setVal(newChildID);
     return insertAndSplit(pageID, newItem, offset + 1);
@@ -354,21 +318,21 @@ Optional<int> BaseTable::removeRecur(int pageID, const BaseTable::ColVal &vals, 
     ListPage &page = getDataPage(pageID);
     int size = page.getSize();
     int offset = binSearch(0, size, [&vals, &page, &index](int id) {
-        return !less(vals, page.getValues(id, index), index);
+        return !less(vals, page.getValues(id), index);
     }) - 1;
     // `offset` is the last that <= `vals`
     if (!~offset) return None();
 
     if (page.getIdent() == RECORD)
     {
-        assert(equal(page.getValues(offset, index), vals, index)); // becase we are removing selected items
+        assert(equal(page.getValues(offset), vals, index)); // becase we are removing selected items
         return removeAndMerge(pageID, offset);
     }
     int childID = dynamic_cast<IntType*>(page.getValue(offset, "$child").get())->getVal();
     ListPage &child = getDataPage(childID);
     if (child.getIdent() == REF)
     {
-        assert(equal(page.getValues(offset, index), vals, index)); // becase we are removing selected items
+        assert(equal(page.getValues(offset), vals, index)); // becase we are removing selected items
         ConsVal c;
         for (const std::string &name : primary.isOk() ? primary.ok() : Index({"$page"}))
         {
@@ -440,11 +404,11 @@ BaseTable::Pos BaseTable::findFirst(int pageID, const BaseTable::ColVal &vals, c
         int size = page.getSize();
         int offset = equal ?
                 binSearch(1, size, [&vals, &page, &index](int id) {
-                    return less(page.getValues(id, index), vals, index);
+                    return less(page.getValues(id), vals, index);
                 }) - 1 // Yes, -1 here because we will recurse
             :
                 binSearch(1, size, [&vals, &page, &index](int id) {
-                    return !less(vals, page.getValues(id, index), index);
+                    return !less(vals, page.getValues(id), index);
                 }) - 1;
         if (page.getIdent() == RECORD)
         {
@@ -469,10 +433,10 @@ BaseTable::Pos BaseTable::findFirst(int pageID, const BaseTable::ColVal &vals, c
     {
         if (equal)
         {
-            if (less(getDataPage(ret.first).getValues(ret.second, index), vals, index))
+            if (less(getDataPage(ret.first).getValues(ret.second), vals, index))
                 ret.second++;
         } else
-            if (!less(vals, getDataPage(ret.first).getValues(ret.second, index), index))
+            if (!less(vals, getDataPage(ret.first).getValues(ret.second), index))
                 ret.second++;
     }
     assert(ret.second <= recPage.getSize());
@@ -489,7 +453,7 @@ void BaseTable::addToSelection(
     ListPage &page = getDataPage(pageID);
     if (meetCons(page, off, constraints, oCons))
     {
-        ret.push_back(page.getValues(off, targets));
+        ret.push_back(page.getValuesNow(off, targets));
         if (!primary.isOk()) // Useful for non-clustered indexes removal
         {
             auto aux = Type::newType(Type::INT);
@@ -515,9 +479,9 @@ void BaseTable::selectLinear(
         for (int i = st; i < en; i++)
         {
             addToSelection(ret, pageID, i, targets, constraints, oCons);
-            if (stopEq && less(stopV, page.getValues(i, stopIdx), stopIdx))
+            if (stopEq && less(stopV, page.getValues(i), stopIdx))
                 return;
-            if (!stopEq && !less(page.getValues(i, stopIdx), stopV, stopIdx))
+            if (!stopEq && !less(page.getValues(i), stopV, stopIdx))
                 return;
         }
         pageID = page.getNext();
@@ -548,12 +512,12 @@ void BaseTable::selectRefLinear(
                 for (int j = 0; j < refPage.getSize(); j++)
                     if (primary.isOk())
                     {
-                        auto key = refPage.getValues(j, primary.ok());
+                        auto key = refPage.getValuesNow(j, primary.ok());
                         Pos item = findFirst(priEntry(), key, primary.ok(), true);
                         assert(item.first >= 0); // This item must exist
                         ListPage &recPage = getDataPage(item.first);
                         if (meetCons(recPage, item.second, constraints, oCons))
-                            ret.push_back(recPage.getValues(item.second, targets));
+                            ret.push_back(recPage.getValuesNow(item.second, targets));
                     } else
                     {
                         int key = dynamic_cast<IntType*>(refPage.getValue(j, "$page").get())->getVal();
@@ -568,9 +532,9 @@ void BaseTable::selectRefLinear(
                     }
                 childID = refPage.getNext();
             }
-            if (stopEq && less(stopV, page.getValues(i, stopIdx), stopIdx))
+            if (stopEq && less(stopV, page.getValues(i), stopIdx))
                 return;
-            if (!stopEq && !less(page.getValues(i, stopIdx), stopV, stopIdx))
+            if (!stopEq && !less(page.getValues(i), stopV, stopIdx))
                 return;
         }
         pageID = page.getNext();
@@ -588,12 +552,12 @@ void BaseTable::rotateRoot(int newChildLID, int newChildRID, const Index &index,
     else
         setPriEntry(rootID);
 
-    ColVal newItemL = newChildL.getValues(0, index);
+    ColVal newItemL = newChildL.getValuesNow(0, index);
     newItemL["$child"] = Type::newType(Type::INT);
     dynamic_cast<IntType*>(newItemL["$child"].get())->setVal(newChildLID);
     root.setValues(0, newItemL);
 
-    ColVal newItemR = newChildR.getValues(0, index);
+    ColVal newItemR = newChildR.getValuesNow(0, index);
     newItemR["$child"] = Type::newType(Type::INT);
     dynamic_cast<IntType*>(newItemR["$child"].get())->setVal(newChildRID);
     root.setValues(1, newItemR);
@@ -792,7 +756,7 @@ int BaseTable::addIndex(const BaseTable::Index &index)
         assert(page.getIdent() == RECORD);
         for (int i = 0; i < page.getSize(); i++)
         {
-            auto valWithPos = page.getValues(i, allColumns);
+            auto valWithPos = page.getValuesNow(i, allColumns);
             if (!primary.isOk())
             {
                 valWithPos["$page"] = Type::newType(Type::INT);

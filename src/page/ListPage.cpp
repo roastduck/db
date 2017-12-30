@@ -45,7 +45,7 @@ std::unique_ptr<Type> ListPage::getValue(int rank, const std::string &name)
     }
 }
 
-std::unordered_map< std::string, std::unique_ptr<Type> > ListPage::getValues(int rank, const std::vector<std::string> &names)
+std::unordered_map< std::string, std::unique_ptr<Type> > ListPage::getValuesNow(int rank, const std::vector<std::string> &names)
 {
     assert(rank >= 0 && rank < getMaxSize());
     std::unordered_map< std::string, std::unique_ptr<Type> > ret;
@@ -54,6 +54,14 @@ std::unordered_map< std::string, std::unique_ptr<Type> > ListPage::getValues(int
     for (const std::string &name : names)
         ret[name] = getValue(rank, name);
     return ret;
+}
+
+LazyMap<std::string, std::unique_ptr<Type>> ListPage::getValues(int rank)
+{
+    assert(rank >= 0 && rank < getMaxSize());
+    return LazyMap<std::string, std::unique_ptr<Type>>([this, rank](const std::string &name){
+        return getValue(rank, name);
+    });
 }
 
 void ListPage::setValue(int rank, const std::string &name, const std::unique_ptr<Type> &value)
