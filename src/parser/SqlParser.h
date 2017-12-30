@@ -25,19 +25,19 @@ public:
     NULL_TOKEN = 13, INSERT = 14, INTO = 15, VALUES = 16, DELETE = 17, FROM = 18, 
     WHERE = 19, UPDATE = 20, SET = 21, SELECT = 22, IS = 23, INT = 24, CHAR = 25, 
     VARCHAR = 26, DESC = 27, REFERENCES = 28, INDEX = 29, AND = 30, DATE = 31, 
-    FLOAT = 32, FOREIGN = 33, CHECK = 34, IN = 35, ORDER = 36, BY = 37, 
-    Identifier = 38, Int = 39, String = 40, SEMICOLON = 41, LEFT_PARENTHESIS = 42, 
-    RIGHT_PARENTHESIS = 43, COMMA = 44, DOT = 45, STAR = 46, LESS_THAN = 47, 
-    LESS_EQUAL = 48, GREATER_THAN = 49, GREATER_EQUAL = 50, EQUAL = 51, 
-    NOT_EQUAL = 52
+    FLOAT = 32, FOREIGN = 33, CHECK = 34, IN = 35, ORDER = 36, GROUP = 37, 
+    BY = 38, SUM = 39, AVG = 40, MAX = 41, MIN = 42, Identifier = 43, Int = 44, 
+    String = 45, SEMICOLON = 46, LEFT_PARENTHESIS = 47, RIGHT_PARENTHESIS = 48, 
+    COMMA = 49, DOT = 50, STAR = 51, LESS_THAN = 52, LESS_EQUAL = 53, GREATER_THAN = 54, 
+    GREATER_EQUAL = 55, EQUAL = 56, NOT_EQUAL = 57
   };
 
   enum {
     RuleProgram = 0, RuleStmt = 1, RuleFieldList = 2, RuleField = 3, RuleType = 4, 
     RuleColumnList = 5, RuleTableList = 6, RuleValueLists = 7, RuleValueList = 8, 
     RuleValue = 9, RuleWhereClauses = 10, RuleWhereClause = 11, RuleCol = 12, 
-    RuleOp = 13, RuleSetClauses = 14, RuleSetClause = 15, RuleSelector = 16, 
-    RuleOrderClause = 17
+    RuleColAgg = 13, RuleOp = 14, RuleSetClauses = 15, RuleSetClause = 16, 
+    RuleSelector = 17, RuleSelAgg = 18, RuleOrderClause = 19
   };
 
   SqlParser(antlr4::TokenStream *input);
@@ -63,10 +63,12 @@ public:
   class WhereClausesContext;
   class WhereClauseContext;
   class ColContext;
+  class ColAggContext;
   class OpContext;
   class SetClausesContext;
   class SetClauseContext;
   class SelectorContext;
+  class SelAggContext;
   class OrderClauseContext; 
 
   class  ProgramContext : public antlr4::ParserRuleContext {
@@ -91,7 +93,7 @@ public:
     SqlParser::SetClausesContext *setClausesContext = nullptr;;
     SqlParser::OrderClauseContext *orderClauseContext = nullptr;;
     SqlParser::TableListContext *tableListContext = nullptr;;
-    SqlParser::SelectorContext *selectorContext = nullptr;;
+    SqlParser::SelAggContext *selAggContext = nullptr;;
     SqlParser::ColumnListContext *columnListContext = nullptr;;
     StmtContext(antlr4::ParserRuleContext *parent, size_t invokingState);
     virtual size_t getRuleIndex() const override;
@@ -120,7 +122,7 @@ public:
     antlr4::tree::TerminalNode *SELECT();
     OrderClauseContext *orderClause();
     TableListContext *tableList();
-    SelectorContext *selector();
+    SelAggContext *selAgg();
     antlr4::tree::TerminalNode *INDEX();
     ColumnListContext *columnList();
 
@@ -331,6 +333,27 @@ public:
 
   ColContext* col(std::string defaultTb);
 
+  class  ColAggContext : public antlr4::ParserRuleContext {
+  public:
+    std::string defaultTb;
+    std::string tb;
+    std::string c;
+    Aggregate::AggType agg;
+    SqlParser::ColContext *colContext = nullptr;;
+    ColAggContext(antlr4::ParserRuleContext *parent, size_t invokingState);
+    ColAggContext(antlr4::ParserRuleContext *parent, size_t invokingState, std::string defaultTb);
+    virtual size_t getRuleIndex() const override;
+    ColContext *col();
+    antlr4::tree::TerminalNode *SUM();
+    antlr4::tree::TerminalNode *AVG();
+    antlr4::tree::TerminalNode *MIN();
+    antlr4::tree::TerminalNode *MAX();
+
+   
+  };
+
+  ColAggContext* colAgg(std::string defaultTb);
+
   class  OpContext : public antlr4::ParserRuleContext {
   public:
     Table::ConDir dir;
@@ -385,6 +408,21 @@ public:
   };
 
   SelectorContext* selector();
+
+  class  SelAggContext : public antlr4::ParserRuleContext {
+  public:
+    Tgt result;
+    Agg agg;
+    SqlParser::ColAggContext *colAggContext = nullptr;;
+    SelAggContext(antlr4::ParserRuleContext *parent, size_t invokingState);
+    virtual size_t getRuleIndex() const override;
+    std::vector<ColAggContext *> colAgg();
+    ColAggContext* colAgg(size_t i);
+
+   
+  };
+
+  SelAggContext* selAgg();
 
   class  OrderClauseContext : public antlr4::ParserRuleContext {
   public:

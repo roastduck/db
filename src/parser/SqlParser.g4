@@ -45,10 +45,10 @@ stmt    : SHOW DATABASES ';'
           { select(None(), {$Identifier.text}, $whereClauses.icm, $whereClauses.ocm, $orderClause.result); }
         | SELECT '*' FROM tableList WHERE whereClauses[] orderClause ';'
           { select(None(), $tableList.result, $whereClauses.icm, $whereClauses.ocm, $orderClause.result); }
-        | SELECT selector FROM Identifier WHERE whereClauses[$Identifier.text] orderClause ';'
-          { select($selector.result, {$Identifier.text}, $whereClauses.icm, $whereClauses.ocm, $orderClause.result); }
-        | SELECT selector FROM tableList WHERE whereClauses[] orderClause ';'
-          { select($selector.result, $tableList.result, $whereClauses.icm, $whereClauses.ocm, $orderClause.result); }
+        | SELECT selAgg FROM Identifier WHERE whereClauses[$Identifier.text] orderClause ';'
+          { select($selAgg.result, {$Identifier.text}, $whereClauses.icm, $whereClauses.ocm, $orderClause.result, $selAgg.agg); }
+        | SELECT selAgg FROM tableList WHERE whereClauses[] orderClause ';'
+          { select($selAgg.result, $tableList.result, $whereClauses.icm, $whereClauses.ocm, $orderClause.result, $selAgg.agg); }
         | CREATE INDEX Identifier '(' columnList ')' ';' // Modification: supporting multiple keys
           { createIndex($Identifier.text, $columnList.result); }
         | DROP INDEX Identifier '(' columnList ')' ';'
@@ -142,6 +142,19 @@ col[std::string defaultTb] returns [std::string tb, std::string c]
           { if ($tb.empty()) $tb = $defaultTb; }
         ;
 
+colAgg[std::string defaultTb] returns [std::string tb, std::string c, Aggregate::AggType agg]
+        : col[defaultTb]
+          { $tb = $col.tb, $c = $col.c, $agg = Aggregate::NONE; }
+        | SUM '(' col[defaultTb] ')'
+          { $tb = $col.tb, $c = $col.c, $agg = Aggregate::SUM; }
+        | AVG '(' col[defaultTb] ')'
+          { $tb = $col.tb, $c = $col.c, $agg = Aggregate::AVG; }
+        | MIN '(' col[defaultTb] ')'
+          { $tb = $col.tb, $c = $col.c, $agg = Aggregate::MIN; }
+        | MAX '(' col[defaultTb] ')'
+          { $tb = $col.tb, $c = $col.c, $agg = Aggregate::MAX; }
+        ;
+
 op returns [Table::ConDir dir]
         : '<'
           { $dir = Table::LT; }
@@ -168,6 +181,22 @@ setClause returns [std::string k, Optional<std::string> v]
 
 selector returns [Tgt result]
         : col[""] {$result[$col.tb].push_back($col.c);} (',' col[""] {$result[$col.tb].push_back($col.c);})*
+        ;
+
+selAgg returns [Tgt result, Agg agg]
+        : colAgg[""]
+          {
+            $result[$colAgg.tb].push_back($colAgg.c);
+            if ($colAgg.agg != Aggregate::NONE)
+                $agg[$colAgg.tb][$colAgg.c] = $colAgg.agg;
+          }
+          (',' colAgg[""]
+          {
+            $result[$colAgg.tb].push_back($colAgg.c);
+            if ($colAgg.agg != Aggregate::NONE)
+                $agg[$colAgg.tb][$colAgg.c] = $colAgg.agg;
+          }
+          )*
         ;
 
 orderClause returns [Tgt result]

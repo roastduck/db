@@ -6,6 +6,7 @@
 #include "../Table.h"
 #include "../Column.h"
 #include "../TableMgr.h"
+#include "../Aggregate.h"
 #include "../io/Output.h"
 #include "antlr4-runtime.h"
 #include "../exception/IllegalFieldException.h"
@@ -30,6 +31,8 @@ protected:
     typedef std::unordered_map< std::string, Table::ConsL > ICM;
     typedef TableMgr::OuterConsMap OCM;
     typedef std::unordered_map< std::string, Table::Index > Tgt;
+    typedef std::unordered_map< std::string, std::unordered_map<std::string, Aggregate::AggType> > Agg;
+    typedef std::unordered_map< std::string, Aggregate::AggType > PlainAgg;
     typedef std::unordered_map< std::string, VList > Chk;
 
     // Short helper functions
@@ -50,7 +53,7 @@ protected:
     /** @param _targets = None means SELECT * */
     void select(
         const Optional<Tgt> &_targets, const std::vector<std::string> &tableList, const ICM &icm, const OCM &ocm,
-        const Tgt &orderBy
+        const Tgt &orderBy, Agg _agg = {}
     );
     void createIndex(const std::string &tbName, const Table::Index &index);
     void dropIndex(const std::string &tbName, const Table::Index &index);
@@ -60,6 +63,8 @@ private:
     Table::OuterCons getTableOC(const std::string &tbName, const OCM &ocm);
     Tgt getFullTgt(Tgt targets, const std::vector<std::string> &tableList);
     Table::Index getPlainTgt(const Tgt &targets, const std::vector<std::string> &tableList);
+    void getFullAgg(Agg &agg, const std::vector<std::string> &tableList);
+    PlainAgg getPlainAgg(const Agg &agg);
 
 public:
     void setTableMgr(TableMgr *_tableMgr) { tableMgr = _tableMgr; }

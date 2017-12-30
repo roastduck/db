@@ -4,6 +4,11 @@
 #include <cassert>
 #include <string>
 #include <vector>
+#include <memory>
+#include "Type.h"
+#include "type/IntType.h"
+#include "type/CharType.h"
+#include "type/FloatType.h"
 
 std::string commaJoin(const std::vector<std::string> &strs);
 std::vector<std::string> commaSep(const std::string &str);
@@ -25,6 +30,21 @@ int binSearch(int begin, int end, const Callback &tooLow)
     assert(l - 1 < begin || tooLow(l - 1));
     assert(l >= end || !tooLow(l));
     return l;
+}
+
+inline IntType &asInt(const std::unique_ptr<Type> &p)
+{
+    return *dynamic_cast<IntType*>(p.get());
+}
+
+inline FloatType &asFloat(const std::unique_ptr<Type> &p)
+{
+    return *dynamic_cast<FloatType*>(p.get());
+}
+
+inline CharType &asChar(const std::unique_ptr<Type> &p)
+{
+    return *dynamic_cast<CharType*>(p.get());
 }
 
 #endif // UTILS_H_

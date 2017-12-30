@@ -723,3 +723,51 @@ TEST_F(ParserTest, orderByNonExistingField)
     ASSERT_THAT(errStream.str(), Eq("No such field named tb.b\n"));
 }
 
+TEST_F(ParserTest, aggregate)
+{
+    input.parse("CREATE DATABASE db; USE db;");
+    input.parse("CREATE TABLE tb(a INT, b INT);");
+    input.parse("INSERT INTO tb VALUES (1, 1), (2, 3), (3, 5);");
+
+    outStream.str("");
+    input.parse("SELECT SUM(a), AVG(b) FROM tb WHERE a IS NOT NULL;");
+    ASSERT_THAT(outStream.str(), Eq(
+        "+------+------+\n"
+        "| tb.a | tb.b |\n"
+        "+------+------+\n"
+        "| 6    | 3    |\n"
+        "+------+------+\n"
+    ));
+
+    outStream.str("");
+    input.parse("SELECT MAX(a), MIN(b) FROM tb WHERE a IS NOT NULL;");
+    ASSERT_THAT(outStream.str(), Eq(
+        "+------+------+\n"
+        "| tb.a | tb.b |\n"
+        "+------+------+\n"
+        "| 3    | 1    |\n"
+        "+------+------+\n"
+    ));
+}
+
+TEST_F(ParserTest, aggregateMoreTypes)
+{
+    input.parse("CREATE DATABASE db; USE db;");
+    input.parse("CREATE TABLE tb(d DATE);");
+    input.parse("INSERT INTO tb VALUES ('2017-1-5'), ('2017-12-17'), ('2017-3-9');");
+
+    outStream.str("");
+    input.parse("SELECT MAX(d) FROM tb WHERE d IS NOT NULL;");
+    ASSERT_THAT(outStream.str(), Eq(
+        "+------------+\n"
+        "| tb.d       |\n"
+        "+------------+\n"
+        "| 2017-12-17 |\n"
+        "+------------+\n"
+    ));
+
+    errStream.str("");
+    input.parse("SELECT SUM(d) FROM tb WHERE d IS NOT NULL;");
+    ASSERT_THAT(errStream.str(), Eq("Invalid type DATE for SUM or AVG\n"));
+}
+

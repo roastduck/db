@@ -74,7 +74,12 @@ FOREIGN:    F O R E I G N;
 CHECK:      C H E C K;
 IN:         I N;
 ORDER:      O R D E R;
+GROUP:      G R O U P;
 BY:         B Y;
+SUM:        S U M;
+AVG:        A V G;
+MAX:        M A X;
+MIN:        M I N;
 
 Identifier: [A-Za-z][_0-9A-Za-z]*
     { if (getText().length() > MAX_IDENTIFIER_LEN) throw IdentifierTooLongException(getText()); }

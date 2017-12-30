@@ -74,7 +74,7 @@ void BaseParser::update(
 void BaseParser::select(
     const Optional<BaseParser::Tgt> &_targets, const std::vector<std::string> &tableList,
     const BaseParser::ICM &icm, const BaseParser::OCM &ocm,
-    const Tgt &orderBy
+    const BaseParser::Tgt &orderBy, BaseParser::Agg _agg
 )
 {
     for (const auto &i : icm)
@@ -100,9 +100,32 @@ void BaseParser::select(
             for (const auto &col : tableMgr->desc(tb))
                 targets[tb].push_back(dynamic_cast<CharType*>(col.at(TableMgr::FIELD).get())->getVal());
 
+    getFullAgg(_agg, tableList);
+    auto agg = getPlainAgg(_agg);
+
     auto result = tableMgr->select(targets, tableList, icm, ocm);
+
     if (!orderBy.empty())
         Table::sort(result.begin(), result.end(), getPlainTgt(getFullTgt(orderBy, tableList), tableList));
+
+    if (!agg.empty() && !result.empty())
+    {
+        const int n = result.size();
+        std::vector<Table::ColVal> newResult;
+        Table::ColVal cur;
+        for (const auto &col : result[0])
+            cur[col.first] = nullptr;
+        for (auto &row : result) // result will be destoryed
+            for (auto &col : row)
+                if (!agg.count(col.first))
+                    cur.at(col.first) = std::move(col.second);
+                else
+                    Aggregate::add(agg.at(col.first), cur.at(col.first), std::move(col.second));
+        for (const auto &item : agg)
+            Aggregate::fin(item.second, cur.at(item.first), n);
+        newResult.push_back(std::move(cur));
+        result = std::move(newResult);
+    }
 
     output->addResult(result, getPlainTgt(targets, tableList));
 }
@@ -167,6 +190,30 @@ Table::Index BaseParser::getPlainTgt(const BaseParser::Tgt &targets, const std::
         if (targets.count(tb))
             for (const auto &col : targets.at(tb))
                 ret.push_back(tb + "." + col);
+    return ret;
+}
+
+void BaseParser::getFullAgg(BaseParser::Agg &agg, const std::vector<std::string> &tableList)
+{
+    if (agg.count(""))
+    {
+        if (tableList.size() == 1)
+        {
+            for (const auto &item : agg.at(""))
+                agg[tableList[0]][item.first] = item.second;
+            agg.erase("");
+        } else
+            for (const auto &item : agg.at(""))
+                throw IllegalFieldException("", item.first);
+    }
+}
+
+BaseParser::PlainAgg BaseParser::getPlainAgg(const BaseParser::Agg &agg)
+{
+    PlainAgg ret;
+    for (const auto &item : agg)
+        for (const auto &col : item.second)
+            ret[item.first + "." + col.first] = col.second;
     return ret;
 }
 
