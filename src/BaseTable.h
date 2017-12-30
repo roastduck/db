@@ -8,6 +8,7 @@
 #include "Column.h"
 #include "TablePages.h"
 #include "exception/NotUniqueException.h"
+#include "exception/NoSuchThingException.h"
 
 /** All the operations on a table
  */
@@ -58,6 +59,13 @@ protected:
      */
     template <class Map1, class Map2>
     static bool equal(const Map1 &lhs, const Map2 &rhs, const Index &order);
+
+public:
+    /** Sort a value list
+     *  @throw NoSuchThingException
+     */
+    template <class Iter>
+    static void sort(Iter begin, Iter end, const Index &pivot);
 
 private:
     const int ENTRY_PAGE = 0;
@@ -222,6 +230,22 @@ bool BaseTable::equal(const Map1 &lhs, const Map2 &rhs, const BaseTable::Index &
             return false;
     }
     return true;
+}
+
+template <class Iter>
+void BaseTable::sort(Iter begin, Iter end, const BaseTable::Index &pivot)
+{
+    try
+    {
+        std::sort(begin, end, [&pivot](const ColVal &lhs, const ColVal &rhs) {
+            return BaseTable::less(lhs, rhs, pivot);
+        });
+    } catch (const std::out_of_range &e)
+    {
+        for (const auto &col : pivot)
+            if (!begin->count(col))
+                throw NoSuchThingException("field", col);
+    }
 }
 
 #endif // BASE_TABLE_H_

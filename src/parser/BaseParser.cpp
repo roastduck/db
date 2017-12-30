@@ -73,7 +73,8 @@ void BaseParser::update(
 
 void BaseParser::select(
     const Optional<BaseParser::Tgt> &_targets, const std::vector<std::string> &tableList,
-    const BaseParser::ICM &icm, const BaseParser::OCM &ocm
+    const BaseParser::ICM &icm, const BaseParser::OCM &ocm,
+    const Tgt &orderBy
 )
 {
     for (const auto &i : icm)
@@ -93,30 +94,17 @@ void BaseParser::select(
     assert(!tableList.empty());
     Tgt targets;
     if (_targets.isOk())
-    {
-        targets = _targets.ok();
-        if (targets.count(""))
-        {
-            if (tableList.size() == 1)
-            {
-                for (const auto &tgt : targets.at(""))
-                    targets[tableList[0]].push_back(tgt);
-                targets.erase("");
-            } else
-                for (const auto &tgt : targets.at(""))
-                    throw IllegalFieldException("", tgt);
-        }
-    } else
+        targets = getFullTgt(_targets.ok(), tableList);
+    else
         for (const auto &tb : tableList)
             for (const auto &col : tableMgr->desc(tb))
                 targets[tb].push_back(dynamic_cast<CharType*>(col.at(TableMgr::FIELD).get())->getVal());
 
-    Table::Index order;
-    for (const auto &tb : tableList) // Can be improved here
-        if (targets.count(tb))
-            for (const auto &col : targets.at(tb))
-                order.push_back(tb + "." + col);
-    output->addResult(tableMgr->select(targets, tableList, icm, ocm), order);
+    auto result = tableMgr->select(targets, tableList, icm, ocm);
+    if (!orderBy.empty())
+        Table::sort(result.begin(), result.end(), getPlainTgt(getFullTgt(orderBy, tableList), tableList));
+
+    output->addResult(result, getPlainTgt(targets, tableList));
 }
 
 void BaseParser::createIndex(const std::string &tbName, const Table::Index &index)
@@ -154,5 +142,31 @@ Table::OuterCons BaseParser::getTableOC(const std::string &tbName, const BasePar
     }
     const auto ret = ocm.find(std::make_pair(tbName, tbName));
     return ret == ocm.end() ? Table::OuterCons() : ret->second;
+}
+
+BaseParser::Tgt BaseParser::getFullTgt(BaseParser::Tgt targets, const std::vector<std::string> &tableList)
+{
+    if (targets.count(""))
+    {
+        if (tableList.size() == 1)
+        {
+            for (const auto &tgt : targets.at(""))
+                targets[tableList[0]].push_back(tgt);
+            targets.erase("");
+        } else
+            for (const auto &tgt : targets.at(""))
+                throw IllegalFieldException("", tgt);
+    }
+    return targets;
+}
+
+Table::Index BaseParser::getPlainTgt(const BaseParser::Tgt &targets, const std::vector<std::string> &tableList)
+{
+    Table::Index ret;
+    for (const auto &tb : tableList) // Can be improved here
+        if (targets.count(tb))
+            for (const auto &col : targets.at(tb))
+                ret.push_back(tb + "." + col);
+    return ret;
 }
 

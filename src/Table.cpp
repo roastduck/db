@@ -59,12 +59,7 @@ void Table::insert(const std::vector<Table::ColL> &literals)
 
     // Pre-sort
     if (getPrimary().isOk())
-    {
-        const auto &pri = getPrimary().ok();
-        std::sort(values.begin(), values.end(), [&pri](const Table::ColVal &lhs, const Table::ColVal &rhs) {
-            return BaseTable::less(lhs, rhs, pri);
-        });
-    }
+        sort(values.begin(), values.end(), getPrimary().ok());
 
     // Insert
     for (int i = 0; i < int(values.size()); i++)

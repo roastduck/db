@@ -73,6 +73,8 @@ FLOAT:      F L O A T;
 FOREIGN:    F O R E I G N;
 CHECK:      C H E C K;
 IN:         I N;
+ORDER:      O R D E R;
+BY:         B Y;
 
 Identifier: [A-Za-z][_0-9A-Za-z]*
     { if (getText().length() > MAX_IDENTIFIER_LEN) throw IdentifierTooLongException(getText()); }

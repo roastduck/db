@@ -25,17 +25,19 @@ public:
     NULL_TOKEN = 13, INSERT = 14, INTO = 15, VALUES = 16, DELETE = 17, FROM = 18, 
     WHERE = 19, UPDATE = 20, SET = 21, SELECT = 22, IS = 23, INT = 24, CHAR = 25, 
     VARCHAR = 26, DESC = 27, REFERENCES = 28, INDEX = 29, AND = 30, DATE = 31, 
-    FLOAT = 32, FOREIGN = 33, CHECK = 34, IN = 35, Identifier = 36, Int = 37, 
-    String = 38, SEMICOLON = 39, LEFT_PARENTHESIS = 40, RIGHT_PARENTHESIS = 41, 
-    COMMA = 42, DOT = 43, STAR = 44, LESS_THAN = 45, LESS_EQUAL = 46, GREATER_THAN = 47, 
-    GREATER_EQUAL = 48, EQUAL = 49, NOT_EQUAL = 50
+    FLOAT = 32, FOREIGN = 33, CHECK = 34, IN = 35, ORDER = 36, BY = 37, 
+    Identifier = 38, Int = 39, String = 40, SEMICOLON = 41, LEFT_PARENTHESIS = 42, 
+    RIGHT_PARENTHESIS = 43, COMMA = 44, DOT = 45, STAR = 46, LESS_THAN = 47, 
+    LESS_EQUAL = 48, GREATER_THAN = 49, GREATER_EQUAL = 50, EQUAL = 51, 
+    NOT_EQUAL = 52
   };
 
   enum {
     RuleProgram = 0, RuleStmt = 1, RuleFieldList = 2, RuleField = 3, RuleType = 4, 
     RuleColumnList = 5, RuleTableList = 6, RuleValueLists = 7, RuleValueList = 8, 
     RuleValue = 9, RuleWhereClauses = 10, RuleWhereClause = 11, RuleCol = 12, 
-    RuleOp = 13, RuleSetClauses = 14, RuleSetClause = 15, RuleSelector = 16
+    RuleOp = 13, RuleSetClauses = 14, RuleSetClause = 15, RuleSelector = 16, 
+    RuleOrderClause = 17
   };
 
   SqlParser(antlr4::TokenStream *input);
@@ -64,7 +66,8 @@ public:
   class OpContext;
   class SetClausesContext;
   class SetClauseContext;
-  class SelectorContext; 
+  class SelectorContext;
+  class OrderClauseContext; 
 
   class  ProgramContext : public antlr4::ParserRuleContext {
   public:
@@ -86,6 +89,7 @@ public:
     SqlParser::ValueListsContext *valueListsContext = nullptr;;
     SqlParser::WhereClausesContext *whereClausesContext = nullptr;;
     SqlParser::SetClausesContext *setClausesContext = nullptr;;
+    SqlParser::OrderClauseContext *orderClauseContext = nullptr;;
     SqlParser::TableListContext *tableListContext = nullptr;;
     SqlParser::SelectorContext *selectorContext = nullptr;;
     SqlParser::ColumnListContext *columnListContext = nullptr;;
@@ -114,6 +118,7 @@ public:
     antlr4::tree::TerminalNode *SET();
     SetClausesContext *setClauses();
     antlr4::tree::TerminalNode *SELECT();
+    OrderClauseContext *orderClause();
     TableListContext *tableList();
     SelectorContext *selector();
     antlr4::tree::TerminalNode *INDEX();
@@ -380,6 +385,21 @@ public:
   };
 
   SelectorContext* selector();
+
+  class  OrderClauseContext : public antlr4::ParserRuleContext {
+  public:
+    Tgt result;
+    SqlParser::SelectorContext *selectorContext = nullptr;;
+    OrderClauseContext(antlr4::ParserRuleContext *parent, size_t invokingState);
+    virtual size_t getRuleIndex() const override;
+    antlr4::tree::TerminalNode *ORDER();
+    antlr4::tree::TerminalNode *BY();
+    SelectorContext *selector();
+
+   
+  };
+
+  OrderClauseContext* orderClause();
 
 
 private:

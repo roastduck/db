@@ -41,14 +41,14 @@ stmt    : SHOW DATABASES ';'
           { remove($Identifier.text, $whereClauses.icm, $whereClauses.ocm); }
         | UPDATE Identifier SET setClauses WHERE whereClauses[$Identifier.text] ';'
           { update($Identifier.text, $setClauses.result, $whereClauses.icm, $whereClauses.ocm); }
-        | SELECT '*' FROM Identifier WHERE whereClauses[$Identifier.text] ';'
-          { select(None(), {$Identifier.text}, $whereClauses.icm, $whereClauses.ocm); }
-        | SELECT '*' FROM tableList WHERE whereClauses[] ';'
-          { select(None(), $tableList.result, $whereClauses.icm, $whereClauses.ocm); }
-        | SELECT selector FROM Identifier WHERE whereClauses[$Identifier.text] ';'
-          { select($selector.result, {$Identifier.text}, $whereClauses.icm, $whereClauses.ocm); }
-        | SELECT selector FROM tableList WHERE whereClauses[] ';'
-          { select($selector.result, $tableList.result, $whereClauses.icm, $whereClauses.ocm); }
+        | SELECT '*' FROM Identifier WHERE whereClauses[$Identifier.text] orderClause ';'
+          { select(None(), {$Identifier.text}, $whereClauses.icm, $whereClauses.ocm, $orderClause.result); }
+        | SELECT '*' FROM tableList WHERE whereClauses[] orderClause ';'
+          { select(None(), $tableList.result, $whereClauses.icm, $whereClauses.ocm, $orderClause.result); }
+        | SELECT selector FROM Identifier WHERE whereClauses[$Identifier.text] orderClause ';'
+          { select($selector.result, {$Identifier.text}, $whereClauses.icm, $whereClauses.ocm, $orderClause.result); }
+        | SELECT selector FROM tableList WHERE whereClauses[] orderClause ';'
+          { select($selector.result, $tableList.result, $whereClauses.icm, $whereClauses.ocm, $orderClause.result); }
         | CREATE INDEX Identifier '(' columnList ')' ';' // Modification: supporting multiple keys
           { createIndex($Identifier.text, $columnList.result); }
         | DROP INDEX Identifier '(' columnList ')' ';'
@@ -168,5 +168,12 @@ setClause returns [std::string k, Optional<std::string> v]
 
 selector returns [Tgt result]
         : col[""] {$result[$col.tb].push_back($col.c);} (',' col[""] {$result[$col.tb].push_back($col.c);})*
+        ;
+
+orderClause returns [Tgt result]
+        : /* empty */
+          { $result = {}; }
+        | ORDER BY selector
+          { $result = $selector.result; }
         ;
 

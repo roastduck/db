@@ -689,3 +689,37 @@ TEST_F(ParserTest, checkConstraintTooLong)
     ASSERT_THAT(outStream.str(), Eq("(Empty set)\n"));
 }
 
+TEST_F(ParserTest, orderBy)
+{
+    input.parse("CREATE DATABASE db; USE db;");
+    input.parse("CREATE TABLE tb(a INT, b INT, c INT);");
+    input.parse("INSERT INTO tb VALUES (3,2,1), (1,3,2), (1,5,3), (1,4,6), (2,1,7);");
+    outStream.str("");
+    input.parse("SELECT * FROM tb WHERE a IS NOT NULL ORDER BY a, b;");
+    ASSERT_THAT(errStream.str(), Eq(""));
+    ASSERT_THAT(outStream.str(), Eq(
+        "+------+------+------+\n"
+        "| tb.a | tb.b | tb.c |\n"
+        "+------+------+------+\n"
+        "| 1    | 3    | 2    |\n"
+        "+------+------+------+\n"
+        "| 1    | 4    | 6    |\n"
+        "+------+------+------+\n"
+        "| 1    | 5    | 3    |\n"
+        "+------+------+------+\n"
+        "| 2    | 1    | 7    |\n"
+        "+------+------+------+\n"
+        "| 3    | 2    | 1    |\n"
+        "+------+------+------+\n"
+    ));
+}
+
+TEST_F(ParserTest, orderByNonExistingField)
+{
+    input.parse("CREATE DATABASE db; USE db;");
+    input.parse("CREATE TABLE tb(a INT);");
+    input.parse("INSERT INTO tb VALUES (1), (2), (3);");
+    input.parse("SELECT * FROM tb WHERE a IS NOT NULL ORDER BY b;");
+    ASSERT_THAT(errStream.str(), Eq("No such field named tb.b\n"));
+}
+
