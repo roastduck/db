@@ -1,5 +1,9 @@
 # DB
 
+A tiny SQL database.
+
+Copyright © Tang Shizhi
+
 ## Dependencies
 
 This project only works on Linux.
