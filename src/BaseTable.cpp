@@ -752,6 +752,11 @@ int BaseTable::addIndex(const BaseTable::Index &index)
     // Don't select all and then insert, which will consume lots of memory
     for (int pageID = priEntry(); pageID != -1;)
     {
+        while (getDataPage(pageID).getIdent() == PRIMARY)
+        {
+            assert(getDataPage(pageID).getSize() > 0);
+            pageID = asInt(getDataPage(pageID).getValue(0, "$child")).getVal();
+        }
         ListPage &page = getDataPage(pageID);
         assert(page.getIdent() == RECORD);
         for (int i = 0; i < page.getSize(); i++)
