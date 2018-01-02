@@ -771,7 +771,7 @@ TEST_F(ParserTest, orderBy)
     input.parse("CREATE TABLE tb(a INT, b INT, c INT);");
     input.parse("INSERT INTO tb VALUES (3,2,1), (1,3,2), (1,5,3), (1,4,6), (2,1,7);");
     outStream.str("");
-    input.parse("SELECT * FROM tb WHERE a IS NOT NULL ORDER BY a, b;");
+    input.parse("SELECT * FROM tb ORDER BY a, b;");
     ASSERT_THAT(errStream.str(), Eq(""));
     ASSERT_THAT(outStream.str(), Eq(
         "+------+------+------+\n"
@@ -795,7 +795,7 @@ TEST_F(ParserTest, orderByNonExistingField)
     input.parse("CREATE DATABASE db; USE db;");
     input.parse("CREATE TABLE tb(a INT);");
     input.parse("INSERT INTO tb VALUES (1), (2), (3);");
-    input.parse("SELECT * FROM tb WHERE a IS NOT NULL ORDER BY b;");
+    input.parse("SELECT * FROM tb ORDER BY b;");
     ASSERT_THAT(errStream.str(), Eq("No such field named tb.b\n"));
 }
 
@@ -806,7 +806,7 @@ TEST_F(ParserTest, aggregate)
     input.parse("INSERT INTO tb VALUES (1, 1), (2, 3), (3, 5);");
 
     outStream.str("");
-    input.parse("SELECT SUM(a), AVG(b) FROM tb WHERE a IS NOT NULL;");
+    input.parse("SELECT SUM(a), AVG(b) FROM tb;");
     ASSERT_THAT(outStream.str(), Eq(
         "+------+------+\n"
         "| tb.a | tb.b |\n"

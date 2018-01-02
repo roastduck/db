@@ -116,7 +116,6 @@ public:
     ValueListsContext *valueLists();
     antlr4::tree::TerminalNode *DELETE();
     antlr4::tree::TerminalNode *FROM();
-    antlr4::tree::TerminalNode *WHERE();
     WhereClausesContext *whereClauses();
     antlr4::tree::TerminalNode *UPDATE();
     antlr4::tree::TerminalNode *SET();
@@ -281,6 +280,7 @@ public:
     WhereClausesContext(antlr4::ParserRuleContext *parent, size_t invokingState);
     WhereClausesContext(antlr4::ParserRuleContext *parent, size_t invokingState, std::string defaultTb = "");
     virtual size_t getRuleIndex() const override;
+    antlr4::tree::TerminalNode *WHERE();
     std::vector<WhereClauseContext *> whereClause();
     WhereClauseContext* whereClause(size_t i);
     std::vector<antlr4::tree::TerminalNode *> AND();

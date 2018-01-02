@@ -37,32 +37,32 @@ stmt    : SHOW DATABASES ';'
           { desc($Identifier.text); }
         | INSERT INTO Identifier VALUES valueLists ';'
           { insert($Identifier.text, $valueLists.result); }
-        | DELETE FROM Identifier WHERE whereClauses[$Identifier.text] ';'
+        | DELETE FROM Identifier whereClauses[$Identifier.text] ';'
           { remove($Identifier.text, $whereClauses.icm, $whereClauses.ocm); }
-        | UPDATE Identifier SET setClauses WHERE whereClauses[$Identifier.text] ';'
+        | UPDATE Identifier SET setClauses whereClauses[$Identifier.text] ';'
           { update($Identifier.text, $setClauses.result, $whereClauses.icm, $whereClauses.ocm); }
-        | SELECT '*' FROM Identifier WHERE whereClauses[$Identifier.text] groupClause orderClause ';'
+        | SELECT '*' FROM Identifier whereClauses[$Identifier.text] groupClause orderClause ';'
           {
             select(
                 None(), {$Identifier.text}, $whereClauses.icm, $whereClauses.ocm,
                 $orderClause.result, $groupClause.result
             );
           }
-        | SELECT '*' FROM tableList WHERE whereClauses[] groupClause orderClause ';'
+        | SELECT '*' FROM tableList whereClauses[] groupClause orderClause ';'
           {
             select(
                 None(), $tableList.result, $whereClauses.icm, $whereClauses.ocm,
                 $orderClause.result, $groupClause.result
             );
           }
-        | SELECT selAgg FROM Identifier WHERE whereClauses[$Identifier.text] groupClause orderClause ';'
+        | SELECT selAgg FROM Identifier whereClauses[$Identifier.text] groupClause orderClause ';'
           {
             select(
                 $selAgg.result, {$Identifier.text}, $whereClauses.icm, $whereClauses.ocm,
                 $orderClause.result, $groupClause.result, $selAgg.agg
             );
           }
-        | SELECT selAgg FROM tableList WHERE whereClauses[] groupClause orderClause ';'
+        | SELECT selAgg FROM tableList whereClauses[] groupClause orderClause ';'
           {
             select(
                 $selAgg.result, $tableList.result, $whereClauses.icm, $whereClauses.ocm,
@@ -133,7 +133,8 @@ value returns [Optional<std::string> result]
         ;
 
 whereClauses[std::string defaultTb = ""] returns [ICM icm, OCM ocm]
-        : whereClause[defaultTb, &$icm, &$ocm] (AND whereClause[defaultTb, &$icm, &$ocm])*
+        : WHERE whereClause[defaultTb, &$icm, &$ocm] (AND whereClause[defaultTb, &$icm, &$ocm])*
+        | /* empty */ { $icm = {}, $ocm = {}; } // Modification : allow empty where
         ;
 
 whereClause[std::string defaultTb, ICM *icm, OCM *ocm]
