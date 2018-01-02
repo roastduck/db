@@ -542,6 +542,18 @@ TEST_F(ParserTest, multiTableSelectionIllegalWhere)
     ASSERT_THAT(errStream.str(), "Illegal field: x\n");
 }
 
+TEST_F(ParserTest, noSuchTableInConstraint)
+{
+    input.parse("CREATE DATABASE db; USE db;");
+    input.parse("CREATE TABLE t1(a INT);");
+    input.parse("CREATE TABLE t2(a INT);");
+    input.parse("SELECT * FROM t1, t2 WHERE foo.a = 5;");
+    ASSERT_THAT(errStream.str(), "No such table named foo\n");
+    errStream.str("");
+    input.parse("SELECT * FROM t1, t2 WHERE t1.a = bar.a;");
+    ASSERT_THAT(errStream.str(), "No such table named bar\n");
+}
+
 TEST_F(ParserTest, createAndDropIndex)
 {
     input.parse("CREATE DATABASE db; USE db;");

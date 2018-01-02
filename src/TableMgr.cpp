@@ -605,6 +605,16 @@ std::vector<Table::ColVal> TableMgr::select(
     for (const auto &name : _tableList)
         if (!tables.count(name))
             throw NoSuchThingException(TABLE, name);
+    for (const auto &item : innerCons)
+        if (!tables.count(item.first))
+            throw NoSuchThingException(TABLE, item.first);
+    for (const auto &item : outterCons)
+    {
+        if (!tables.count(item.first.first))
+            throw NoSuchThingException(TABLE, item.first.first);
+        if (!tables.count(item.first.second))
+            throw NoSuchThingException(TABLE, item.first.second);
+    }
 
     Table::Index headers; // What we want in the end
     for (const auto &tb : targets)
