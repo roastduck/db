@@ -12,6 +12,7 @@
 #include "exception/NoDBInUseException.h"
 #include "exception/CheckNullException.h"
 #include "exception/NoSuchThingException.h"
+#include "exception/IllegalFieldException.h"
 #include "exception/CheckTooLongException.h"
 #include "exception/CheckViolatedException.h"
 #include "exception/IDAlreadyUsedException.h"
@@ -179,6 +180,7 @@ public:
 
     /** SELECT <selector> FROM <tableList> WHERE <whereClause>
      *  @throw : NoSuchThingException
+     *  @throw : IllegalFieldException
      */
     std::vector<Table::ColVal> select(
         std::unordered_map< std::string, Table::Index > targets, /// table -> columns

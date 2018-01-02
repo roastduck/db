@@ -554,6 +554,15 @@ TEST_F(ParserTest, noSuchTableInConstraint)
     ASSERT_THAT(errStream.str(), "No such table named bar\n");
 }
 
+TEST_F(ParserTest, noSuchTableInSelector)
+{
+    input.parse("CREATE DATABASE db; USE db;");
+    input.parse("CREATE TABLE t1(a INT);");
+    input.parse("CREATE TABLE t2(a INT);");
+    input.parse("SELECT t2.a FROM t1 WHERE a IS NOT NULL;");
+    ASSERT_THAT(errStream.str(), "Illegal field: t2.a\n");
+}
+
 TEST_F(ParserTest, createAndDropIndex)
 {
     input.parse("CREATE DATABASE db; USE db;");

@@ -618,8 +618,13 @@ std::vector<Table::ColVal> TableMgr::select(
 
     Table::Index headers; // What we want in the end
     for (const auto &tb : targets)
+    {
+        if (std::find(_tableList.begin(), _tableList.end(), tb.first) == _tableList.end())
+            for (const auto &col : tb.second)
+                throw IllegalFieldException(tb.first, col);
         for (const auto &col : tb.second)
             headers.push_back(tb.first + "." + col);
+    }
 
     // Complement `targets`
     for (const auto &item : outterCons)
