@@ -39,6 +39,11 @@ private:
             "Directory where all the DB files lie (default = " DEFAULT_DB_PATH ")",
             0 /* Group ID */
         },
+        {
+            "database",  'D',    "DB_NAME",     0,
+            "The database to use (equivalent to the \"USE\" statement)",
+            0
+        },
         { 0, 0, 0, 0, 0, 0 } // Sentinel
     };
 
@@ -54,6 +59,14 @@ private:
             }
             dbPath = arg;
             break;
+        case 'D':
+            if (!arg)
+            {
+                std::cerr << "ERROR: Wrong argument for -d, a path required" << std::endl;
+                exit(-1);
+            }
+            dbUse = arg;
+            break;
         default:
             return ARGP_ERR_UNKNOWN;
         }
@@ -61,7 +74,7 @@ private:
     }
 
 public:
-    static std::string dbPath;
+    static std::string dbPath, dbUse;
 
     static void parse(int argc, char **argv)
     {
@@ -81,7 +94,7 @@ public:
 };
 constexpr const char *CmdArg::doc;
 constexpr argp_option CmdArg::options[];
-std::string CmdArg::dbPath;
+std::string CmdArg::dbPath, CmdArg::dbUse;
 
 int main(int argc, char **argv)
 {
@@ -101,6 +114,11 @@ int main(int argc, char **argv)
     PageMgr *pageMgr = new FilePageMgr(CmdArg::dbPath);
     PageCache *cache = new PageCache(*pageMgr);
     TableMgr mgr(*cache);
+    if (!CmdArg::dbUse.empty())
+    {
+        mgr.use(CmdArg::dbUse);
+        std::clog << "Using database " << CmdArg::dbUse << std::endl << std::endl;
+    }
     if (isatty(fileno(stdin)))
     {
         Output output(std::cout, std::clog, std::cerr);
