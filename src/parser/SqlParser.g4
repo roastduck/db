@@ -96,19 +96,14 @@ field[Cols *cols, PriIdx *priIdx, Fors *fors, Chk *chk]
           { (*chk)[$Identifier.text] = $valueList.result; }
         ;
 
+// NOTE: SQL types are identifiers
+//       e.g. CREATE TABLE (date date) is legal
+// Modification: we allow INT without length
 type returns [Type::TypeID typeID, int length = 0]
-        : INT // Modification: we allow INT without length
-          { $typeID = Type::INT; }
-        | INT '(' Int ')'
-          { $typeID = Type::INT, $length = std::stoi($Int.text); }
-        | CHAR '(' Int ')'
-          { $typeID = Type::CHAR, $length = std::stoi($Int.text); }
-        | VARCHAR '(' Int ')'
-          { $typeID = Type::VARCHAR, $length = std::stoi($Int.text); }
-        | DATE
-          { $typeID = Type::DATE; }
-        | FLOAT
-          { $typeID = Type::FLOAT; }
+        : Identifier '(' Int ')'
+          { $typeID = Type::fromName($Identifier.text), $length = std::stoi($Int.text); }
+        | Identifier
+          { $typeID = Type::fromName($Identifier.text); }
         ;
 
 columnList returns [Table::Index result]

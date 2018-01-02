@@ -1,10 +1,12 @@
 #include <cassert>
 #include "Type.h"
+#include "utils.h"
 #include "type/IntType.h"
 #include "type/FloatType.h"
 #include "type/DateType.h"
 #include "type/CharType.h"
 #include "type/VarcharType.h"
+#include "exception/NoSuchThingException.h"
 
 std::unique_ptr<Type> Type::newType(Type::TypeID typeID, int length)
 {
@@ -93,6 +95,22 @@ std::string Type::getName(TypeID id)
     case VARCHAR: return "VARCHAR";
     default: assert(false);
     }
+}
+
+Type::TypeID Type::fromName(const std::string &_name)
+{
+    auto name = toLower(_name);
+    if (name == "int")
+        return INT;
+    if (name == "float")
+        return FLOAT;
+    if (name == "date")
+        return DATE;
+    if (name == "char")
+        return CHAR;
+    if (name == "varchar")
+        return VARCHAR;
+    throw NoSuchThingException("type", _name);
 }
 
 #define GEN_OP(op) \

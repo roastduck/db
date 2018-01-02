@@ -37,6 +37,13 @@ TEST_F(ParserTest, syntaxError)
     ASSERT_THAT(errStream.str(), Eq("Syntax error\n"));
 }
 
+TEST_F(ParserTest, typeError)
+{
+    input.parse("CREATE DATABASE db; USE db;");
+    input.parse("CREATE TABLE tb(a INTEGER);");
+    ASSERT_THAT(errStream.str(), Eq("No such type named INTEGER\n"));
+}
+
 TEST_F(ParserTest, keywordCannotBeIdentifier)
 {
     input.parse("CREATE DATABASE DATABASE;");
@@ -119,6 +126,22 @@ TEST_F(ParserTest, showTables)
         "+-------+\n"
         "| tb    |\n"
         "+-------+\n"
+    ));
+}
+
+TEST_F(ParserTest, typeNameAsFieldName)
+{
+    input.parse("CREATE DATABASE db; USE db;");
+    input.parse("CREATE TABLE tb(date DATE);");
+    input.parse("INSERT INTO tb VALUES('2018-1-2');");
+    outStream.str("");
+    input.parse("SELECT * FROM tb WHERE date IS NOT NULL;");
+    ASSERT_THAT(outStream.str(), Eq(
+        "+------------+\n"
+        "| tb.date    |\n"
+        "+------------+\n"
+        "| 2018-01-02 |\n"
+        "+------------+\n"
     ));
 }
 

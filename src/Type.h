@@ -76,9 +76,13 @@ public:
     static bool less(const std::unique_ptr<Type> &lhs, const std::unique_ptr<Type> &rhs);
     static bool equal(const std::unique_ptr<Type> &lhs, const std::unique_ptr<Type> &rhs);
 
-    /** Get name corresponding name of TypeID
+    /** Get corresponding name of TypeID
      */
     static std::string getName(TypeID id);
+    /** Get TypeID of corresponding name
+     *  @throw NoSuchThingException
+     */
+    static TypeID fromName(const std::string &_name);
 };
 
 bool operator==(const Type &t1, const Type &t2);

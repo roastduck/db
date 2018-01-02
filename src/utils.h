@@ -13,6 +13,8 @@
 std::string commaJoin(const std::vector<std::string> &strs);
 std::vector<std::string> commaSep(const std::string &str);
 
+std::string toLower(std::string s);
+
 /** Find the first index i in [begin, end) satisfying !tooLow(i)
  */
 template <class Callback>

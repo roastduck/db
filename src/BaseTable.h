@@ -4,6 +4,7 @@
 #include <list>
 #include <memory>
 #include <vector>
+#include <algorithm>
 #include "Type.h"
 #include "Column.h"
 #include "TablePages.h"

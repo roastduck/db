@@ -1,3 +1,4 @@
+#include <algorithm>
 #include "utils.h"
 
 std::string commaJoin(const std::vector<std::string> &strs)
@@ -20,5 +21,11 @@ std::vector<std::string> commaSep(const std::string &str)
         else
             ret.back().push_back(c);
     return ret;
+}
+
+std::string toLower(std::string s)
+{
+    std::transform(s.begin(), s.end(), s.begin(), tolower);
+    return s;
 }
 
