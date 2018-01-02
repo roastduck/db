@@ -100,8 +100,8 @@ field[Cols *cols, PriIdx *priIdx, Fors *fors, Chk *chk]
 //       e.g. CREATE TABLE (date date) is legal
 // Modification: we allow INT without length
 type returns [Type::TypeID typeID, int length = 0]
-        : Identifier '(' Int ')'
-          { $typeID = Type::fromName($Identifier.text), $length = std::stoi($Int.text); }
+        : Identifier '(' Unsigned ')'
+          { $typeID = Type::fromName($Identifier.text), $length = std::stoi($Unsigned.text); }
         | Identifier
           { $typeID = Type::fromName($Identifier.text); }
         ;
@@ -124,8 +124,8 @@ valueList returns [VList result]
         ;
 
 value returns [Optional<std::string> result]
-        : Int
-          { $result = $Int.text; }
+        : num=(Unsigned|Number)
+          { $result = $num.text; }
         | String // Out string has no escaping
           { $result = unescape($String.text.substr(1, $String.text.length() - 2)); }
         | NULL_TOKEN

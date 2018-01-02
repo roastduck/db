@@ -26,10 +26,10 @@ public:
     WHERE = 19, UPDATE = 20, SET = 21, SELECT = 22, IS = 23, DESC = 24, 
     REFERENCES = 25, INDEX = 26, AND = 27, FOREIGN = 28, CHECK = 29, IN = 30, 
     ORDER = 31, GROUP = 32, BY = 33, SUM = 34, AVG = 35, MAX = 36, MIN = 37, 
-    Identifier = 38, Int = 39, String = 40, SEMICOLON = 41, LEFT_PARENTHESIS = 42, 
-    RIGHT_PARENTHESIS = 43, COMMA = 44, DOT = 45, STAR = 46, LESS_THAN = 47, 
-    LESS_EQUAL = 48, GREATER_THAN = 49, GREATER_EQUAL = 50, EQUAL = 51, 
-    NOT_EQUAL = 52
+    Identifier = 38, Unsigned = 39, Number = 40, String = 41, SEMICOLON = 42, 
+    LEFT_PARENTHESIS = 43, RIGHT_PARENTHESIS = 44, COMMA = 45, DOT = 46, 
+    STAR = 47, LESS_THAN = 48, LESS_EQUAL = 49, GREATER_THAN = 50, GREATER_EQUAL = 51, 
+    EQUAL = 52, NOT_EQUAL = 53
   };
 
   enum {
@@ -189,11 +189,11 @@ public:
     Type::TypeID typeID;
     int length = 0;
     antlr4::Token *identifierToken = nullptr;;
-    antlr4::Token *intToken = nullptr;;
+    antlr4::Token *unsignedToken = nullptr;;
     TypeContext(antlr4::ParserRuleContext *parent, size_t invokingState);
     virtual size_t getRuleIndex() const override;
     antlr4::tree::TerminalNode *Identifier();
-    antlr4::tree::TerminalNode *Int();
+    antlr4::tree::TerminalNode *Unsigned();
 
    
   };
@@ -259,11 +259,12 @@ public:
   class  ValueContext : public antlr4::ParserRuleContext {
   public:
     Optional<std::string> result;
-    antlr4::Token *intToken = nullptr;;
+    antlr4::Token *num = nullptr;;
     antlr4::Token *stringToken = nullptr;;
     ValueContext(antlr4::ParserRuleContext *parent, size_t invokingState);
     virtual size_t getRuleIndex() const override;
-    antlr4::tree::TerminalNode *Int();
+    antlr4::tree::TerminalNode *Unsigned();
+    antlr4::tree::TerminalNode *Number();
     antlr4::tree::TerminalNode *String();
     antlr4::tree::TerminalNode *NULL_TOKEN();
 

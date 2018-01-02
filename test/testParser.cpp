@@ -75,6 +75,22 @@ TEST_F(ParserTest, stringWithEscaping)
     ));
 }
 
+TEST_F(ParserTest, decimal)
+{
+    input.parse("CREATE DATABASE db; USE db;");
+    input.parse("CREATE TABLE tb(f FLOAT, g FLOAT);");
+    input.parse("INSERT INTO tb VALUES(3.14, -1.28);");
+    outStream.str("");
+    input.parse("SELECT * FROM tb WHERE f IS NOT NULL;");
+    ASSERT_THAT(outStream.str(), Eq(
+        "+------+-------+\n"
+        "| tb.f | tb.g  |\n"
+        "+------+-------+\n"
+        "| 3.14 | -1.28 |\n"
+        "+------+-------+\n"
+    ));
+}
+
 /************************************/
 /* DB Managements                   */
 /************************************/

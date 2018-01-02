@@ -79,7 +79,9 @@ MIN:        M I N;
 Identifier: [A-Za-z][_0-9A-Za-z]*
     { if (getText().length() > MAX_IDENTIFIER_LEN) throw IdentifierTooLongException(getText()); }
 ;
-Int:        [0-9]+;
+Unsigned:   [0-9]+;
+Number:     '-'? [0-9]+ ('.' [0-9]*)?;
+// Modification: decimal (not in requirement, but presented in test cases)
 String:     '\'' (~['] | '\\\'' | '\\\\')* '\'';
 // Modification: string with escaping (not in requirement, but presented in test cases)
 
