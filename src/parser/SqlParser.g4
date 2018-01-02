@@ -127,7 +127,7 @@ value returns [Optional<std::string> result]
         : Int
           { $result = $Int.text; }
         | String // Out string has no escaping
-          { $result = $String.text.substr(1, $String.text.length() - 2); }
+          { $result = unescape($String.text.substr(1, $String.text.length() - 2)); }
         | NULL_TOKEN
           { $result = None(); }
         ;

@@ -38,6 +38,7 @@ protected:
     // Short helper functions
     template <class T>
     static void append(std::vector<T> &vec, T &item) { vec.push_back(std::move(item)); }
+    std::string unescape(const std::string &s);
 
     void showDbs();
     void createDb(const std::string &name);

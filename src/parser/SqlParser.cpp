@@ -1195,7 +1195,7 @@ SqlParser::ValueContext* SqlParser::value() {
         enterOuterAlt(_localctx, 2);
         setState(287);
         dynamic_cast<ValueContext *>(_localctx)->stringToken = match(SqlParser::String);
-         dynamic_cast<ValueContext *>(_localctx)->result =  (dynamic_cast<ValueContext *>(_localctx)->stringToken != nullptr ? dynamic_cast<ValueContext *>(_localctx)->stringToken->getText() : "").substr(1, (dynamic_cast<ValueContext *>(_localctx)->stringToken != nullptr ? dynamic_cast<ValueContext *>(_localctx)->stringToken->getText() : "").length() - 2); 
+         dynamic_cast<ValueContext *>(_localctx)->result =  unescape((dynamic_cast<ValueContext *>(_localctx)->stringToken != nullptr ? dynamic_cast<ValueContext *>(_localctx)->stringToken->getText() : "").substr(1, (dynamic_cast<ValueContext *>(_localctx)->stringToken != nullptr ? dynamic_cast<ValueContext *>(_localctx)->stringToken->getText() : "").length() - 2)); 
         break;
       }
 

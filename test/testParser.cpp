@@ -59,6 +59,22 @@ TEST_F(ParserTest, oneLetterIdentifier)
     ASSERT_THAT(dbs[0][TableMgr::DB]->toString(), Eq("a"));
 }
 
+TEST_F(ParserTest, stringWithEscaping)
+{
+    input.parse("CREATE DATABASE db; USE db;");
+    input.parse("CREATE TABLE tb(s CHAR(20));");
+    input.parse("INSERT INTO tb VALUES('Mary\\'s backslash \\'\\\\\\'');");
+    outStream.str("");
+    input.parse("SELECT * FROM tb WHERE s IS NOT NULL;");
+    ASSERT_THAT(outStream.str(), Eq(
+        "+----------------------+\n"
+        "| tb.s                 |\n"
+        "+----------------------+\n"
+        "| Mary's backslash '\\' |\n"
+        "+----------------------+\n"
+    ));
+}
+
 /************************************/
 /* DB Managements                   */
 /************************************/

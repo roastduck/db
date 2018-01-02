@@ -3,6 +3,19 @@
 #include "BaseParser.h"
 #include "../type/CharType.h"
 
+std::string BaseParser::unescape(const std::string &s)
+{
+    std::string ret;
+    ret.reserve(s.size());
+    bool escaping = false;
+    for (char c : s)
+        if (c == '\\' && !escaping)
+            escaping = true;
+        else
+            escaping = false, ret.push_back(c);
+    return ret;
+}
+
 void BaseParser::showDbs()
 {
     output->addResult(tableMgr->showDbs());

@@ -80,7 +80,8 @@ Identifier: [A-Za-z][_0-9A-Za-z]*
     { if (getText().length() > MAX_IDENTIFIER_LEN) throw IdentifierTooLongException(getText()); }
 ;
 Int:        [0-9]+;
-String:     '\'' ~[']* '\'';
+String:     '\'' (~['] | '\\\'' | '\\\\')* '\'';
+// Modification: string with escaping (not in requirement, but presented in test cases)
 
 SEMICOLON:          ';';
 LEFT_PARENTHESIS:   '(';
