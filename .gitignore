@@ -20,3 +20,6 @@ Makefile
 
 # DB files
 .db
+
+# Doxygen
+doxygen_doc

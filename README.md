@@ -49,3 +49,8 @@ Run `bin/db` with `-dPATH_TO_DB` or `--db-path=PATH_TO_DB` to specify a director
 Run `bin/db --help` for further help information.
 
 Run `bin/db_test` to perform a unit test (if compiled).
+
+## Source-level document
+
+Doxygen script is provided to generate a source-level document. Run `doxygen Doxyfile` to generate the document to `doxygen_doc/`. Then, open `doxygen_doc/html/index.html` in a browser to read the document.
+
