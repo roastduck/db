@@ -66,7 +66,7 @@ endif()
 
 add_executable(db ${SRCS} ${CMAKE_BINARY_DIR}/src/main.cpp)
 add_dependencies(db antlr4cpp)
-target_link_libraries(db antlr4-runtime)
+target_link_libraries(db antlr4-runtime.a)
 
 set_target_properties(
     db
