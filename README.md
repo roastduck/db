@@ -28,6 +28,8 @@ cmake .
 make
 ```
 
+**NOTE:** When building for the first time, the ANTLR4 library will be automatically cloned from the remote repository. So please connect to the Internet and stay patient.
+
 Advanced options (NOT mandatory):
 
 - Append `-DCMAKE_BUILD_TYPE=Debug` to `cmake` to enable debug mode.
